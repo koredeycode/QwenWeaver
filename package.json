@@ -5,9 +5,9 @@
   "scripts": {
     "dev": "pnpm --parallel -r run dev",
     "build": "pnpm -r run build",
-    "test": "pnpm -r run test",
+    "test": "vitest run",
     "typecheck": "pnpm -r run build",
-    "lint": "pnpm -r run lint",
+    "lint": "eslint apps/ packages/",
     "db:push": "pnpm --filter @qwenweaver/database drizzle:push",
     "db:generate": "pnpm --filter @qwenweaver/database drizzle:generate"
   },
@@ -20,5 +20,11 @@
   "engines": {
     "node": ">=20",
     "pnpm": ">=9"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.5.0",
+    "typescript-eslint": "^8.61.1",
+    "vitest": "^4.1.9"
   }
 }

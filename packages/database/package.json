@@ -8,6 +8,7 @@
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
+    "lint": "eslint src/",
     "drizzle:generate": "drizzle-kit generate",
     "drizzle:push": "drizzle-kit push"
   },

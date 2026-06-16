@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import type { MCPToolCall, MCPToolResult } from './mcp.js';
 
 export const NodeType = z.enum(['trigger', 'agent', 'supervisor', 'mcp_tool', 'logic']);
 export type NodeType = z.infer<typeof NodeType>;

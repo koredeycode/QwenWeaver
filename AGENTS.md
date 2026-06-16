@@ -15,11 +15,16 @@ Use exact flags. Never `npm` or `yarn`.
 | Install all dependencies | `pnpm install` |
 | Start dev servers (all) | `pnpm dev` |
 | Run tests (all) | `pnpm test` |
+| Lint all packages | `pnpm lint` |
 | Type-check workspace | `pnpm typecheck` (runs `build` in every workspace) |
 | Execute one workspace | `pnpm --filter <name> <cmd>` |
 | DB migrations (SQLite dev) | `pnpm db:push` |
 
 Workspace names: `@qwenweaver/web`, `@qwenweaver/api`, `@qwenweaver/database`, `@qwenweaver/types`, `@qwenweaver/mcp-client`.
+
+### Before committing
+
+Run `pnpm lint && pnpm test` and fix any failures first.
 
 ### Commit style
 
