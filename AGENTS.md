@@ -15,11 +15,22 @@ Use exact flags. Never `npm` or `yarn`.
 | Install all dependencies | `pnpm install` |
 | Start dev servers (all) | `pnpm dev` |
 | Run tests (all) | `pnpm test` |
-| Type-check workspace | `pnpm typecheck` (uses `tsc -b` with project references) |
+| Type-check workspace | `pnpm typecheck` (runs `build` in every workspace) |
 | Execute one workspace | `pnpm --filter <name> <cmd>` |
 | DB migrations (SQLite dev) | `pnpm db:push` |
 
 Workspace names: `@qwenweaver/web`, `@qwenweaver/api`, `@qwenweaver/database`, `@qwenweaver/types`, `@qwenweaver/mcp-client`.
+
+### Commit style
+
+Use conventional commits. Scope must match a workspace or package name. Examples:
+
+```
+feat(api): add SSE execution stream endpoint
+fix(web): prevent crash on empty graph canvas
+feat(database): add agent_logs table
+chore: bump hono to 4.12
+```
 
 ---
 
@@ -67,6 +78,8 @@ packages/mcp-client/  Model Context Protocol connection logic
 - **Validate payloads.** Every incoming request must be validated with `@hono/zod-validator`.
 - **SSE streaming.** Use Hono's `streamSSE` helper. Always emit both `event` type and `data` payload. Custom events: `token`, `status_update`, `edge_active`, `complete`.
 - **Parallel execution.** Group zero-in-degree nodes and fire with `Promise.all`.
+- **Logging.** Use `pino` via `apps/api/src/logger.ts`. For file-scoped loggers, use `createModuleLogger('path/to/file')` to get a child logger with a `"module"` field in every JSON log line. Request logging is automatic via the `requestLogger()` middleware (includes method, path, status, duration, requestId).
+- **API docs.** Swagger UI at `GET /api/docs`, OpenAPI spec at `GET /api/openapi.json`. Update the spec when adding new endpoints.
 
 ### Database (Drizzle ORM)
 

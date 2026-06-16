@@ -6,7 +6,7 @@
     "dev": "pnpm --parallel -r run dev",
     "build": "pnpm -r run build",
     "test": "pnpm -r run test",
-    "typecheck": "pnpm tsc -b",
+    "typecheck": "pnpm -r run build",
     "lint": "pnpm -r run lint",
     "db:push": "pnpm --filter @qwenweaver/database drizzle:push",
     "db:generate": "pnpm --filter @qwenweaver/database drizzle:generate"

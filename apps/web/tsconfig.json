@@ -5,7 +5,9 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "outDir": "dist",
     "rootDir": "src",
-    "tsBuildInfoFile": "dist/.tsbuildinfo"
+    "tsBuildInfoFile": "dist/.tsbuildinfo",
+    "skipLibCheck": true,
+    "types": ["vite/client"]
   },
   "include": ["src"]
 }

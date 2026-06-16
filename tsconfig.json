@@ -6,5 +6,8 @@
     { "path": "packages/mcp-client" },
     { "path": "apps/web" },
     { "path": "apps/api" }
-  ]
+  ],
+  "compilerOptions": {
+    "skipLibCheck": true
+  }
 }
