@@ -1,0 +1,24 @@
+{
+  "name": "qwenweaver",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --parallel -r run dev",
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test",
+    "typecheck": "pnpm tsc --noEmit",
+    "lint": "pnpm -r run lint",
+    "db:push": "pnpm --filter @qwenweaver/database drizzle:push",
+    "db:generate": "pnpm --filter @qwenweaver/database drizzle:generate"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "esbuild"
+    ]
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  }
+}
