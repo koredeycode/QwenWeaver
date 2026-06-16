@@ -102,6 +102,9 @@ importers:
 
   packages/database:
     dependencies:
+      '@qwenweaver/types':
+        specifier: workspace:*
+        version: link:../types
       better-sqlite3:
         specifier: ^12.0.0
         version: 12.11.1

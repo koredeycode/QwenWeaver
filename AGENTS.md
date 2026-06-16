@@ -15,7 +15,7 @@ Use exact flags. Never `npm` or `yarn`.
 | Install all dependencies | `pnpm install` |
 | Start dev servers (all) | `pnpm dev` |
 | Run tests (all) | `pnpm test` |
-| Type-check workspace | `pnpm typecheck` |
+| Type-check workspace | `pnpm typecheck` (uses `tsc -b` with project references) |
 | Execute one workspace | `pnpm --filter <name> <cmd>` |
 | DB migrations (SQLite dev) | `pnpm db:push` |
 
