@@ -11,15 +11,37 @@ export interface DiscoveredTool {
   inputSchema: Record<string, unknown>;
 }
 
-/**
- * Discovers MCP tools from a server connection configured on a node.
- *
- * Connects to the MCP server specified in `node.data.mcpServerUrl` (HTTP)
- * or via command/args (Stdio), lists the available tools, and returns them
- * as tool definitions ready for injection into AI SDK calls.
- *
- * The connection is lazily initialized per call and closed after discovery.
- */
+// ─── Connection Pooling ─────────────────────────────────────────────────────
+
+const clientPool = new Map<string, { client: Client; lastUsed: number }>();
+
+async function getClient(mcpUrl: string): Promise<Client> {
+  const pooled = clientPool.get(mcpUrl);
+  if (pooled) {
+    pooled.lastUsed = Date.now();
+    return pooled.client;
+  }
+
+  const client = await createMCPClient(mcpUrl, { name: 'qwenweaver-engine' });
+  clientPool.set(mcpUrl, { client, lastUsed: Date.now() });
+  
+  return client;
+}
+
+// Cleanup idle connections every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [url, entry] of clientPool.entries()) {
+    if (now - entry.lastUsed > 5 * 60 * 1000) {
+      entry.client.close().catch(() => {});
+      clientPool.delete(url);
+      log.info({ mcpUrl: url }, 'Closed idle MCP connection');
+    }
+  }
+}, 60 * 1000).unref();
+
+// ─── Bridge Functions ───────────────────────────────────────────────────────
+
 export async function discoverMCPTools(node: NodePayload): Promise<DiscoveredTool[]> {
   const mcpUrl = node.data.mcpServerUrl;
 
@@ -28,15 +50,16 @@ export async function discoverMCPTools(node: NodePayload): Promise<DiscoveredToo
     return [];
   }
 
-  let client: Client | null = null;
-
   try {
-    client = await createMCPClient(mcpUrl, { name: 'qwenweaver-engine' });
+    const client = await getClient(mcpUrl);
 
-    log.info({ nodeId: node.id, mcpUrl }, 'Connected to MCP server');
+    log.info({ nodeId: node.id, mcpUrl }, 'Connected to MCP server (from pool)');
 
-    // Discover available tools
-    const { tools } = await client.listTools();
+    // Discover available tools with a 60s timeout
+    const { tools } = await Promise.race([
+      client.listTools(),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('MCP listTools timed out')), 60000))
+    ]);
 
     const discoveredTools: DiscoveredTool[] = tools.map((tool: { name: string; description?: string; inputSchema?: unknown }) => ({
       name: tool.name,
@@ -56,33 +79,22 @@ export async function discoverMCPTools(node: NodePayload): Promise<DiscoveredToo
       'Failed to discover MCP tools',
     );
     return [];
-  } finally {
-    if (client) {
-      try {
-        await client.close();
-      } catch {
-        // Ignore close errors
-      }
-    }
   }
 }
 
-/**
- * Calls a specific tool on an MCP server.
- *
- * Used by the agent runner when the AI model decides to invoke an MCP tool.
- */
 export async function callMCPTool(
   mcpUrl: string,
   toolName: string,
   args: Record<string, unknown>,
 ): Promise<unknown> {
-  let client: Client | null = null;
-
   try {
-    client = await createMCPClient(mcpUrl, { name: 'qwenweaver-engine' });
+    const client = await getClient(mcpUrl);
 
-    const result = await client.callTool({ name: toolName, arguments: args });
+    // Call tool with a 60s timeout
+    const result = await Promise.race([
+      client.callTool({ name: toolName, arguments: args }),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('MCP callTool timed out')), 60000))
+    ]);
 
     log.info({ mcpUrl, toolName }, 'MCP tool called successfully');
 
@@ -93,13 +105,5 @@ export async function callMCPTool(
       'Failed to call MCP tool',
     );
     throw error;
-  } finally {
-    if (client) {
-      try {
-        await client.close();
-      } catch {
-        // Ignore close errors
-      }
-    }
   }
 }

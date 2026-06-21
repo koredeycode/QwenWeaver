@@ -11,11 +11,13 @@ export async function handleGetExecution(c: Context<{ Variables: Variables }>) {
   log.info({ executionId }, 'Execution status requested');
 
   const execution = await getExecution(executionId);
-  if (!execution) {
-    return c.json({ error: 'Execution not found' }, 404);
+  const userId = c.get('jwtPayload').sub;
+
+  if (!execution || execution.userId !== userId) {
+    return c.json({ error: 'Execution not found or unauthorized' }, 404);
   }
 
-  return c.json(execution);
+  return c.json(execution, 200);
 }
 
 export async function handleGetExecutionLogs(c: Context<{ Variables: Variables }>) {
@@ -24,8 +26,10 @@ export async function handleGetExecutionLogs(c: Context<{ Variables: Variables }
   log.info({ executionId }, 'Agent logs requested');
 
   const execution = await getExecution(executionId);
-  if (!execution) {
-    return c.json({ error: 'Execution not found' }, 404);
+  const userId = c.get('jwtPayload').sub;
+
+  if (!execution || execution.userId !== userId) {
+    return c.json({ error: 'Execution not found or unauthorized' }, 404);
   }
 
   const logs = await getAgentLogs(executionId);
@@ -33,5 +37,5 @@ export async function handleGetExecutionLogs(c: Context<{ Variables: Variables }
   return c.json({
     executionId,
     logs,
-  });
+  }, 200);
 }

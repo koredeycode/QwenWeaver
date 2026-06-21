@@ -10,16 +10,6 @@ import * as path from 'node:path';
 
 const log = createModuleLogger('engine/agent-runner');
 
-/**
- * Executes a single agent node.
- *
- * Routes to the appropriate Qwen model based on node type/config,
- * optionally discovers and injects MCP tools, and streams the response.
- * Emits `token` SSE events as text chunks arrive.
- *
- * For `trigger` and `logic` nodes, this is a pass-through that returns
- * the upstream data without making an LLM call.
- */
 export async function runAgent(
   node: NodePayload,
   upstreamOutputs: UpstreamOutputs,
@@ -28,9 +18,21 @@ export async function runAgent(
 ): Promise<AgentResult> {
   const startTime = performance.now();
 
-  // Pass-through for trigger and logic nodes (no LLM call needed)
   if (node.type === 'trigger' || node.type === 'logic') {
     return createPassthroughResult(node, startTime);
+  }
+
+  // Set up dynamic abort controller linked to SSE connection and a 120s timeout
+  const abortController = new AbortController();
+  const timeoutId = setTimeout(() => abortController.abort('Agent execution timed out (120s)'), 120000);
+  
+  let pollInterval: ReturnType<typeof setInterval> | undefined;
+  if (emitter) {
+    pollInterval = setInterval(() => {
+      if (emitter.isClosed()) {
+        abortController.abort('Client disconnected');
+      }
+    }, 1000);
   }
 
   try {
@@ -144,16 +146,9 @@ export async function runAgent(
       };
     }
 
-    // Get model config
     const { model, enableThinking, thinkingBudget } = getModelForNode(node);
-
-    // Build system prompt
     const systemPrompt = buildSystemPrompt(node);
-
-    // Build user message from upstream outputs
     const userMessage = buildUserMessage(node, upstreamOutputs);
-
-    // Discover MCP tools if this is an MCP-connected node
     const mcpToolNames = await discoverMCPToolNames(node);
 
     const tools: Record<string, Tool<z.ZodTypeAny, unknown>> = {};
@@ -176,7 +171,6 @@ export async function runAgent(
       }
     }
 
-    // Build provider options for thinking mode
     const providerOptions = enableThinking
       ? {
           alibaba: {
@@ -191,7 +185,6 @@ export async function runAgent(
       'Starting agent execution',
     );
 
-    // Stream the response
     const result = streamText({
       model,
       system: systemPrompt,
@@ -199,13 +192,12 @@ export async function runAgent(
       tools: Object.keys(tools).length > 0 ? tools : undefined,
       maxSteps: 5,
       providerOptions,
-      abortSignal: emitter?.isClosed() ? AbortSignal.abort() : undefined,
+      abortSignal: abortController.signal,
     } as unknown as Parameters<typeof streamText>[0]);
 
     let fullText = '';
     let tokensUsed = 0;
 
-    // Stream tokens and emit SSE events
     for await (const chunk of result.textStream) {
       fullText += chunk;
 
@@ -217,7 +209,6 @@ export async function runAgent(
       }
     }
 
-    // Collect final result metadata
     const finalResult = await result;
     const usage = await finalResult.usage;
     tokensUsed = usage?.totalTokens ?? 0;
@@ -279,6 +270,9 @@ export async function runAgent(
       status: 'failed',
       error: errorMessage,
     };
+  } finally {
+    clearTimeout(timeoutId);
+    if (pollInterval) clearInterval(pollInterval);
   }
 }
 
@@ -353,10 +347,6 @@ function buildUserMessage(node: NodePayload, upstreamOutputs: UpstreamOutputs): 
   return parts.join('\n\n---\n\n') + taskContext;
 }
 
-/**
- * Discovers MCP tool names for logging purposes.
- * Full tool injection will be implemented when MCP servers are available.
- */
 async function discoverMCPToolNames(node: NodePayload): Promise<string[]> {
   if (node.type !== 'mcp_tool' || !node.data.mcpServerUrl) {
     return [];

@@ -7,27 +7,11 @@ import type {
 } from './types.js';
 import { compileDag } from './dag-compiler.js';
 import { runAgent } from './agent-runner.js';
-import {
-  updateExecution,
-  saveAgentLog,
-  getExecution,
-  createExecution,
-  saveWorkflow,
-} from '@qwenweaver/database';
+import { getQueryProvider } from '@qwenweaver/database';
 import { createModuleLogger } from '../logger.js';
 
 const log = createModuleLogger('engine/executor');
 
-/**
- * Executes a full workflow by compiling the DAG, running agents in
- * topologically-ordered parallel batches, and streaming events via SSE.
- *
- * 1. Compile DAG — detect cycles, produce execution batches
- * 2. Create execution record in DB
- * 3. Iterate batches: run agents in parallel via Promise.all
- * 4. Compute execution metrics (speedup S, total tokens)
- * 5. Emit `complete` event with final metrics
- */
 export async function executeWorkflow(
   workflow: WorkflowPayload,
   executionId: string,
@@ -35,30 +19,24 @@ export async function executeWorkflow(
   options: ExecutionOptions = { maxNegotiationRounds: 3, persistLogs: true },
 ): Promise<ExecutionResult> {
   const executionStart = performance.now();
+  const provider = getQueryProvider();
+  
+  // Try fetching to get userId
+  let executionUserId = '';
+  const existing = await provider.getExecution(executionId).catch(() => null);
+  if (existing) {
+    executionUserId = existing.userId;
+    await provider.updateExecution(executionId, 'running').catch((err: Error) => {
+      log.error({ executionId, error: err.message }, 'Failed to set execution status to running');
+    });
+  } else {
+    log.error({ executionId }, 'Execution not found at start');
+  }
 
   log.info(
     { executionId, workflowName: workflow.name, nodeCount: workflow.nodes.length },
     'Starting workflow execution',
   );
-
-  // Ensure execution record exists in DB (self-healing for tests or direct calls)
-  const existing = await getExecution(executionId).catch(() => null);
-  if (!existing) {
-    const workflowId = await saveWorkflow(workflow).catch((err) => {
-      log.error({ executionId, error: err.message }, 'Failed to auto-save workflow');
-      return 'placeholder-workflow-id';
-    });
-    await createExecution(executionId, workflowId).catch((err) => {
-      log.error({ executionId, error: err.message }, 'Failed to auto-create execution');
-    });
-  }
-
-  // Update execution status in DB to 'running'
-  await updateExecution(executionId, 'running').catch((err) => {
-    log.error({ executionId, error: err.message }, 'Failed to set execution status to running');
-  });
-
-  // ─── Phase 1: Compile DAG ──────────────────────────────────────────────────
 
   const dagResult = compileDag(workflow.nodes, workflow.edges);
 
@@ -67,7 +45,7 @@ export async function executeWorkflow(
 
     log.error({ executionId, cycleNodeIds: dagResult.cycleNodeIds }, errorMsg);
 
-    await updateExecution(executionId, 'failed').catch((err) => {
+    await provider.updateExecution(executionId, 'failed').catch((err: Error) => {
       log.error({ executionId, error: err.message }, 'Failed to set execution status to failed on cycle');
     });
 
@@ -90,17 +68,14 @@ export async function executeWorkflow(
     'DAG compiled, starting batch execution',
   );
 
-  // ─── Phase 2: Execute batches in topological order ─────────────────────────
-
   const allOutputs: UpstreamOutputs = new Map();
   const nodeTimings: NodeTiming[] = [];
   let totalTokens = 0;
-  let sequentialTime = 0; // Sum of all individual agent times (for speedup calc)
+  let sequentialTime = 0; 
   let currentRound = 0;
   const maxNegotiationRounds = options?.maxNegotiationRounds ?? 3;
   const cumulativeFeedback = new Map<string, string>();
 
-  // Pre-calculate node-to-batch-index map
   const nodeToBatchIdx = new Map<string, number>();
   for (let i = 0; i < dagResult.batches.length; i++) {
     for (const node of dagResult.batches[i]) {
@@ -108,13 +83,14 @@ export async function executeWorkflow(
     }
   }
 
-  // Build edge lookup: target -> source[] for upstream data resolution
   const incomingEdges = new Map<string, string[]>();
   for (const edge of workflow.edges) {
     const sources = incomingEdges.get(edge.target) ?? [];
     sources.push(edge.source);
     incomingEdges.set(edge.target, sources);
   }
+
+  const backgroundTasks: Promise<void>[] = [];
 
   for (let batchIdx = 0; batchIdx < dagResult.batches.length; batchIdx++) {
     const batch = dagResult.batches[batchIdx];
@@ -129,7 +105,6 @@ export async function executeWorkflow(
       'Executing batch',
     );
 
-    // Emit status_update: all nodes in this batch are now "running"
     for (const node of batch) {
       await emitter.emit('status_update', {
         nodeId: node.id,
@@ -138,10 +113,9 @@ export async function executeWorkflow(
       });
     }
 
-    // Execute all agents in this batch concurrently
-    const batchResults = await Promise.all(
+    // Use Promise.allSettled to not discard sibling results on failure
+    const batchSettledResults = await Promise.allSettled(
       batch.map(async (node) => {
-        // Resolve upstream outputs for this node
         const upstreamSources = incomingEdges.get(node.id) ?? [];
         const upstream: UpstreamOutputs = new Map();
 
@@ -150,7 +124,6 @@ export async function executeWorkflow(
           if (sourceResult) {
             upstream.set(sourceId, sourceResult);
 
-            // Emit edge_active: data is flowing from source to this node
             await emitter.emit('edge_active', {
               sourceId,
               targetId: node.id,
@@ -159,7 +132,6 @@ export async function executeWorkflow(
           }
         }
 
-        // Apply cumulative supervisor feedback to worker nodes if any
         let nodeToRun = node;
         const feedback = cumulativeFeedback.get(node.id);
         if (feedback) {
@@ -174,8 +146,8 @@ export async function executeWorkflow(
 
         const result = await runAgent(nodeToRun, upstream, emitter, executionId);
 
-        // Persist agent log to DB directly in the map callback where node and upstream are in scope
-        await saveAgentLog(
+        // Non-blocking log save
+        const logPromise = provider.saveAgentLog(
           executionId,
           result.nodeId,
           result.status,
@@ -195,15 +167,31 @@ export async function executeWorkflow(
           },
           result.tokensUsed,
           result.error
-        ).catch((err) => {
+        ).catch((err: Error) => {
           log.error({ executionId, nodeId: result.nodeId, error: err.message }, 'Failed to save agent log');
         });
+        
+        backgroundTasks.push(logPromise);
 
         return result;
       }),
     );
 
-    // Process batch results
+    const batchResults = batchSettledResults.map((r, i) => {
+      if (r.status === 'fulfilled') return r.value;
+      const node = batch[i];
+      const errorMsg = r.reason instanceof Error ? r.reason.message : String(r.reason);
+      return {
+        nodeId: node.id,
+        status: 'failed' as const,
+        outputs: [],
+        text: '',
+        tokensUsed: 0,
+        durationMs: 0,
+        error: errorMsg,
+      };
+    });
+
     for (const result of batchResults) {
       allOutputs.set(result.nodeId, result);
       totalTokens += result.tokensUsed;
@@ -226,7 +214,6 @@ export async function executeWorkflow(
         });
       }
 
-      // Emit status_update for completed/failed nodes
       await emitter.emit('status_update', {
         nodeId: result.nodeId,
         status: result.status,
@@ -241,7 +228,6 @@ export async function executeWorkflow(
       }
     }
 
-    // Check for Supervisor node rejection and backtrack if needed
     let rejectionDetected = false;
     let supervisorFeedback = '';
     const upstreamWorkerIdsToReset: string[] = [];
@@ -307,13 +293,11 @@ export async function executeWorkflow(
     }
   }
 
-  // ─── Phase 3: Compute execution metrics ────────────────────────────────────
+  // Await background tasks (logs)
+  await Promise.allSettled(backgroundTasks);
 
   const totalLatencyMs = Math.round(performance.now() - executionStart);
 
-  // Speedup S = T_single / T_multi
-  // T_single = sum of all individual agent durations (sequential)
-  // T_multi = actual wall-clock time (parallel)
   const speedupS = totalLatencyMs > 0
     ? Math.round((sequentialTime / totalLatencyMs) * 100) / 100
     : 1;
@@ -330,16 +314,12 @@ export async function executeWorkflow(
     nodeTimings,
   };
 
-  // Determine overall status
   const hasFailures = nodeTimings.some((t) => t.status === 'failed');
   const status = hasFailures ? 'failed' : 'completed';
 
-  // Update final execution status and metrics in DB
-  await updateExecution(executionId, status, metrics).catch((err) => {
+  await provider.updateExecution(executionId, status, metrics).catch((err: Error) => {
     log.error({ executionId, error: err.message }, 'Failed to update execution final status');
   });
-
-  // ─── Phase 4: Emit completion ──────────────────────────────────────────────
 
   await emitter.emit('complete', {
     executionId,

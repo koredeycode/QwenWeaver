@@ -5,8 +5,8 @@ import type {
 } from '@qwenweaver/types';
 import { getQueryProvider } from './provider.js';
 
-export async function createExecution(executionId: string, workflowId: string): Promise<void> {
-  return getQueryProvider().createExecution(executionId, workflowId);
+export async function createExecution(executionId: string, workflowId: string, userId: string): Promise<void> {
+  return getQueryProvider().createExecution(executionId, workflowId, userId);
 }
 
 export async function updateExecution(

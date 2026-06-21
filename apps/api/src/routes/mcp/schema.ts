@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const DiscoverToolsQuery = z.object({
-  url: z.string().min(1),
+  serverId: z.string().min(1),
 });
 
 export const SaveServerBody = z.object({

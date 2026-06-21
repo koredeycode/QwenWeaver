@@ -1,5 +1,5 @@
 import { type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { getConnection, sqliteSchema } from '../index.js';
 import type { QueryProvider } from './provider.js';
 import type { SavedMCPServerInput, SavedMCPServer } from './mcp.js';
@@ -12,11 +12,38 @@ const log = {
 };
 
 export const sqliteProvider: QueryProvider = {
-  async saveMcpServer(id: string, input: SavedMCPServerInput): Promise<SavedMCPServer> {
+  async createUser(id: string, email: string, passwordHash: string): Promise<void> {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    await sqliteDb.insert(sqliteSchema.sqliteUsers).values({
+      id,
+      email,
+      passwordHash,
+      createdAt: Date.now(),
+    });
+  },
+
+  async getUserByEmail(email: string) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const rows = await sqliteDb.select().from(sqliteSchema.sqliteUsers).where(eq(sqliteSchema.sqliteUsers.email, email)).limit(1);
+    return rows[0] || null;
+  },
+
+  async getUserById(id: string) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const rows = await sqliteDb.select().from(sqliteSchema.sqliteUsers).where(eq(sqliteSchema.sqliteUsers.id, id)).limit(1);
+    if (!rows[0]) return null;
+    return { id: rows[0].id, email: rows[0].email, createdAt: rows[0].createdAt };
+  },
+
+  async saveMcpServer(id: string, userId: string, input: SavedMCPServerInput): Promise<SavedMCPServer> {
     const { db } = getConnection();
     const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
     const baseValues = {
       id,
+      userId,
       name: input.name,
       description: input.description || null,
       transport: input.transport,
@@ -41,10 +68,10 @@ export const sqliteProvider: QueryProvider = {
     };
   },
 
-  async getMcpServers(): Promise<SavedMCPServer[]> {
+  async getMcpServers(userId: string): Promise<SavedMCPServer[]> {
     const { db } = getConnection();
     const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
-    const rows = await sqliteDb.select().from(sqliteSchema.sqliteMcpServers);
+    const rows = await sqliteDb.select().from(sqliteSchema.sqliteMcpServers).where(eq(sqliteSchema.sqliteMcpServers.userId, userId));
     return rows.map((r) => ({
       id: r.id,
       name: r.name,
@@ -57,13 +84,13 @@ export const sqliteProvider: QueryProvider = {
     }));
   },
 
-  async deleteMcpServer(id: string): Promise<boolean> {
+  async deleteMcpServer(id: string, userId: string): Promise<boolean> {
     const { db } = getConnection();
     const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
     const existing = await sqliteDb
       .select()
       .from(sqliteSchema.sqliteMcpServers)
-      .where(eq(sqliteSchema.sqliteMcpServers.id, id))
+      .where(and(eq(sqliteSchema.sqliteMcpServers.id, id), eq(sqliteSchema.sqliteMcpServers.userId, userId)))
       .limit(1);
 
     if (existing.length === 0) {
@@ -72,26 +99,25 @@ export const sqliteProvider: QueryProvider = {
 
     await sqliteDb
       .delete(sqliteSchema.sqliteMcpServers)
-      .where(eq(sqliteSchema.sqliteMcpServers.id, id));
+      .where(and(eq(sqliteSchema.sqliteMcpServers.id, id), eq(sqliteSchema.sqliteMcpServers.userId, userId)));
 
     return true;
   },
 
-  async saveWorkflow(workflow: WorkflowPayload): Promise<string> {
+  async saveWorkflow(userId: string, workflow: WorkflowPayload): Promise<string> {
     const { db } = getConnection();
     const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
     const workflowId = workflow.id || crypto.randomUUID();
 
-    // 1. Insert workflow
     await sqliteDb.insert(sqliteSchema.sqliteWorkflows).values({
       id: workflowId,
+      userId,
       name: workflow.name,
       description: workflow.description || null,
       isActive: 1,
       createdAt: Date.now(),
     });
 
-    // 2. Insert nodes (prefixed with workflowId to ensure composite primary key uniqueness)
     if (workflow.nodes.length > 0) {
       await sqliteDb.insert(sqliteSchema.sqliteNodes).values(
         workflow.nodes.map((node) => ({
@@ -105,7 +131,6 @@ export const sqliteProvider: QueryProvider = {
       );
     }
 
-    // 3. Insert edges
     if (workflow.edges.length > 0) {
       await sqliteDb.insert(sqliteSchema.sqliteEdges).values(
         workflow.edges.map((edge) => ({
@@ -122,12 +147,13 @@ export const sqliteProvider: QueryProvider = {
     return workflowId;
   },
 
-  async createExecution(executionId: string, workflowId: string): Promise<void> {
+  async createExecution(executionId: string, workflowId: string, userId: string): Promise<void> {
     const { db } = getConnection();
     const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
     await sqliteDb.insert(sqliteSchema.sqliteExecutions).values({
       id: executionId,
       workflowId,
+      userId,
       status: 'pending',
       startedAt: Date.now(),
     });
@@ -190,6 +216,7 @@ export const sqliteProvider: QueryProvider = {
     return {
       id: r.id,
       workflowId: r.workflowId ?? '',
+      userId: r.userId ?? '',
       status: r.status,
       metrics: r.metrics ?? undefined,
       startedAt: new Date(r.startedAt).toISOString(),

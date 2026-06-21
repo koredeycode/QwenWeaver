@@ -20,14 +20,14 @@ export interface SavedMCPServer {
   createdAt: string;
 }
 
-export async function saveMcpServer(id: string, input: SavedMCPServerInput): Promise<SavedMCPServer> {
-  return getQueryProvider().saveMcpServer(id, input);
+export async function saveMcpServer(id: string, userId: string, input: SavedMCPServerInput): Promise<SavedMCPServer> {
+  return getQueryProvider().saveMcpServer(id, userId, input);
 }
 
-export async function getMcpServers(): Promise<SavedMCPServer[]> {
-  return getQueryProvider().getMcpServers();
+export async function getMcpServers(userId: string): Promise<SavedMCPServer[]> {
+  return getQueryProvider().getMcpServers(userId);
 }
 
-export async function deleteMcpServer(id: string): Promise<boolean> {
-  return getQueryProvider().deleteMcpServer(id);
+export async function deleteMcpServer(id: string, userId: string): Promise<boolean> {
+  return getQueryProvider().deleteMcpServer(id, userId);
 }

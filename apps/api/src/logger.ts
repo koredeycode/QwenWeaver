@@ -1,6 +1,8 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import pino from 'pino';
 import type { MiddlewareHandler } from 'hono';
-import type { Variables } from './index.js';
+
+export const requestContext = new AsyncLocalStorage<{ requestId: string }>();
 
 export const logger = pino(
   {
@@ -9,6 +11,10 @@ export const logger = pino(
       bindings() {
         return { service: 'qwenweaver-api' };
       },
+    },
+    mixin() {
+      const store = requestContext.getStore();
+      return store ? { requestId: store.requestId } : {};
     },
     serializers: {
       req: pino.stdSerializers.req,
@@ -19,7 +25,7 @@ export const logger = pino(
     targets: [
       {
         target: 'pino/file',
-        options: { destination: 1 }, // 1 is stdout / console
+        options: { destination: 1 },
         level: process.env.LOG_LEVEL || 'info',
       },
       {
@@ -40,32 +46,32 @@ export interface RequestLog {
   path: string;
   status: number;
   duration: string;
-  requestId?: string;
 }
 
-export function requestLogger(): MiddlewareHandler<{ Variables: Variables }> {
+export function requestLogger(): MiddlewareHandler {
   return async (c, next) => {
     const start = performance.now();
     const requestId = crypto.randomUUID().slice(0, 8);
     c.set('requestId', requestId);
 
-    await next();
+    await requestContext.run({ requestId }, async () => {
+      await next();
 
-    const duration = performance.now() - start;
-    const log: RequestLog = {
-      method: c.req.method,
-      path: c.req.path,
-      status: c.res.status,
-      duration: `${Math.round(duration)}ms`,
-      requestId,
-    };
+      const duration = performance.now() - start;
+      const log: RequestLog = {
+        method: c.req.method,
+        path: c.req.path,
+        status: c.res.status,
+        duration: `${Math.round(duration)}ms`,
+      };
 
-    if (c.res.status >= 500) {
-      logger.error(log, 'request failed');
-    } else if (c.res.status >= 400) {
-      logger.warn(log, 'request warning');
-    } else {
-      logger.info(log, 'request completed');
-    }
+      if (c.res.status >= 500) {
+        logger.error(log, 'request failed');
+      } else if (c.res.status >= 400) {
+        logger.warn(log, 'request warning');
+      } else {
+        logger.info(log, 'request completed');
+      }
+    });
   };
 }

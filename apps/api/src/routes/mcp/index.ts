@@ -1,5 +1,4 @@
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
 import type { Variables } from '../../index.js';
 import { DiscoverToolsQuery, SaveServerBody } from './schema.js';
 import {
@@ -9,32 +8,98 @@ import {
   handleDeleteServer,
 } from './handlers.js';
 
-const mcpRoutes = new Hono<{ Variables: Variables }>();
+export const mcpRoutes = new OpenAPIHono<{ Variables: Variables }>();
 
-// ─── GET /tools — Discover tools from an MCP server ─────────────────────────
-mcpRoutes.get(
-  '/tools',
-  zValidator('query', DiscoverToolsQuery),
-  handleDiscoverTools
-);
+const errorResponseSchema = z.object({
+  error: z.string(),
+});
 
-// ─── POST /servers — Save an MCP server configuration ───────────────────────
-mcpRoutes.post(
-  '/servers',
-  zValidator('json', SaveServerBody),
-  handleSaveServer
-);
+export const discoverToolsRoute = createRoute({
+  method: 'get',
+  path: '/tools',
+  tags: ['MCP'],
+  summary: 'Discover tools from an MCP server',
+  request: {
+    query: DiscoverToolsQuery,
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            tools: z.array(z.record(z.string(), z.unknown())),
+            count: z.number(),
+          }),
+        },
+      },
+      description: 'OK',
+    },
+    404: { content: { 'application/json': { schema: errorResponseSchema } }, description: 'MCP server not found' },
+  },
+});
 
-// ─── GET /servers — List saved MCP server configurations ────────────────────
-mcpRoutes.get(
-  '/servers',
-  handleListServers
-);
+export const saveServerRoute = createRoute({
+  method: 'post',
+  path: '/servers',
+  tags: ['MCP'],
+  summary: 'Save an MCP server configuration',
+  request: {
+    body: {
+      content: { 'application/json': { schema: SaveServerBody } },
+    },
+  },
+  responses: {
+    201: {
+      content: {
+        'application/json': { schema: z.record(z.string(), z.unknown()) },
+      },
+      description: 'Created',
+    },
+  },
+});
 
-// ─── DELETE /servers/:id — Remove a saved MCP server ────────────────────────
-mcpRoutes.delete(
-  '/servers/:id',
-  handleDeleteServer
-);
+export const listServersRoute = createRoute({
+  method: 'get',
+  path: '/servers',
+  tags: ['MCP'],
+  summary: 'List saved MCP server configurations',
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            servers: z.array(z.record(z.string(), z.unknown())),
+            count: z.number(),
+          }),
+        },
+      },
+      description: 'OK',
+    },
+  },
+});
 
-export { mcpRoutes };
+export const deleteServerRoute = createRoute({
+  method: 'delete',
+  path: '/servers/{id}',
+  tags: ['MCP'],
+  summary: 'Remove a saved MCP server',
+  request: {
+    params: z.object({ id: z.string() }),
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({ deleted: z.boolean() }),
+        },
+      },
+      description: 'OK',
+    },
+    404: { content: { 'application/json': { schema: errorResponseSchema } }, description: 'Not found' },
+  },
+});
+
+mcpRoutes.openapi(discoverToolsRoute, handleDiscoverTools);
+mcpRoutes.openapi(saveServerRoute, handleSaveServer);
+mcpRoutes.openapi(listServersRoute, handleListServers);
+mcpRoutes.openapi(deleteServerRoute, handleDeleteServer);

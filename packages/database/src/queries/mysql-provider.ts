@@ -1,6 +1,6 @@
-import { type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import { type MySql2Database } from 'drizzle-orm/mysql2';
 import { eq, and } from 'drizzle-orm';
-import { getConnection, pgSchema } from '../index.js';
+import { getConnection, mysqlSchema } from '../index.js';
 import type { QueryProvider } from './provider.js';
 import type { SavedMCPServerInput, SavedMCPServer } from './mcp.js';
 import type { WorkflowPayload, ExecutionMetrics, AgentLogInput, AgentLogOutput } from '@qwenweaver/types';
@@ -11,11 +11,11 @@ const log = {
   }
 };
 
-export const pgProvider: QueryProvider = {
+export const mysqlProvider: QueryProvider = {
   async createUser(id: string, email: string, passwordHash: string): Promise<void> {
     const { db } = getConnection();
-    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
-    await pgDb.insert(pgSchema.pgUsers).values({
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    await mysqlDb.insert(mysqlSchema.mysqlUsers).values({
       id,
       email,
       passwordHash,
@@ -25,22 +25,22 @@ export const pgProvider: QueryProvider = {
 
   async getUserByEmail(email: string) {
     const { db } = getConnection();
-    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
-    const rows = await pgDb.select().from(pgSchema.pgUsers).where(eq(pgSchema.pgUsers.email, email)).limit(1);
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const rows = await mysqlDb.select().from(mysqlSchema.mysqlUsers).where(eq(mysqlSchema.mysqlUsers.email, email)).limit(1);
     return rows[0] || null;
   },
 
   async getUserById(id: string) {
     const { db } = getConnection();
-    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
-    const rows = await pgDb.select().from(pgSchema.pgUsers).where(eq(pgSchema.pgUsers.id, id)).limit(1);
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const rows = await mysqlDb.select().from(mysqlSchema.mysqlUsers).where(eq(mysqlSchema.mysqlUsers.id, id)).limit(1);
     if (!rows[0]) return null;
     return { id: rows[0].id, email: rows[0].email, createdAt: rows[0].createdAt };
   },
 
   async saveMcpServer(id: string, userId: string, input: SavedMCPServerInput): Promise<SavedMCPServer> {
     const { db } = getConnection();
-    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
     const baseValues = {
       id,
       userId,
@@ -51,7 +51,7 @@ export const pgProvider: QueryProvider = {
       command: input.command || null,
       args: input.args || null,
     };
-    await pgDb.insert(pgSchema.pgMcpServers).values({
+    await mysqlDb.insert(mysqlSchema.mysqlMcpServers).values({
       ...baseValues,
       createdAt: new Date(),
     });
@@ -70,8 +70,8 @@ export const pgProvider: QueryProvider = {
 
   async getMcpServers(userId: string): Promise<SavedMCPServer[]> {
     const { db } = getConnection();
-    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
-    const rows = await pgDb.select().from(pgSchema.pgMcpServers).where(eq(pgSchema.pgMcpServers.userId, userId));
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const rows = await mysqlDb.select().from(mysqlSchema.mysqlMcpServers).where(eq(mysqlSchema.mysqlMcpServers.userId, userId));
     return rows.map((r) => ({
       id: r.id,
       name: r.name,
@@ -86,30 +86,30 @@ export const pgProvider: QueryProvider = {
 
   async deleteMcpServer(id: string, userId: string): Promise<boolean> {
     const { db } = getConnection();
-    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
-    const existing = await pgDb
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const existing = await mysqlDb
       .select()
-      .from(pgSchema.pgMcpServers)
-      .where(and(eq(pgSchema.pgMcpServers.id, id), eq(pgSchema.pgMcpServers.userId, userId)))
+      .from(mysqlSchema.mysqlMcpServers)
+      .where(and(eq(mysqlSchema.mysqlMcpServers.id, id), eq(mysqlSchema.mysqlMcpServers.userId, userId)))
       .limit(1);
 
     if (existing.length === 0) {
       return false;
     }
 
-    await pgDb
-      .delete(pgSchema.pgMcpServers)
-      .where(and(eq(pgSchema.pgMcpServers.id, id), eq(pgSchema.pgMcpServers.userId, userId)));
+    await mysqlDb
+      .delete(mysqlSchema.mysqlMcpServers)
+      .where(and(eq(mysqlSchema.mysqlMcpServers.id, id), eq(mysqlSchema.mysqlMcpServers.userId, userId)));
 
     return true;
   },
 
   async saveWorkflow(userId: string, workflow: WorkflowPayload): Promise<string> {
     const { db } = getConnection();
-    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
     const workflowId = workflow.id || crypto.randomUUID();
 
-    await pgDb.insert(pgSchema.pgWorkflows).values({
+    await mysqlDb.insert(mysqlSchema.mysqlWorkflows).values({
       id: workflowId,
       userId,
       name: workflow.name,
@@ -119,7 +119,7 @@ export const pgProvider: QueryProvider = {
     });
 
     if (workflow.nodes.length > 0) {
-      await pgDb.insert(pgSchema.pgNodes).values(
+      await mysqlDb.insert(mysqlSchema.mysqlNodes).values(
         workflow.nodes.map((node) => ({
           id: `${workflowId}_${node.id}`,
           workflowId,
@@ -132,7 +132,7 @@ export const pgProvider: QueryProvider = {
     }
 
     if (workflow.edges.length > 0) {
-      await pgDb.insert(pgSchema.pgEdges).values(
+      await mysqlDb.insert(mysqlSchema.mysqlEdges).values(
         workflow.edges.map((edge) => ({
           id: `${workflowId}_${edge.id}`,
           workflowId,
@@ -149,8 +149,8 @@ export const pgProvider: QueryProvider = {
 
   async createExecution(executionId: string, workflowId: string, userId: string): Promise<void> {
     const { db } = getConnection();
-    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
-    await pgDb.insert(pgSchema.pgExecutions).values({
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    await mysqlDb.insert(mysqlSchema.mysqlExecutions).values({
       id: executionId,
       workflowId,
       userId,
@@ -165,15 +165,15 @@ export const pgProvider: QueryProvider = {
     metrics?: ExecutionMetrics
   ): Promise<void> {
     const { db } = getConnection();
-    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
-    await pgDb
-      .update(pgSchema.pgExecutions)
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    await mysqlDb
+      .update(mysqlSchema.mysqlExecutions)
       .set({
         status,
         metrics: metrics || null,
         completedAt: new Date(),
       })
-      .where(eq(pgSchema.pgExecutions.id, executionId));
+      .where(eq(mysqlSchema.mysqlExecutions.id, executionId));
   },
 
   async saveAgentLog(
@@ -186,9 +186,9 @@ export const pgProvider: QueryProvider = {
     error?: string | null
   ): Promise<void> {
     const { db } = getConnection();
-    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
     const id = crypto.randomUUID();
-    await pgDb.insert(pgSchema.pgAgentLogs).values({
+    await mysqlDb.insert(mysqlSchema.mysqlAgentLogs).values({
       id,
       executionId,
       nodeId,
@@ -204,11 +204,11 @@ export const pgProvider: QueryProvider = {
 
   async getExecution(executionId: string) {
     const { db } = getConnection();
-    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
-    const rows = await pgDb
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const rows = await mysqlDb
       .select()
-      .from(pgSchema.pgExecutions)
-      .where(eq(pgSchema.pgExecutions.id, executionId))
+      .from(mysqlSchema.mysqlExecutions)
+      .where(eq(mysqlSchema.mysqlExecutions.id, executionId))
       .limit(1);
 
     if (rows.length === 0) return null;
@@ -226,11 +226,11 @@ export const pgProvider: QueryProvider = {
 
   async getAgentLogs(executionId: string) {
     const { db } = getConnection();
-    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
-    const rows = await pgDb
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const rows = await mysqlDb
       .select()
-      .from(pgSchema.pgAgentLogs)
-      .where(eq(pgSchema.pgAgentLogs.executionId, executionId));
+      .from(mysqlSchema.mysqlAgentLogs)
+      .where(eq(mysqlSchema.mysqlAgentLogs.executionId, executionId));
 
     return rows.map((r) => ({
       id: r.id,

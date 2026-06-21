@@ -17,7 +17,7 @@ const log = createModuleLogger('routes/copilot.handlers');
 type CopilotBody = z.infer<typeof CopilotGenerateBody>;
 
 export async function handleCopilot(c: Context<{ Variables: Variables }>) {
-  const { prompt, canvasState, mode } = c.req.valid('json' as never) as CopilotBody;
+  const { prompt, canvasState, mode } = (await c.req.json()) as CopilotBody;
 
 
   const apiKey = process.env.DASHSCOPE_API_KEY;
@@ -76,14 +76,14 @@ export async function handleCopilot(c: Context<{ Variables: Variables }>) {
     if (mode === 'explain') {
       const explanation = result.object.explanation;
       log.info('Copilot workflow explanation generated');
-      return c.json({ explanation });
+      return c.json({ explanation }, 200);
     } else {
-      const graphData = result.object;
+      const graphData = result.object as any;
       log.info(
         { nodeCount: graphData.nodes?.length, edgeCount: graphData.edges?.length },
         'Copilot graph generated',
       );
-      return c.json({ graph: graphData });
+      return c.json({ graph: graphData }, 200);
     }
   } catch (error) {
     const errorMessage = (error as Error).message;

@@ -1,16 +1,44 @@
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
 import type { Variables } from '../../index.js';
 import { CopilotGenerateBody } from './schema.js';
 import { handleCopilot } from './handlers.js';
+import { NodePayload, EdgePayload } from '@qwenweaver/types';
 
-const copilotRoutes = new Hono<{ Variables: Variables }>();
+export const copilotRoutes = new OpenAPIHono<{ Variables: Variables }>();
 
-// ─── POST / — AI Copilot interaction (generate, modify, explain) ─────────────
-copilotRoutes.post(
-  '/',
-  zValidator('json', CopilotGenerateBody),
-  handleCopilot
-);
+const errorResponseSchema = z.object({
+  error: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+});
 
-export { copilotRoutes };
+export const copilotRoute = createRoute({
+  method: 'post',
+  path: '/',
+  tags: ['Copilot'],
+  summary: 'Send a message to Copilot',
+  request: {
+    body: {
+      content: { 'application/json': { schema: CopilotGenerateBody } },
+    },
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            explanation: z.string().optional(),
+            graph: z.object({
+              nodes: z.array(NodePayload),
+              edges: z.array(EdgePayload),
+            }).optional(),
+          }),
+        },
+      },
+      description: 'OK',
+    },
+    400: { content: { 'application/json': { schema: errorResponseSchema } }, description: 'Bad Request' },
+    500: { content: { 'application/json': { schema: errorResponseSchema } }, description: 'Internal Server Error' },
+  },
+});
+
+copilotRoutes.openapi(copilotRoute, handleCopilot);

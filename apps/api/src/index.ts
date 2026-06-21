@@ -1,5 +1,7 @@
-import { Hono } from 'hono';
+import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
 import { cors } from 'hono/cors';
+import { jwt } from 'hono/jwt';
+import { bodyLimit } from 'hono/body-limit';
 import { serve } from '@hono/node-server';
 import { swaggerUI } from '@hono/swagger-ui';
 import { logger, requestLogger } from './logger.js';
@@ -8,27 +10,73 @@ import { workflowRoutes } from './routes/workflow/index.js';
 import { executionRoutes } from './routes/execution/index.js';
 import { copilotRoutes } from './routes/copilot/index.js';
 import { mcpRoutes } from './routes/mcp/index.js';
+import { authRoutes } from './routes/auth/index.js';
+import { getConnection } from '@qwenweaver/database';
 
 export type Variables = {
   requestId: string;
+  jwtPayload: {
+    sub: string;
+    email: string;
+    exp: number;
+  };
 };
 
-const app = new Hono<{ Variables: Variables }>();
+const app = new OpenAPIHono<{ Variables: Variables }>();
+
+const JWT_SECRET = process.env.API_SECRET || 'fallback-secret-for-dev';
 
 app.use('/api/*', cors());
 app.use('/public/*', serveStatic({ root: './' }));
 app.use('*', requestLogger());
 
+app.use(
+  '/api/*',
+  bodyLimit({
+    maxSize: 5 * 1024 * 1024, // 5MB
+    onError: (c) => {
+      return c.json({ error: 'Payload too large' }, 413);
+    },
+  })
+);
+
+// Auth middleware protecting core routes
+app.use(
+  '/api/*',
+  (c, next) => {
+    // Exclude health, docs, and auth from JWT validation
+    const path = c.req.path;
+    if (
+      path.startsWith('/api/health') ||
+      path.startsWith('/api/docs') ||
+      path.startsWith('/api/openapi.json') ||
+      path.startsWith('/api/auth')
+    ) {
+      return next();
+    }
+    const jwtMiddleware = jwt({
+      secret: JWT_SECRET,
+      alg: 'HS256',
+    });
+    return jwtMiddleware(c, next);
+  }
+);
+
 // ─── Mount route modules ────────────────────────────────────────────────────
 
+app.route('/api/auth', authRoutes);
 app.route('/api/workflow', workflowRoutes);
 app.route('/api/execution', executionRoutes);
 app.route('/api/copilot', copilotRoutes);
 app.route('/api/mcp', mcpRoutes);
 
 // ─── OpenAPI spec ───────────────────────────────────────────────────────────
+app.onError((err, c) => {
+  logger.error({ err }, 'Unhandled exception');
+  return c.json({ error: 'Internal Server Error', details: err.message }, 500);
+});
 
-const openApiSpec = {
+app.doc('/api/openapi.json', {
   openapi: '3.1.0',
   info: {
     title: 'QwenWeaver API',
@@ -36,175 +84,102 @@ const openApiSpec = {
     description: 'Visual multi-agent orchestration platform — backend API',
   },
   servers: [{ url: 'http://localhost:3001' }],
-  paths: {
-    '/': {
-      get: {
-        summary: 'Root',
-        description: 'Returns a plain-text greeting.',
-        responses: { 200: { description: 'OK', content: { 'text/plain': { schema: { type: 'string' } } } } },
-      },
-    },
-    '/api/health': {
-      get: {
-        summary: 'Health check',
-        description: 'Returns the API health status.',
-        responses: {
-          200: {
-            description: 'OK',
-            content: { 'application/json': { schema: { type: 'object', properties: { status: { type: 'string' }, service: { type: 'string' } } } } },
-          },
-        },
-      },
-    },
-    '/api/workflow/execute': {
-      post: {
-        summary: 'Execute workflow',
-        description: 'Submits a DAG workflow for parallel execution. Returns an execution ID for SSE streaming.',
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['name', 'nodes', 'edges'],
-                properties: {
-                  name: { type: 'string' },
-                  description: { type: 'string' },
-                  nodes: { type: 'array', items: { type: 'object' } },
-                  edges: { type: 'array', items: { type: 'object' } },
-                },
-              },
-            },
-          },
-        },
-        responses: {
-          201: { description: 'Execution created', content: { 'application/json': { schema: { type: 'object', properties: { executionId: { type: 'string' }, status: { type: 'string' } } } } } },
-        },
-      },
-    },
-    '/api/workflow/{executionId}/stream': {
-      get: {
-        summary: 'Stream execution events',
-        description: 'Opens an SSE connection to receive real-time execution telemetry (token, status_update, edge_active, complete, error).',
-        parameters: [{ name: 'executionId', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: {
-          200: { description: 'SSE stream', content: { 'text/event-stream': { schema: { type: 'string' } } } },
-          404: { description: 'Execution not found' },
-        },
-      },
-    },
-    '/api/workflow/{executionId}': {
-      get: {
-        summary: 'Get execution status',
-        description: 'Returns the current status and metrics of an execution.',
-        parameters: [{ name: 'executionId', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: {
-          200: { description: 'Execution status', content: { 'application/json': { schema: { type: 'object' } } } },
-          404: { description: 'Execution not found' },
-        },
-      },
-    },
-    '/api/copilot': {
-      post: {
-        summary: 'Interact with AI Copilot',
-        description: 'Uses qwen-max to generate, modify, or explain a workflow graph.',
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['prompt'],
-                properties: {
-                  prompt: { type: 'string' },
-                  canvasState: { type: 'object' },
-                  mode: { type: 'string', enum: ['generate', 'modify'] },
-                },
-              },
-            },
-          },
-        },
-        responses: {
-          200: { description: 'Generated graph', content: { 'application/json': { schema: { type: 'object' } } } },
-          500: { description: 'Generation failed' },
-        },
-      },
-    },
-    '/api/mcp/tools': {
-      get: {
-        summary: 'Discover MCP tools',
-        description: 'Connects to an MCP server and returns the available tool definitions.',
-        parameters: [{ name: 'url', in: 'query', required: true, schema: { type: 'string' } }],
-        responses: {
-          200: { description: 'Discovered tools', content: { 'application/json': { schema: { type: 'object' } } } },
-        },
-      },
-    },
-    '/api/mcp/servers': {
-      get: {
-        summary: 'List MCP servers',
-        description: 'Returns all saved MCP server configurations.',
-        responses: { 200: { description: 'Server list' } },
-      },
-      post: {
-        summary: 'Save MCP server',
-        description: 'Saves an MCP server configuration.',
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['name', 'transport'],
-                properties: {
-                  name: { type: 'string' },
-                  description: { type: 'string' },
-                  transport: { type: 'string', enum: ['http', 'stdio'] },
-                  url: { type: 'string' },
-                  command: { type: 'string' },
-                  args: { type: 'array', items: { type: 'string' } },
-                },
-              },
-            },
-          },
-        },
-        responses: { 201: { description: 'Server saved' } },
-      },
-    },
-    '/api/execution/{executionId}': {
-      get: {
-        summary: 'Get execution details',
-        description: 'Returns execution status and metadata.',
-        parameters: [{ name: 'executionId', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { description: 'Execution details' } },
-      },
-    },
-    '/api/execution/{executionId}/logs': {
-      get: {
-        summary: 'Get agent logs',
-        description: 'Returns agent-level logs for an execution run.',
-        parameters: [{ name: 'executionId', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { description: 'Agent logs' } },
-      },
-    },
-  },
-};
+});
 
-app.get('/api/openapi.json', (c) => c.json(openApiSpec));
+app.openAPIRegistry.registerComponent('securitySchemes', 'bearerAuth', {
+  type: 'http',
+  scheme: 'bearer',
+  bearerFormat: 'JWT',
+});
+
 app.get('/api/docs', swaggerUI({ url: '/api/openapi.json' }));
 
 // ─── Root routes ────────────────────────────────────────────────────────────
 
-app.get('/', (c) => c.text('QwenWeaver API'));
-app.get('/api/health', (c) => c.json({ status: 'ok', service: 'qwenweaver-api' }));
+const rootRoute = createRoute({
+  method: 'get',
+  path: '/',
+  tags: ['System'],
+  summary: 'Root',
+  responses: {
+    200: { content: { 'text/plain': { schema: z.string() } }, description: 'OK' }
+  }
+});
+
+app.openapi(rootRoute, (c) => c.text('QwenWeaver API', 200));
+
+const healthRoute = createRoute({
+  method: 'get',
+  path: '/api/health',
+  tags: ['System'],
+  summary: 'Health check',
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            status: z.string(),
+            service: z.string(),
+            database: z.string()
+          })
+        }
+      },
+      description: 'OK'
+    },
+    503: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            status: z.string(),
+            service: z.string(),
+            database: z.string()
+          })
+        }
+      },
+      description: 'Service Unavailable'
+    }
+  }
+});
+
+app.openapi(healthRoute, async (c) => {
+  try {
+    const { db, dialect } = getConnection();
+    if (dialect === 'sqlite') {
+      (db as any).get('SELECT 1');
+    } else if (dialect === 'postgres' || dialect === 'mysql') {
+      await (db as any).execute('SELECT 1');
+    }
+    return c.json({ status: 'ok', service: 'qwenweaver-api', database: 'connected' }, 200);
+  } catch (err) {
+    logger.error({ error: (err as Error).message }, 'Health check failed');
+    return c.json({ status: 'error', service: 'qwenweaver-api', database: 'disconnected' }, 503);
+  }
+});
 
 // ─── Start server ───────────────────────────────────────────────────────────
 
 const port = Number(process.env.PORT) || 3001;
 
-serve({ fetch: app.fetch, port }, (info) => {
+const server = serve({ fetch: app.fetch, port }, (info) => {
   logger.info({ port: info.port }, 'API started');
 });
+
+function gracefulShutdown() {
+  logger.info('Shutting down server...');
+  server.close(() => {
+    logger.info('Server closed');
+    process.exit(0);
+  });
+  
+  // Force close after 10s
+  setTimeout(() => {
+    logger.error('Could not close connections in time, forcefully shutting down');
+    process.exit(1);
+  }, 10000);
+}
+
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
 
 export default app;
 export type AppType = typeof app;

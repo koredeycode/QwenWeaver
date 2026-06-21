@@ -2,7 +2,7 @@ import type { Context } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
 import { WorkflowPayload, SSEEventType } from '@qwenweaver/types';
-import { saveWorkflow, createExecution, getExecution } from '@qwenweaver/database';
+import { getQueryProvider } from '@qwenweaver/database';
 import type { StreamEmitter, SSEPayloadMap } from '../../engine/types.js';
 import { executeWorkflow } from '../../engine/executor.js';
 import { createModuleLogger } from '../../logger.js';
@@ -16,6 +16,8 @@ export interface ActiveExecution {
   emitters: Set<StreamEmitter>;
   status: 'pending' | 'running' | 'completed' | 'failed';
   result?: Awaited<ReturnType<typeof executeWorkflow>>;
+  promise?: Promise<void>;
+  resolve?: () => void;
 }
 
 export const activeExecutions = new Map<string, ActiveExecution>();
@@ -38,8 +40,9 @@ class SSEQueue {
 // ─── Route Handlers ─────────────────────────────────────────────────────────
 
 export async function handleExecute(c: Context<{ Variables: Variables }>) {
-  const body = c.req.valid('json' as never) as any;
+  const body = (await c.req.json()) as z.infer<typeof WorkflowPayload>;
   const executionId = crypto.randomUUID();
+  const userId = c.get('jwtPayload').sub;
 
   const workflow: z.infer<typeof WorkflowPayload> = {
     name: body.name,
@@ -48,22 +51,27 @@ export async function handleExecute(c: Context<{ Variables: Variables }>) {
     edges: body.edges,
   };
 
-  // Save workflow structure and create execution record in the database
-  const workflowId = await saveWorkflow(workflow);
-  await createExecution(executionId, workflowId);
+  const provider = getQueryProvider();
+  const workflowId = await provider.saveWorkflow(userId, workflow);
+  await provider.createExecution(executionId, workflowId, userId);
 
-  // Initialize emitters collection in memory
+  let resolveExecution: () => void;
+  const promise = new Promise<void>((resolve) => {
+    resolveExecution = resolve;
+  });
+
   activeExecutions.set(executionId, {
     emitters: new Set(),
     status: 'pending',
+    promise,
+    resolve: resolveExecution!,
   });
 
   log.info(
-    { executionId, workflowId, nodeCount: workflow.nodes.length, edgeCount: workflow.edges.length },
+    { executionId, workflowId, userId, nodeCount: workflow.nodes.length, edgeCount: workflow.edges.length },
     'Workflow execution created in database',
   );
 
-  // Start execution asynchronously (non-blocking)
   runExecutionAsync(executionId, workflow).catch((error) => {
     log.error({ executionId, error: (error as Error).message }, 'Execution crashed');
   });
@@ -73,15 +81,16 @@ export async function handleExecute(c: Context<{ Variables: Variables }>) {
 
 export async function handleStream(c: Context<{ Variables: Variables }>) {
   const executionId = c.req.param('executionId')!;
+  const userId = c.get('jwtPayload').sub;
+  const provider = getQueryProvider();
+  
   let execution = activeExecutions.get(executionId);
 
-  // Check if it exists in database
-  const dbExecution = await getExecution(executionId);
-  if (!dbExecution) {
-    return c.json({ error: 'Execution not found' }, 404);
+  const dbExecution = await provider.getExecution(executionId);
+  if (!dbExecution || dbExecution.userId !== userId) {
+    return c.json({ error: 'Execution not found or unauthorized' }, 404);
   }
 
-  // If it's not currently running in memory, initialize activeExecutions so they can connect
   if (!execution) {
     execution = {
       emitters: new Set(),
@@ -92,15 +101,19 @@ export async function handleStream(c: Context<{ Variables: Variables }>) {
 
   return streamSSE(c, async (stream) => {
     let closed = false;
+    let abortResolver: () => void;
+    const abortPromise = new Promise<void>((resolve) => {
+      abortResolver = resolve;
+    });
 
     stream.onAbort(() => {
       closed = true;
+      abortResolver();
       log.info({ executionId }, 'SSE client disconnected');
     });
 
     const sseQueue = new SSEQueue();
 
-    // Create an emitter for this SSE connection
     const emitter: StreamEmitter = {
       emit: async <K extends z.infer<typeof SSEEventType>>(event: K, data: SSEPayloadMap[K]) => {
         if (closed) return;
@@ -116,10 +129,8 @@ export async function handleStream(c: Context<{ Variables: Variables }>) {
       isClosed: () => closed,
     };
 
-    // Register this emitter
     execution!.emitters.add(emitter);
 
-    // If database execution is already completed or failed, emit complete and finish
     if (dbExecution.status === 'completed' || dbExecution.status === 'failed') {
       await emitter.emit('complete', {
         executionId,
@@ -136,7 +147,6 @@ export async function handleStream(c: Context<{ Variables: Variables }>) {
       return;
     }
 
-    // If execution in-memory has a cached result, replay it
     if (execution!.result) {
       await emitter.emit('complete', {
         executionId,
@@ -147,30 +157,37 @@ export async function handleStream(c: Context<{ Variables: Variables }>) {
       return;
     }
 
-    // Keep the connection alive until execution completes or client disconnects
-    while (!closed && execution!.status !== 'completed' && execution!.status !== 'failed') {
-      await new Promise((resolve) => setTimeout(resolve, 100));
+    // Wait until either the stream is aborted or the execution promise resolves
+    if (execution!.promise) {
+      await Promise.race([execution!.promise, abortPromise]);
+    } else {
+      // Fallback polling if re-attached
+      while (!closed && execution!.status !== 'completed' && execution!.status !== 'failed') {
+        await Promise.race([new Promise((res) => setTimeout(res, 500)), abortPromise]);
+      }
     }
 
-    // Clean up
     execution!.emitters.delete(emitter);
   });
 }
 
 export async function handleGetStatus(c: Context<{ Variables: Variables }>) {
   const executionId = c.req.param('executionId')!;
+  const userId = c.get('jwtPayload').sub;
+  const provider = getQueryProvider();
 
-  // Try to load from database first
-  const dbExecution = await getExecution(executionId);
+  const dbExecution = await provider.getExecution(executionId);
   if (dbExecution) {
+    if (dbExecution.userId !== userId) {
+      return c.json({ error: 'Unauthorized' }, 403);
+    }
     return c.json({
       id: dbExecution.id,
       status: dbExecution.status,
       metrics: dbExecution.metrics,
-    });
+    }, 200);
   }
 
-  // Fallback to active in-memory execution just in case
   const execution = activeExecutions.get(executionId);
   if (!execution) {
     return c.json({ error: 'Execution not found' }, 404);
@@ -180,7 +197,7 @@ export async function handleGetStatus(c: Context<{ Variables: Variables }>) {
     id: executionId,
     status: execution.status,
     metrics: execution.result?.metrics,
-  });
+  }, 200);
 }
 
 // ─── Async execution runner ─────────────────────────────────────────────────
@@ -191,12 +208,12 @@ async function runExecutionAsync(executionId: string, workflow: WorkflowPayload)
 
   execution.status = 'running';
 
-  // Create a broadcast emitter that fanned out to all connected SSE clients
   const broadcastEmitter: StreamEmitter = {
     emit: async <K extends z.infer<typeof SSEEventType>>(event: K, data: SSEPayloadMap[K]) => {
-      const promises = Array.from(execution.emitters).map((e) =>
+      // Clone set to avoid iteration issues if emitters are removed
+      const currentEmitters = Array.from(execution.emitters);
+      const promises = currentEmitters.map((e) =>
         e.emit(event, data).catch(() => {
-          // Remove dead emitters
           execution.emitters.delete(e);
         }),
       );
@@ -214,8 +231,17 @@ async function runExecutionAsync(executionId: string, workflow: WorkflowPayload)
   execution.status = result.status;
   execution.result = result;
 
+  if (execution.resolve) {
+    execution.resolve();
+  }
+
   log.info(
     { executionId, status: result.status },
     'Execution finished',
   );
+  
+  // Clean up execution map after a short delay to allow clients to receive final messages
+  setTimeout(() => {
+    activeExecutions.delete(executionId);
+  }, 5000);
 }
