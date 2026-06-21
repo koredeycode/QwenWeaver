@@ -1,23 +1,9 @@
-import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
+import { OpenAPIHono, createRoute } from '@hono/zod-openapi';
 import { handleLogin, handleRegister } from './handlers.js';
 import type { Variables } from '../../index.js';
+import { authSchema, userResponseSchema, errorResponseSchema } from './schema.js';
 
 export const authRoutes = new OpenAPIHono<{ Variables: Variables }>();
-
-const authSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-});
-
-const userResponseSchema = z.object({
-  token: z.string(),
-  user: z.object({ id: z.string(), email: z.string() }),
-});
-
-const errorResponseSchema = z.object({
-  error: z.string(),
-  details: z.record(z.string(), z.unknown()).optional(),
-});
 
 export const registerRoute = createRoute({
   method: 'post',

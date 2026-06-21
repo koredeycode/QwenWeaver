@@ -2,6 +2,7 @@ import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { NodePayload } from '@qwenweaver/types';
 import { createMCPClient } from '@qwenweaver/mcp-client';
 import { createModuleLogger } from '../logger.js';
+import { mcp_pool_connections } from '../metrics.js';
 
 const log = createModuleLogger('engine/mcp-bridge');
 
@@ -38,6 +39,7 @@ setInterval(() => {
       log.info({ mcpUrl: url }, 'Closed idle MCP connection');
     }
   }
+  mcp_pool_connections.set(clientPool.size);
 }, 60 * 1000).unref();
 
 // ─── Bridge Functions ───────────────────────────────────────────────────────

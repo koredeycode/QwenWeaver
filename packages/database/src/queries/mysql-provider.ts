@@ -1,5 +1,5 @@
 import { type MySql2Database } from 'drizzle-orm/mysql2';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql, desc } from 'drizzle-orm';
 import { getConnection, mysqlSchema } from '../index.js';
 import type { QueryProvider } from './provider.js';
 import type { SavedMCPServerInput, SavedMCPServer } from './mcp.js';
@@ -244,5 +244,50 @@ export const mysqlProvider: QueryProvider = {
       completedAt: r.completedAt ? r.completedAt.toISOString() : undefined,
       error: r.error ?? undefined,
     }));
+  },
+
+  async getAnalyticsSummary(userId: string) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    
+    const summaryRows = await mysqlDb.select({
+      totalRuns: sql<number>`cast(count(*) as unsigned)`,
+      completedRuns: sql<number>`cast(sum(case when status = 'completed' then 1 else 0 end) as unsigned)`,
+      failedRuns: sql<number>`cast(sum(case when status = 'failed' then 1 else 0 end) as unsigned)`,
+      avgSpeedup: sql<number | null>`avg(json_extract(metrics, '$.speedupS'))`,
+      totalTokens: sql<number>`cast(sum(json_extract(metrics, '$.totalTokens')) as unsigned)`,
+      avgLatencyMs: sql<number | null>`avg(json_extract(metrics, '$.totalLatencyMs'))`,
+    })
+    .from(mysqlSchema.mysqlExecutions)
+    .where(eq(mysqlSchema.mysqlExecutions.userId, userId));
+
+    const recentRows = await mysqlDb.select({
+      id: mysqlSchema.mysqlExecutions.id,
+      status: mysqlSchema.mysqlExecutions.status,
+      startedAt: mysqlSchema.mysqlExecutions.startedAt,
+      metrics: mysqlSchema.mysqlExecutions.metrics,
+    })
+    .from(mysqlSchema.mysqlExecutions)
+    .where(eq(mysqlSchema.mysqlExecutions.userId, userId))
+    .orderBy(desc(mysqlSchema.mysqlExecutions.startedAt))
+    .limit(10);
+
+    const summary = summaryRows[0];
+
+    return {
+      totalRuns: summary?.totalRuns || 0,
+      completedRuns: summary?.completedRuns || 0,
+      failedRuns: summary?.failedRuns || 0,
+      avgSpeedup: summary?.avgSpeedup || null,
+      totalTokens: summary?.totalTokens || 0,
+      avgLatencyMs: summary?.avgLatencyMs || null,
+      runsByModel: {}, // Not currently tracked in metrics
+      recentRuns: recentRows.map(r => ({
+        id: r.id,
+        status: r.status,
+        startedAt: r.startedAt.toISOString(),
+        totalTokens: r.metrics?.totalTokens,
+      })),
+    };
   }
 };

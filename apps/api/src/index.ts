@@ -11,6 +11,8 @@ import { executionRoutes } from './routes/execution/index.js';
 import { copilotRoutes } from './routes/copilot/index.js';
 import { mcpRoutes } from './routes/mcp/index.js';
 import { authRoutes } from './routes/auth/index.js';
+import { analyticsRoutes } from './routes/analytics/index.js';
+import { register } from './metrics.js';
 import { getConnection } from '@qwenweaver/database';
 
 export type Variables = {
@@ -50,7 +52,8 @@ app.use(
       path.startsWith('/api/health') ||
       path.startsWith('/api/docs') ||
       path.startsWith('/api/openapi.json') ||
-      path.startsWith('/api/auth')
+      path.startsWith('/api/auth') ||
+      path.startsWith('/api/metrics')
     ) {
       return next();
     }
@@ -69,6 +72,12 @@ app.route('/api/workflow', workflowRoutes);
 app.route('/api/execution', executionRoutes);
 app.route('/api/copilot', copilotRoutes);
 app.route('/api/mcp', mcpRoutes);
+app.route('/api/analytics', analyticsRoutes);
+
+app.get('/api/metrics', async (c) => {
+  c.header('content-type', register.contentType);
+  return c.text(await register.metrics());
+});
 
 // ─── OpenAPI spec ───────────────────────────────────────────────────────────
 app.onError((err, c) => {

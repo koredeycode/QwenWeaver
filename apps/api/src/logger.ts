@@ -1,6 +1,8 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import pino from 'pino';
 import type { MiddlewareHandler } from 'hono';
+import { routePath } from 'hono/route';
+import { http_request_duration_ms } from './metrics.js';
 
 export const requestContext = new AsyncLocalStorage<{ requestId: string }>();
 
@@ -64,6 +66,8 @@ export function requestLogger(): MiddlewareHandler {
         status: c.res.status,
         duration: `${Math.round(duration)}ms`,
       };
+
+      http_request_duration_ms.labels(c.req.method, routePath(c), c.res.status.toString()).observe(duration);
 
       if (c.res.status >= 500) {
         logger.error(log, 'request failed');

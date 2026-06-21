@@ -2,9 +2,10 @@ import { z } from 'zod';
 import { streamText, jsonSchema, tool, type Tool } from 'ai';
 import type { NodePayload } from '@qwenweaver/types';
 import type { AgentResult, UpstreamOutputs, StreamEmitter } from './types.js';
-import { getModelForNode } from './model-router.js';
+import { getModelForNode, getModelIdForNode } from './model-router.js';
 import { discoverMCPTools, callMCPTool } from './mcp-bridge.js';
 import { createModuleLogger } from '../logger.js';
+import { llm_tokens_total, agent_duration_ms } from '../metrics.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -216,6 +217,10 @@ export async function runAgent(
     const toolResults = finalResult.toolResults ? await finalResult.toolResults : undefined;
 
     const durationMs = Math.round(performance.now() - startTime);
+
+    const modelIdString = getModelIdForNode(node);
+    llm_tokens_total.labels(modelIdString, node.type).inc(tokensUsed);
+    agent_duration_ms.labels(node.type).observe(durationMs);
 
     log.info(
       { nodeId: node.id, tokensUsed, durationMs, toolCallsCount: (toolCalls as unknown[])?.length },

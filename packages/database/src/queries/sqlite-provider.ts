@@ -1,5 +1,5 @@
 import { type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql, desc } from 'drizzle-orm';
 import { getConnection, sqliteSchema } from '../index.js';
 import type { QueryProvider } from './provider.js';
 import type { SavedMCPServerInput, SavedMCPServer } from './mcp.js';
@@ -244,5 +244,50 @@ export const sqliteProvider: QueryProvider = {
       completedAt: r.completedAt ? new Date(r.completedAt).toISOString() : undefined,
       error: r.error ?? undefined,
     }));
+  },
+
+  async getAnalyticsSummary(userId: string) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    
+    const summaryRows = await sqliteDb.select({
+      totalRuns: sql<number>`cast(count(*) as integer)`,
+      completedRuns: sql<number>`cast(sum(case when status = 'completed' then 1 else 0 end) as integer)`,
+      failedRuns: sql<number>`cast(sum(case when status = 'failed' then 1 else 0 end) as integer)`,
+      avgSpeedup: sql<number | null>`avg(json_extract(metrics, '$.speedupS'))`,
+      totalTokens: sql<number>`cast(sum(json_extract(metrics, '$.totalTokens')) as integer)`,
+      avgLatencyMs: sql<number | null>`avg(json_extract(metrics, '$.totalLatencyMs'))`,
+    })
+    .from(sqliteSchema.sqliteExecutions)
+    .where(eq(sqliteSchema.sqliteExecutions.userId, userId));
+
+    const recentRows = await sqliteDb.select({
+      id: sqliteSchema.sqliteExecutions.id,
+      status: sqliteSchema.sqliteExecutions.status,
+      startedAt: sqliteSchema.sqliteExecutions.startedAt,
+      metrics: sqliteSchema.sqliteExecutions.metrics,
+    })
+    .from(sqliteSchema.sqliteExecutions)
+    .where(eq(sqliteSchema.sqliteExecutions.userId, userId))
+    .orderBy(desc(sqliteSchema.sqliteExecutions.startedAt))
+    .limit(10);
+
+    const summary = summaryRows[0];
+
+    return {
+      totalRuns: summary?.totalRuns || 0,
+      completedRuns: summary?.completedRuns || 0,
+      failedRuns: summary?.failedRuns || 0,
+      avgSpeedup: summary?.avgSpeedup || null,
+      totalTokens: summary?.totalTokens || 0,
+      avgLatencyMs: summary?.avgLatencyMs || null,
+      runsByModel: {}, // Not currently tracked in metrics
+      recentRuns: recentRows.map(r => ({
+        id: r.id,
+        status: r.status,
+        startedAt: new Date(r.startedAt).toISOString(),
+        totalTokens: r.metrics?.totalTokens,
+      })),
+    };
   }
 };

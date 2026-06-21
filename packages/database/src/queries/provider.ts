@@ -49,6 +49,22 @@ export interface QueryProvider {
     completedAt?: string;
     error?: string;
   }>>;
+
+  getAnalyticsSummary(userId: string): Promise<{
+    totalRuns: number;
+    completedRuns: number;
+    failedRuns: number;
+    avgSpeedup: number | null;
+    totalTokens: number;
+    avgLatencyMs: number | null;
+    runsByModel: Record<string, number>;
+    recentRuns: Array<{
+      id: string;
+      status: string;
+      startedAt: string;
+      totalTokens?: number;
+    }>;
+  }>;
 }
 
 export function getQueryProvider(): QueryProvider {

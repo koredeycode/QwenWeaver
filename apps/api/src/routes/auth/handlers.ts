@@ -1,18 +1,13 @@
 import type { Context } from 'hono';
-import { z } from 'zod';
 import { sign } from 'hono/jwt';
 import bcrypt from 'bcryptjs';
 import { getQueryProvider } from '@qwenweaver/database';
 import { createModuleLogger } from '../../logger.js';
 import type { Variables } from '../../index.js';
+import { authSchema } from './schema.js';
 
 const log = createModuleLogger('routes/auth.handlers');
 const JWT_SECRET = process.env.API_SECRET || 'fallback-secret-for-dev';
-
-const authSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-});
 
 export async function handleRegister(c: Context<{ Variables: Variables }>) {
   try {

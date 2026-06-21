@@ -6,6 +6,7 @@ import { getQueryProvider } from '@qwenweaver/database';
 import type { StreamEmitter, SSEPayloadMap } from '../../engine/types.js';
 import { executeWorkflow } from '../../engine/executor.js';
 import { createModuleLogger } from '../../logger.js';
+import { active_sse_connections } from '../../metrics.js';
 import type { Variables } from '../../index.js';
 
 const log = createModuleLogger('routes/workflow.handlers');
@@ -100,6 +101,7 @@ export async function handleStream(c: Context<{ Variables: Variables }>) {
   }
 
   return streamSSE(c, async (stream) => {
+    active_sse_connections.inc();
     let closed = false;
     let abortResolver: () => void;
     const abortPromise = new Promise<void>((resolve) => {
@@ -107,6 +109,7 @@ export async function handleStream(c: Context<{ Variables: Variables }>) {
     });
 
     stream.onAbort(() => {
+      if (!closed) active_sse_connections.dec();
       closed = true;
       abortResolver();
       log.info({ executionId }, 'SSE client disconnected');
@@ -168,6 +171,10 @@ export async function handleStream(c: Context<{ Variables: Variables }>) {
     }
 
     execution!.emitters.delete(emitter);
+    if (!closed) {
+      active_sse_connections.dec();
+      closed = true;
+    }
   });
 }
 

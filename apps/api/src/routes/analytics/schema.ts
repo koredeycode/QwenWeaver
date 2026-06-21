@@ -1,0 +1,17 @@
+import { z } from '@hono/zod-openapi';
+
+export const AnalyticsSummarySchema = z.object({
+  totalRuns: z.number(),
+  completedRuns: z.number(),
+  failedRuns: z.number(),
+  avgSpeedup: z.number().nullable(),
+  totalTokens: z.number(),
+  avgLatencyMs: z.number().nullable(),
+  runsByModel: z.record(z.string(), z.number()),
+  recentRuns: z.array(z.object({
+    id: z.string(),
+    status: z.string(),
+    startedAt: z.string(),
+    totalTokens: z.number().optional(),
+  })),
+});

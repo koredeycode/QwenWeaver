@@ -9,6 +9,7 @@ import { compileDag } from './dag-compiler.js';
 import { runAgent } from './agent-runner.js';
 import { getQueryProvider } from '@qwenweaver/database';
 import { createModuleLogger } from '../logger.js';
+import { executions_total } from '../metrics.js';
 
 const log = createModuleLogger('engine/executor');
 
@@ -320,6 +321,8 @@ export async function executeWorkflow(
   await provider.updateExecution(executionId, status, metrics).catch((err: Error) => {
     log.error({ executionId, error: err.message }, 'Failed to update execution final status');
   });
+
+  executions_total.labels(status).inc();
 
   await emitter.emit('complete', {
     executionId,
