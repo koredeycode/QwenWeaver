@@ -50,7 +50,7 @@ export interface QueryProvider {
     error?: string;
   }>>;
 
-  getAnalyticsSummary(userId: string): Promise<{
+  getAnalyticsSummary(userId: string, recentLimit?: number): Promise<{
     totalRuns: number;
     completedRuns: number;
     failedRuns: number;
@@ -65,6 +65,9 @@ export interface QueryProvider {
       totalTokens?: number;
     }>;
   }>;
+
+  /** Runs a lightweight query to verify the database connection is alive. */
+  healthCheck(): Promise<void>;
 }
 
 export function getQueryProvider(): QueryProvider {

@@ -12,19 +12,36 @@ export interface DiscoveredTool {
   inputSchema: Record<string, unknown>;
 }
 
-// ─── Connection Pooling ─────────────────────────────────────────────────────
+// ─── Connection Pooling with Liveness Checks ─────────────────────────
 
 const clientPool = new Map<string, { client: Client; lastUsed: number }>();
 
 async function getClient(mcpUrl: string): Promise<Client> {
   const pooled = clientPool.get(mcpUrl);
   if (pooled) {
-    pooled.lastUsed = Date.now();
-    return pooled.client;
+    // Validate liveness before returning cached client
+    try {
+      await Promise.race([
+        pooled.client.listTools(),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('MCP liveness check timed out')), 5000)
+        ),
+      ]);
+      pooled.lastUsed = Date.now();
+      return pooled.client;
+    } catch (err) {
+      log.warn(
+        { mcpUrl, error: (err as Error).message },
+        'Pooled MCP connection is stale, reconnecting',
+      );
+      pooled.client.close().catch(() => {});
+      clientPool.delete(mcpUrl);
+    }
   }
 
   const client = await createMCPClient(mcpUrl, { name: 'qwenweaver-engine' });
   clientPool.set(mcpUrl, { client, lastUsed: Date.now() });
+  mcp_pool_connections.set(clientPool.size);
   
   return client;
 }

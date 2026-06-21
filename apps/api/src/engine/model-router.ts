@@ -10,7 +10,7 @@ const log = createModuleLogger('engine/model-router');
  * Users can override via `node.data.model`.
  */
 const MODEL_DEFAULTS: Record<string, string> = {
-  supervisor: 'qwen-max',
+  supervisor: 'qwen3-max',
   agent: 'qwen-plus',
   mcp_tool: 'qwen-plus',
   trigger: 'qwen-turbo',
@@ -28,7 +28,7 @@ const DEFAULT_THINKING_BUDGET = 4096;
 // Lazily initialize the Alibaba provider (requires DASHSCOPE_API_KEY)
 let _provider: ReturnType<typeof createAlibaba> | null = null;
 
-function getProvider(): ReturnType<typeof createAlibaba> {
+export function getProvider(): ReturnType<typeof createAlibaba> {
   if (!_provider) {
     _provider = createAlibaba({
       apiKey: process.env.DASHSCOPE_API_KEY,

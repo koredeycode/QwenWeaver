@@ -246,7 +246,7 @@ export const mysqlProvider: QueryProvider = {
     }));
   },
 
-  async getAnalyticsSummary(userId: string) {
+  async getAnalyticsSummary(userId: string, recentLimit: number = 10) {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
     
@@ -270,7 +270,7 @@ export const mysqlProvider: QueryProvider = {
     .from(mysqlSchema.mysqlExecutions)
     .where(eq(mysqlSchema.mysqlExecutions.userId, userId))
     .orderBy(desc(mysqlSchema.mysqlExecutions.startedAt))
-    .limit(10);
+    .limit(recentLimit);
 
     const summary = summaryRows[0];
 
@@ -289,5 +289,11 @@ export const mysqlProvider: QueryProvider = {
         totalTokens: r.metrics?.totalTokens,
       })),
     };
-  }
+  },
+
+  async healthCheck(): Promise<void> {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    await mysqlDb.execute(sql`SELECT 1`);
+  },
 };

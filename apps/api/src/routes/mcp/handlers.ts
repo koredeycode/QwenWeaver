@@ -3,6 +3,7 @@ import { getQueryProvider } from '@qwenweaver/database';
 import { discoverMCPTools } from '../../engine/mcp-bridge.js';
 import { createModuleLogger } from '../../logger.js';
 import type { Variables } from '../../index.js';
+import { SaveServerBody } from './schema.js';
 
 const log = createModuleLogger('routes/mcp.handlers');
 
@@ -34,7 +35,15 @@ export async function handleDiscoverTools(c: Context<{ Variables: Variables }>) 
 }
 
 export async function handleSaveServer(c: Context<{ Variables: Variables }>) {
-  const body = (await c.req.json()) as any;
+  // Validate body through Zod instead of blind cast
+  const raw = await c.req.json();
+  const parsed = SaveServerBody.safeParse(raw);
+
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid request body', details: parsed.error.format() }, 400);
+  }
+
+  const body = parsed.data;
   const id = crypto.randomUUID();
   const userId = c.get('jwtPayload').sub;
 

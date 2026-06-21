@@ -22,11 +22,9 @@ export async function executeWorkflow(
   const executionStart = performance.now();
   const provider = getQueryProvider();
   
-  // Try fetching to get userId
-  let executionUserId = '';
+  // Try fetching to verify execution exists
   const existing = await provider.getExecution(executionId).catch(() => null);
   if (existing) {
-    executionUserId = existing.userId;
     await provider.updateExecution(executionId, 'running').catch((err: Error) => {
       log.error({ executionId, error: err.message }, 'Failed to set execution status to running');
     });

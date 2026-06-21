@@ -246,7 +246,7 @@ export const pgProvider: QueryProvider = {
     }));
   },
 
-  async getAnalyticsSummary(userId: string) {
+  async getAnalyticsSummary(userId: string, recentLimit: number = 10) {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
     
@@ -270,7 +270,7 @@ export const pgProvider: QueryProvider = {
     .from(pgSchema.pgExecutions)
     .where(eq(pgSchema.pgExecutions.userId, userId))
     .orderBy(desc(pgSchema.pgExecutions.startedAt))
-    .limit(10);
+    .limit(recentLimit);
 
     const summary = summaryRows[0];
 
@@ -289,5 +289,11 @@ export const pgProvider: QueryProvider = {
         totalTokens: r.metrics?.totalTokens,
       })),
     };
-  }
+  },
+
+  async healthCheck(): Promise<void> {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    await pgDb.execute(sql`SELECT 1`);
+  },
 };

@@ -246,7 +246,7 @@ export const sqliteProvider: QueryProvider = {
     }));
   },
 
-  async getAnalyticsSummary(userId: string) {
+  async getAnalyticsSummary(userId: string, recentLimit: number = 10) {
     const { db } = getConnection();
     const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
     
@@ -270,7 +270,7 @@ export const sqliteProvider: QueryProvider = {
     .from(sqliteSchema.sqliteExecutions)
     .where(eq(sqliteSchema.sqliteExecutions.userId, userId))
     .orderBy(desc(sqliteSchema.sqliteExecutions.startedAt))
-    .limit(10);
+    .limit(recentLimit);
 
     const summary = summaryRows[0];
 
@@ -289,5 +289,11 @@ export const sqliteProvider: QueryProvider = {
         totalTokens: r.metrics?.totalTokens,
       })),
     };
-  }
+  },
+
+  async healthCheck(): Promise<void> {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    await sqliteDb.select({ one: sql`1` }).from(sql`(SELECT 1)`);
+  },
 };

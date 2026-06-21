@@ -15,3 +15,8 @@ export const AnalyticsSummarySchema = z.object({
     totalTokens: z.number().optional(),
   })),
 });
+
+// Query params for pagination
+export const AnalyticsQuerySchema = z.object({
+  recentLimit: z.string().optional().default('10'),
+});

@@ -11,8 +11,8 @@ function node(
 }
 
 describe('model-router', () => {
-  it('assigns qwen-max to supervisor nodes', () => {
-    expect(getModelIdForNode(node('s1', 'supervisor'))).toBe('qwen-max');
+  it('assigns qwen3-max to supervisor nodes', () => {
+    expect(getModelIdForNode(node('s1', 'supervisor'))).toBe('qwen3-max');
   });
 
   it('assigns qwen-plus to agent nodes', () => {

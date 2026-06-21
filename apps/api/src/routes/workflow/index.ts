@@ -7,6 +7,7 @@ export const workflowRoutes = new OpenAPIHono<{ Variables: Variables }>();
 
 const errorResponseSchema = z.object({
   error: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const executeRoute = createRoute({
@@ -24,6 +25,7 @@ export const executeRoute = createRoute({
       content: { 'application/json': { schema: z.object({ executionId: z.string(), status: z.string() }) } },
       description: 'Created',
     },
+    400: { content: { 'application/json': { schema: errorResponseSchema } }, description: 'Bad Request' },
     500: { content: { 'application/json': { schema: errorResponseSchema } }, description: 'Internal Server Error' },
   },
 });

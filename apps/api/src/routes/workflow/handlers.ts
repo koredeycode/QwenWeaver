@@ -19,9 +19,25 @@ export interface ActiveExecution {
   result?: Awaited<ReturnType<typeof executeWorkflow>>;
   promise?: Promise<void>;
   resolve?: () => void;
+  createdAt: number; // Track creation time for TTL sweep
 }
 
 export const activeExecutions = new Map<string, ActiveExecution>();
+
+// Periodic TTL sweep — remove stale executions older than 5 minutes
+const EXECUTION_TTL_MS = 5 * 60 * 1000;
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, execution] of activeExecutions) {
+    const isTerminal = execution.status === 'completed' || execution.status === 'failed';
+    const isExpired = now - execution.createdAt > EXECUTION_TTL_MS;
+    if (isTerminal && isExpired) {
+      activeExecutions.delete(id);
+      log.debug({ executionId: id }, 'TTL sweep: removed stale execution');
+    }
+  }
+}, 60_000).unref();
 
 class SSEQueue {
   private queue: Promise<void> = Promise.resolve();
@@ -30,8 +46,12 @@ class SSEQueue {
     this.queue = this.queue.then(async () => {
       try {
         await fn();
-      } catch {
-        // ignore errors to not block the chain
+      } catch (err) {
+        // Log SSE write errors at debug level instead of silencing
+        log.debug(
+          { error: (err as Error).message },
+          'SSE write failed (client may have disconnected)',
+        );
       }
     });
     return this.queue;
@@ -41,7 +61,15 @@ class SSEQueue {
 // ─── Route Handlers ─────────────────────────────────────────────────────────
 
 export async function handleExecute(c: Context<{ Variables: Variables }>) {
-  const body = (await c.req.json()) as z.infer<typeof WorkflowPayload>;
+  // Validate body through Zod instead of blind cast
+  const raw = await c.req.json();
+  const parsed = WorkflowPayload.safeParse(raw);
+
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid workflow payload', details: parsed.error.format() }, 400);
+  }
+
+  const body = parsed.data;
   const executionId = crypto.randomUUID();
   const userId = c.get('jwtPayload').sub;
 
@@ -66,6 +94,7 @@ export async function handleExecute(c: Context<{ Variables: Variables }>) {
     status: 'pending',
     promise,
     resolve: resolveExecution!,
+    createdAt: Date.now(),
   });
 
   log.info(
@@ -96,6 +125,7 @@ export async function handleStream(c: Context<{ Variables: Variables }>) {
     execution = {
       emitters: new Set(),
       status: dbExecution.status as any,
+      createdAt: Date.now(),
     };
     activeExecutions.set(executionId, execution);
   }
@@ -215,40 +245,44 @@ async function runExecutionAsync(executionId: string, workflow: WorkflowPayload)
 
   execution.status = 'running';
 
-  const broadcastEmitter: StreamEmitter = {
-    emit: async <K extends z.infer<typeof SSEEventType>>(event: K, data: SSEPayloadMap[K]) => {
-      // Clone set to avoid iteration issues if emitters are removed
-      const currentEmitters = Array.from(execution.emitters);
-      const promises = currentEmitters.map((e) =>
-        e.emit(event, data).catch(() => {
-          execution.emitters.delete(e);
-        }),
-      );
-      await Promise.all(promises);
-    },
-    isClosed: () => execution.emitters.size === 0,
-  };
+  // Wrap in try/finally to guarantee cleanup even on crash
+  try {
+    const broadcastEmitter: StreamEmitter = {
+      emit: async <K extends z.infer<typeof SSEEventType>>(event: K, data: SSEPayloadMap[K]) => {
+        // Clone set to avoid iteration issues if emitters are removed
+        const currentEmitters = Array.from(execution.emitters);
+        const promises = currentEmitters.map((e) =>
+          e.emit(event, data).catch(() => {
+            execution.emitters.delete(e);
+          }),
+        );
+        await Promise.all(promises);
+      },
+      isClosed: () => execution.emitters.size === 0,
+    };
 
-  const result = await executeWorkflow(
-    workflow,
-    executionId,
-    broadcastEmitter,
-  );
+    const result = await executeWorkflow(
+      workflow,
+      executionId,
+      broadcastEmitter,
+    );
 
-  execution.status = result.status;
-  execution.result = result;
+    execution.status = result.status;
+    execution.result = result;
 
-  if (execution.resolve) {
-    execution.resolve();
+    log.info(
+      { executionId, status: result.status },
+      'Execution finished',
+    );
+  } finally {
+    // Always resolve the promise and schedule cleanup
+    if (execution.resolve) {
+      execution.resolve();
+    }
+
+    // Clean up execution map after a short delay to allow clients to receive final messages
+    setTimeout(() => {
+      activeExecutions.delete(executionId);
+    }, 5000);
   }
-
-  log.info(
-    { executionId, status: result.status },
-    'Execution finished',
-  );
-  
-  // Clean up execution map after a short delay to allow clients to receive final messages
-  setTimeout(() => {
-    activeExecutions.delete(executionId);
-  }, 5000);
 }

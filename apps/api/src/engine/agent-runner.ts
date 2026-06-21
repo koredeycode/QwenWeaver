@@ -6,7 +6,7 @@ import { getModelForNode, getModelIdForNode } from './model-router.js';
 import { discoverMCPTools, callMCPTool } from './mcp-bridge.js';
 import { createModuleLogger } from '../logger.js';
 import { llm_tokens_total, agent_duration_ms } from '../metrics.js';
-import * as fs from 'node:fs';
+import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
 const log = createModuleLogger('engine/agent-runner');
@@ -46,7 +46,7 @@ export async function runAgent(
       
       if (apiKey) {
         log.info({ nodeId: node.id, prompt }, 'Calling Wanx image generation API');
-        buffer = await generateWanxImage(prompt, apiKey);
+        buffer = await generateWanxImage(prompt, apiKey, abortController.signal);
       } else {
         log.info({ nodeId: node.id }, 'No DASHSCOPE_API_KEY set, generating placeholder mock image');
         buffer = Buffer.from(
@@ -56,7 +56,7 @@ export async function runAgent(
       }
 
       const runId = executionId ?? 'local-run';
-      const fileUrl = writeBinaryAsset(runId, node.id, 'png', buffer);
+      const fileUrl = await writeBinaryAsset(runId, node.id, 'png', buffer);
       const durationMs = Math.round(performance.now() - startTime);
 
       return {
@@ -92,7 +92,7 @@ export async function runAgent(
       }
 
       const runId = executionId ?? 'local-run';
-      const fileUrl = writeBinaryAsset(runId, node.id, 'mp3', buffer);
+      const fileUrl = await writeBinaryAsset(runId, node.id, 'mp3', buffer);
       const durationMs = Math.round(performance.now() - startTime);
 
       return {
@@ -118,7 +118,7 @@ export async function runAgent(
 
       if (apiKey) {
         log.info({ nodeId: node.id, prompt }, 'Calling Wanx video generation API');
-        buffer = await generateWanxVideo(prompt, apiKey);
+        buffer = await generateWanxVideo(prompt, apiKey, abortController.signal);
       } else {
         log.info({ nodeId: node.id }, 'No DASHSCOPE_API_KEY set, generating placeholder mock video');
         buffer = Buffer.from(
@@ -128,7 +128,7 @@ export async function runAgent(
       }
 
       const runId = executionId ?? 'local-run';
-      const fileUrl = writeBinaryAsset(runId, node.id, 'mp4', buffer);
+      const fileUrl = await writeBinaryAsset(runId, node.id, 'mp4', buffer);
       const durationMs = Math.round(performance.now() - startTime);
 
       return {
@@ -150,12 +150,15 @@ export async function runAgent(
     const { model, enableThinking, thinkingBudget } = getModelForNode(node);
     const systemPrompt = buildSystemPrompt(node);
     const userMessage = buildUserMessage(node, upstreamOutputs);
-    const mcpToolNames = await discoverMCPToolNames(node);
 
+    // Single MCP tool discovery call — used for both logging and tool binding
     const tools: Record<string, Tool<z.ZodTypeAny, unknown>> = {};
+    let mcpToolCount = 0;
+
     if (node.type === 'mcp_tool' && node.data.mcpServerUrl) {
       try {
         const mcpTools = await discoverMCPTools(node);
+        mcpToolCount = mcpTools.length;
         for (const t of mcpTools) {
           tools[t.name] = tool({
             description: t.description,
@@ -182,19 +185,24 @@ export async function runAgent(
       : undefined;
 
     log.info(
-      { nodeId: node.id, nodeType: node.type, enableThinking, mcpToolCount: mcpToolNames.length },
+      { nodeId: node.id, nodeType: node.type, enableThinking, mcpToolCount },
       'Starting agent execution',
     );
 
-    const result = streamText({
+    // Explicit type annotation for streamText options.
+    // The providerOptions.alibaba shape is provider-specific and not in the base type,
+    // so we use a scoped type assertion on just the provider options field.
+    const streamOptions = {
       model,
       system: systemPrompt,
       prompt: userMessage,
       tools: Object.keys(tools).length > 0 ? tools : undefined,
       maxSteps: 5,
-      providerOptions,
+      providerOptions: providerOptions as Record<string, Record<string, any>> | undefined,
       abortSignal: abortController.signal,
-    } as unknown as Parameters<typeof streamText>[0]);
+    };
+
+    const result = streamText(streamOptions);
 
     let fullText = '';
     let tokensUsed = 0;
@@ -352,46 +360,76 @@ function buildUserMessage(node: NodePayload, upstreamOutputs: UpstreamOutputs): 
   return parts.join('\n\n---\n\n') + taskContext;
 }
 
-async function discoverMCPToolNames(node: NodePayload): Promise<string[]> {
-  if (node.type !== 'mcp_tool' || !node.data.mcpServerUrl) {
-    return [];
-  }
-
-  try {
-    const mcpTools = await discoverMCPTools(node);
-    return mcpTools.map((t) => t.name);
-  } catch (error) {
-    log.warn(
-      { nodeId: node.id, error: (error as Error).message },
-      'Failed to discover MCP tools, proceeding without',
-    );
-    return [];
-  }
-}
-
 // ─── Multimodal Helper Functions ───────────────────────────────────────────────
 
-function writeBinaryAsset(
+// Use async FS APIs to avoid blocking the event loop
+async function writeBinaryAsset(
   executionId: string,
   nodeId: string,
   extension: string,
   dataBuffer: Buffer
-): string {
+): Promise<string> {
   const relativeDir = path.join('public', 'storage', 'runs', executionId);
   const absoluteDir = path.resolve(relativeDir);
   
-  if (!fs.existsSync(absoluteDir)) {
-    fs.mkdirSync(absoluteDir, { recursive: true });
-  }
+  await fs.mkdir(absoluteDir, { recursive: true });
   
   const filename = `${nodeId}_output.${extension}`;
   const absolutePath = path.join(absoluteDir, filename);
-  fs.writeFileSync(absolutePath, dataBuffer);
+  await fs.writeFile(absolutePath, dataBuffer);
   
   return `/public/storage/runs/${executionId}/${filename}`;
 }
 
-async function generateWanxImage(prompt: string, apiKey: string): Promise<Buffer> {
+// Exponential backoff helper for polling DashScope async tasks
+async function pollWithBackoff(
+  pollUrl: string,
+  headers: Record<string, string>,
+  opts: {
+    maxAttempts: number;
+    initialDelayMs: number;
+    maxDelayMs: number;
+    statusExtractor: (data: any) => string | undefined;
+    resultExtractor: (data: any) => string | undefined;
+    taskName: string;
+    signal?: AbortSignal;
+  },
+): Promise<Buffer> {
+  let delay = opts.initialDelayMs;
+
+  for (let attempt = 0; attempt < opts.maxAttempts; attempt++) {
+    if (opts.signal?.aborted) {
+      throw new Error(`${opts.taskName} aborted by signal`);
+    }
+
+    const pollResponse = await fetch(pollUrl, { headers, signal: opts.signal });
+    if (!pollResponse.ok) {
+      throw new Error(`Failed to poll ${opts.taskName} status: ${await pollResponse.text()}`);
+    }
+    const pollData = await pollResponse.json();
+    const status = opts.statusExtractor(pollData);
+
+    if (status === 'SUCCEEDED') {
+      const resultUrl = opts.resultExtractor(pollData);
+      if (!resultUrl) {
+        throw new Error(`${opts.taskName} succeeded but returned no result URL: ${JSON.stringify(pollData)}`);
+      }
+      const resultResponse = await fetch(resultUrl, { signal: opts.signal });
+      if (!resultResponse.ok) {
+        throw new Error(`Failed to download ${opts.taskName} result from ${resultUrl}`);
+      }
+      return Buffer.from(await resultResponse.arrayBuffer());
+    } else if (status === 'FAILED' || status === 'CANCELED') {
+      throw new Error(`${opts.taskName} failed or was canceled: ${JSON.stringify(pollData)}`);
+    }
+
+    await new Promise(resolve => setTimeout(resolve, delay));
+    delay = Math.min(delay * 2, opts.maxDelayMs);
+  }
+  throw new Error(`${opts.taskName} timed out after ${opts.maxAttempts} attempts`);
+}
+
+async function generateWanxImage(prompt: string, apiKey: string, signal?: AbortSignal): Promise<Buffer> {
   const submitUrl = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis';
   const headers = {
     'Authorization': `Bearer ${apiKey}`,
@@ -412,6 +450,7 @@ async function generateWanxImage(prompt: string, apiKey: string): Promise<Buffer
     method: 'POST',
     headers,
     body: JSON.stringify(body),
+    signal,
   });
 
   if (!response.ok) {
@@ -424,38 +463,19 @@ async function generateWanxImage(prompt: string, apiKey: string): Promise<Buffer
     throw new Error(`Wanx task submission did not return a task_id: ${JSON.stringify(submitData)}`);
   }
 
-  const pollUrl = `https://dashscope.aliyuncs.com/api/v1/tasks/${taskId}`;
-  const pollHeaders = { 'Authorization': `Bearer ${apiKey}` };
-  
-  let attempts = 0;
-  while (attempts < 30) {
-    const pollResponse = await fetch(pollUrl, { headers: pollHeaders });
-    if (!pollResponse.ok) {
-      throw new Error(`Failed to poll Wanx task status: ${await pollResponse.text()}`);
-    }
-    const pollData = (await pollResponse.json()) as {
-      output?: { task_status?: string; results?: Array<{ url?: string }> };
-    };
-    const status = pollData.output?.task_status;
-
-    if (status === 'SUCCEEDED') {
-      const imgUrl = pollData.output?.results?.[0]?.url;
-      if (!imgUrl) {
-        throw new Error(`Wanx succeeded but returned no image URL: ${JSON.stringify(pollData)}`);
-      }
-      const imgResponse = await fetch(imgUrl);
-      if (!imgResponse.ok) {
-        throw new Error(`Failed to download generated image from ${imgUrl}`);
-      }
-      return Buffer.from(await imgResponse.arrayBuffer());
-    } else if (status === 'FAILED' || status === 'CANCELED') {
-      throw new Error(`Wanx task failed or was canceled: ${JSON.stringify(pollData)}`);
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    attempts++;
-  }
-  throw new Error('Wanx image generation timed out');
+  return pollWithBackoff(
+    `https://dashscope.aliyuncs.com/api/v1/tasks/${taskId}`,
+    { 'Authorization': `Bearer ${apiKey}` },
+    {
+      maxAttempts: 20,
+      initialDelayMs: 1000,
+      maxDelayMs: 8000,
+      statusExtractor: (data: any) => data.output?.task_status,
+      resultExtractor: (data: any) => data.output?.results?.[0]?.url,
+      taskName: 'Wanx image generation',
+      signal,
+    },
+  );
 }
 
 async function generateCosyVoiceAudio(text: string, apiKey: string): Promise<Buffer> {
@@ -486,7 +506,7 @@ async function generateCosyVoiceAudio(text: string, apiKey: string): Promise<Buf
   return Buffer.from(await response.arrayBuffer());
 }
 
-async function generateWanxVideo(prompt: string, apiKey: string): Promise<Buffer> {
+async function generateWanxVideo(prompt: string, apiKey: string, signal?: AbortSignal): Promise<Buffer> {
   const submitUrl = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text2video/video-synthesis';
   const headers = {
     'Authorization': `Bearer ${apiKey}`,
@@ -505,6 +525,7 @@ async function generateWanxVideo(prompt: string, apiKey: string): Promise<Buffer
     method: 'POST',
     headers,
     body: JSON.stringify(body),
+    signal,
   });
 
   if (!response.ok) {
@@ -517,36 +538,17 @@ async function generateWanxVideo(prompt: string, apiKey: string): Promise<Buffer
     throw new Error(`Wanx Video task submission did not return a task_id: ${JSON.stringify(submitData)}`);
   }
 
-  const pollUrl = `https://dashscope.aliyuncs.com/api/v1/tasks/${taskId}`;
-  const pollHeaders = { 'Authorization': `Bearer ${apiKey}` };
-  
-  let attempts = 0;
-  while (attempts < 30) {
-    const pollResponse = await fetch(pollUrl, { headers: pollHeaders });
-    if (!pollResponse.ok) {
-      throw new Error(`Failed to poll Wanx Video task status: ${await pollResponse.text()}`);
-    }
-    const pollData = (await pollResponse.json()) as {
-      output?: { task_status?: string; video_url?: string };
-    };
-    const status = pollData.output?.task_status;
-
-    if (status === 'SUCCEEDED') {
-      const videoUrl = pollData.output?.video_url;
-      if (!videoUrl) {
-        throw new Error(`Wanx Video succeeded but returned no video URL: ${JSON.stringify(pollData)}`);
-      }
-      const videoResponse = await fetch(videoUrl);
-      if (!videoResponse.ok) {
-        throw new Error(`Failed to download generated video from ${videoUrl}`);
-      }
-      return Buffer.from(await videoResponse.arrayBuffer());
-    } else if (status === 'FAILED' || status === 'CANCELED') {
-      throw new Error(`Wanx Video task failed or was canceled: ${JSON.stringify(pollData)}`);
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    attempts++;
-  }
-  throw new Error('Wanx video generation timed out');
+  return pollWithBackoff(
+    `https://dashscope.aliyuncs.com/api/v1/tasks/${taskId}`,
+    { 'Authorization': `Bearer ${apiKey}` },
+    {
+      maxAttempts: 20,
+      initialDelayMs: 2000,
+      maxDelayMs: 16000,
+      statusExtractor: (data: any) => data.output?.task_status,
+      resultExtractor: (data: any) => data.output?.video_url,
+      taskName: 'Wanx video generation',
+      signal,
+    },
+  );
 }

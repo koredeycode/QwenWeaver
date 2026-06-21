@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { jwt } from 'hono/jwt';
 import { bodyLimit } from 'hono/body-limit';
 import { serve } from '@hono/node-server';
+import { HTTPException } from 'hono/http-exception';
 import { swaggerUI } from '@hono/swagger-ui';
 import { logger, requestLogger } from './logger.js';
 import { serveStatic } from '@hono/node-server/serve-static';
@@ -13,7 +14,9 @@ import { mcpRoutes } from './routes/mcp/index.js';
 import { authRoutes } from './routes/auth/index.js';
 import { analyticsRoutes } from './routes/analytics/index.js';
 import { register } from './metrics.js';
-import { getConnection } from '@qwenweaver/database';
+import { getQueryProvider } from '@qwenweaver/database';
+import { rateLimiter } from './middleware/rate-limiter.js';
+import { JWT_SECRET, CORS_ORIGINS, METRICS_TOKEN, RATE_LIMIT } from './config.js';
 
 export type Variables = {
   requestId: string;
@@ -26,9 +29,14 @@ export type Variables = {
 
 const app = new OpenAPIHono<{ Variables: Variables }>();
 
-const JWT_SECRET = process.env.API_SECRET || 'fallback-secret-for-dev';
-
-app.use('/api/*', cors());
+// Lock down CORS to configured origins instead of wildcard
+app.use('/api/*', cors({
+  origin: CORS_ORIGINS,
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+  exposeHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
+  maxAge: 600,
+}));
 app.use('/public/*', serveStatic({ root: './' }));
 app.use('*', requestLogger());
 
@@ -42,7 +50,16 @@ app.use(
   })
 );
 
-// Auth middleware protecting core routes
+// Rate limiting on auth endpoints (brute-force protection)
+app.use('/api/auth/*', rateLimiter('auth', RATE_LIMIT.auth));
+
+// Rate limiting on copilot endpoint (expensive LLM calls)
+app.use('/api/copilot/*', rateLimiter('copilot', RATE_LIMIT.copilot));
+
+// General API rate limiting
+app.use('/api/*', rateLimiter('api', RATE_LIMIT.api));
+
+// Auth middleware using centralized JWT_SECRET from config
 app.use(
   '/api/*',
   (c, next) => {
@@ -74,13 +91,20 @@ app.route('/api/copilot', copilotRoutes);
 app.route('/api/mcp', mcpRoutes);
 app.route('/api/analytics', analyticsRoutes);
 
-app.get('/api/metrics', async (c) => {
-  c.header('content-type', register.contentType);
-  return c.text(await register.metrics());
-});
+// Expose metrics endpoint only in development/test environments
+if (process.env.NODE_ENV !== 'production') {
+  app.get('/api/metrics', async (c) => {
+    c.header('content-type', register.contentType);
+    return c.text(await register.metrics());
+  });
+}
 
 // ─── OpenAPI spec ───────────────────────────────────────────────────────────
 app.onError((err, c) => {
+  if (err instanceof HTTPException) {
+    logger.warn({ err }, 'HTTP exception');
+    return err.getResponse();
+  }
   logger.error({ err }, 'Unhandled exception');
   return c.json({ error: 'Internal Server Error', details: err.message }, 500);
 });
@@ -117,6 +141,7 @@ const rootRoute = createRoute({
 
 app.openapi(rootRoute, (c) => c.text('QwenWeaver API', 200));
 
+// Use QueryProvider.healthCheck() instead of unsafe (db as any) casts
 const healthRoute = createRoute({
   method: 'get',
   path: '/api/health',
@@ -152,12 +177,8 @@ const healthRoute = createRoute({
 
 app.openapi(healthRoute, async (c) => {
   try {
-    const { db, dialect } = getConnection();
-    if (dialect === 'sqlite') {
-      (db as any).get('SELECT 1');
-    } else if (dialect === 'postgres' || dialect === 'mysql') {
-      await (db as any).execute('SELECT 1');
-    }
+    const provider = getQueryProvider();
+    await provider.healthCheck();
     return c.json({ status: 'ok', service: 'qwenweaver-api', database: 'connected' }, 200);
   } catch (err) {
     logger.error({ error: (err as Error).message }, 'Health check failed');
@@ -167,28 +188,30 @@ app.openapi(healthRoute, async (c) => {
 
 // ─── Start server ───────────────────────────────────────────────────────────
 
-const port = Number(process.env.PORT) || 3001;
+if (process.env.NODE_ENV !== 'test') {
+  const port = Number(process.env.PORT) || 3001;
 
-const server = serve({ fetch: app.fetch, port }, (info) => {
-  logger.info({ port: info.port }, 'API started');
-});
-
-function gracefulShutdown() {
-  logger.info('Shutting down server...');
-  server.close(() => {
-    logger.info('Server closed');
-    process.exit(0);
+  const server = serve({ fetch: app.fetch, port }, (info) => {
+    logger.info({ port: info.port }, 'API started');
   });
-  
-  // Force close after 10s
-  setTimeout(() => {
-    logger.error('Could not close connections in time, forcefully shutting down');
-    process.exit(1);
-  }, 10000);
-}
 
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);
+  const gracefulShutdown = () => {
+    logger.info('Shutting down server...');
+    server.close(() => {
+      logger.info('Server closed');
+      process.exit(0);
+    });
+    
+    // Force close after 10s
+    setTimeout(() => {
+      logger.error('Could not close connections in time, forcefully shutting down');
+      process.exit(1);
+    }, 10000);
+  };
+
+  process.on('SIGTERM', gracefulShutdown);
+  process.on('SIGINT', gracefulShutdown);
+}
 
 export default app;
 export type AppType = typeof app;

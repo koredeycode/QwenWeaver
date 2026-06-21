@@ -1,6 +1,5 @@
 import type { Context } from 'hono';
 import { generateObject } from 'ai';
-import { createAlibaba } from '@ai-sdk/alibaba';
 import { z } from 'zod';
 import { NodePayload, EdgePayload } from '@qwenweaver/types';
 import {
@@ -10,15 +9,22 @@ import {
   CopilotGenerateBody,
 } from './schema.js';
 import { createModuleLogger } from '../../logger.js';
+import { getProvider } from '../../engine/model-router.js'; // Reuse singleton
 import type { Variables } from '../../index.js';
 
 const log = createModuleLogger('routes/copilot.handlers');
 
-type CopilotBody = z.infer<typeof CopilotGenerateBody>;
 
 export async function handleCopilot(c: Context<{ Variables: Variables }>) {
-  const { prompt, canvasState, mode } = (await c.req.json()) as CopilotBody;
+  // Validate body through Zod instead of blind cast
+  const raw = await c.req.json();
+  const parsed = CopilotGenerateBody.safeParse(raw);
 
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid request body', details: parsed.error.format() }, 400);
+  }
+
+  const { prompt, canvasState, mode } = parsed.data;
 
   const apiKey = process.env.DASHSCOPE_API_KEY;
   if (!apiKey) {
@@ -28,7 +34,8 @@ export async function handleCopilot(c: Context<{ Variables: Variables }>) {
   log.info({ prompt: prompt.slice(0, 100), mode }, 'Copilot generation requested');
 
   try {
-    const provider = createAlibaba({ apiKey, baseURL: process.env.DASHSCOPE_BASE_URL });
+    // Reuse the singleton provider from model-router instead of creating new one
+    const provider = getProvider();
 
     let systemPrompt: string;
     let schema: z.ZodTypeAny;
@@ -61,7 +68,7 @@ export async function handleCopilot(c: Context<{ Variables: Variables }>) {
     }
 
     const result = await generateObject({
-      model: provider('qwen-max'),
+      model: provider('qwen3-max'),
       system: systemPrompt,
       prompt: userMessage,
       schema,

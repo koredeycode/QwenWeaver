@@ -12,6 +12,7 @@ export const mcpRoutes = new OpenAPIHono<{ Variables: Variables }>();
 
 const errorResponseSchema = z.object({
   error: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const discoverToolsRoute = createRoute({
@@ -55,6 +56,7 @@ export const saveServerRoute = createRoute({
       },
       description: 'Created',
     },
+    400: { content: { 'application/json': { schema: errorResponseSchema } }, description: 'Bad Request' },
   },
 });
 

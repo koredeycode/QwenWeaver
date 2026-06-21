@@ -1,5 +1,5 @@
-import { OpenAPIHono, createRoute } from '@hono/zod-openapi';
-import { handleLogin, handleRegister } from './handlers.js';
+import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
+import { handleLogin, handleRegister, handleRefreshToken } from './handlers.js';
 import type { Variables } from '../../index.js';
 import { authSchema, userResponseSchema, errorResponseSchema } from './schema.js';
 
@@ -47,5 +47,31 @@ export const loginRoute = createRoute({
   },
 });
 
+export const refreshRoute = createRoute({
+  method: 'post',
+  path: '/refresh',
+  tags: ['Auth'],
+  summary: 'Refresh access token',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({ refreshToken: z.string() }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: z.object({ token: z.string() }) } },
+      description: 'OK',
+    },
+    400: { content: { 'application/json': { schema: errorResponseSchema } }, description: 'Bad Request' },
+    401: { content: { 'application/json': { schema: errorResponseSchema } }, description: 'Unauthorized' },
+  },
+});
+
 authRoutes.openapi(registerRoute, handleRegister);
 authRoutes.openapi(loginRoute, handleLogin);
+authRoutes.openapi(refreshRoute, handleRefreshToken);
+
