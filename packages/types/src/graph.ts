@@ -3,6 +3,31 @@ import { z } from 'zod';
 export const NodeType = z.enum(['trigger', 'agent', 'supervisor', 'mcp_tool', 'logic']);
 export type NodeType = z.infer<typeof NodeType>;
 
+export const OutputFormat = z.enum([
+  'markdown', 
+  'html', 
+  'json', 
+  'csv', 
+  'xml', 
+  'yaml', 
+  'text', 
+  'code', 
+  'image', 
+  'audio', 
+  'video'
+]);
+export type OutputFormat = z.infer<typeof OutputFormat>;
+
+export const OutputPartType = z.enum(['text', 'image', 'audio', 'video', 'file']);
+export type OutputPartType = z.infer<typeof OutputPartType>;
+
+export const OutputPart = z.object({
+  type: OutputPartType,
+  contentType: z.string(),
+  value: z.string(),
+});
+export type OutputPart = z.infer<typeof OutputPart>;
+
 export const NodeData = z.object({
   label: z.string().optional(),
   systemPrompt: z.string().optional(),
@@ -11,6 +36,7 @@ export const NodeData = z.object({
   mcpServerUrl: z.string().optional(),
   mcpServerId: z.string().optional(),
   enableThinking: z.boolean().optional(),
+  outputFormat: OutputFormat.optional(),
 });
 export type NodeData = z.infer<typeof NodeData>;
 
@@ -85,6 +111,7 @@ export type AgentLogInput = z.infer<typeof AgentLogInput>;
 
 export const AgentLogOutput = z.object({
   text: z.string().optional(),
+  outputs: z.array(OutputPart).optional(),
   toolCalls: z.array(z.unknown()).optional(),
   toolResults: z.array(z.unknown()).optional(),
   reasoning: z.string().optional(),

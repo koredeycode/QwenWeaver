@@ -35,6 +35,9 @@ importers:
       '@hono/zod-validator':
         specifier: ^0.8.0
         version: 0.8.0(hono@4.12.25)(zod@3.25.76)
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.29.0
+        version: 1.29.0(zod@3.25.76)
       '@qwenweaver/database':
         specifier: workspace:*
         version: link:../../packages/database
@@ -47,12 +50,18 @@ importers:
       ai:
         specifier: ^6.0.0
         version: 6.0.206(zod@3.25.76)
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.2(@opentelemetry/api@1.9.1)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)(postgres@3.4.9)
       hono:
         specifier: ^4.5.0
         version: 4.12.25
       pino:
         specifier: ^10.0.0
         version: 10.3.1
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: ^25.0.0
@@ -72,6 +81,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@qwenweaver/api':
+        specifier: workspace:*
+        version: link:../api
       '@qwenweaver/database':
         specifier: workspace:*
         version: link:../../packages/database
@@ -81,6 +93,9 @@ importers:
       '@xyflow/react':
         specifier: ^12.0.0
         version: 12.11.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      hono:
+        specifier: ^4.5.0
+        version: 4.12.25
       react:
         specifier: ^19.0.0
         version: 19.2.7
@@ -159,6 +174,9 @@ importers:
         specifier: ^1.0.0
         version: 1.29.0(zod@3.25.76)
     devDependencies:
+      '@types/node':
+        specifier: ^25.0.0
+        version: 25.9.3
       typescript:
         specifier: ^5.5.0
         version: 5.9.3

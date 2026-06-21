@@ -2,6 +2,9 @@ import { type BetterSQLite3Database, drizzle as drizzleSqlite } from 'drizzle-or
 import { type PostgresJsDatabase, drizzle as drizzlePg } from 'drizzle-orm/postgres-js';
 import Database from 'better-sqlite3';
 import postgres from 'postgres';
+import { existsSync, mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import * as pgSchema from './schema/pg.js';
 import * as sqliteSchema from './schema/sqlite.js';
@@ -21,10 +24,17 @@ let _db: DB | null = null;
 let _dialect: Dialect | null = null;
 
 export function createConnection(databaseUrl?: string): { db: DB; dialect: Dialect } {
-  const url = databaseUrl ?? process.env.DATABASE_URL ?? './data/dev.db';
+  const defaultPath = fileURLToPath(new URL('../data/dev.db', import.meta.url));
+  const url = databaseUrl ?? process.env.DATABASE_URL ?? defaultPath;
   const dialect = detectDialect(url);
 
   if (dialect === 'sqlite') {
+    if (url !== ':memory:') {
+      const dir = dirname(url);
+      if (dir && !existsSync(dir)) {
+        mkdirSync(dir, { recursive: true });
+      }
+    }
     const client = new Database(url);
     client.pragma('journal_mode = WAL');
     client.pragma('foreign_keys = ON');
@@ -49,3 +59,6 @@ export function getConnection(): { db: DB; dialect: Dialect } {
 }
 
 export { pgSchema, sqliteSchema };
+
+// Export all queries for separation of concern
+export * from './queries/index.js';

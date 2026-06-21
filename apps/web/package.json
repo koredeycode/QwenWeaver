@@ -16,7 +16,9 @@
     "react-dom": "^19.0.0",
     "zustand": "^5.0.0",
     "@qwenweaver/types": "workspace:*",
-    "@qwenweaver/database": "workspace:*"
+    "@qwenweaver/database": "workspace:*",
+    "@qwenweaver/api": "workspace:*",
+    "hono": "^4.5.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

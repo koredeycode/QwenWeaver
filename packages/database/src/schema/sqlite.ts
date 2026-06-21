@@ -72,3 +72,6 @@ export const sqliteMcpServers = sqliteTable('mcp_servers', {
   authConfig: text('auth_config', { mode: 'json' }).$type<MCPAuthConfig>(),
   createdAt: integer('created_at').notNull(),
 });
+
+export type SqliteMcpServer = typeof sqliteMcpServers.$inferSelect;
+export type NewSqliteMcpServer = typeof sqliteMcpServers.$inferInsert;

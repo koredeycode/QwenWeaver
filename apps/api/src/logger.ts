@@ -2,18 +2,34 @@ import pino from 'pino';
 import type { MiddlewareHandler } from 'hono';
 import type { Variables } from './index.js';
 
-export const logger = pino({
-  level: process.env.LOG_LEVEL || 'info',
-  formatters: {
-    bindings() {
-      return { service: 'qwenweaver-api' };
+export const logger = pino(
+  {
+    level: process.env.LOG_LEVEL || 'info',
+    formatters: {
+      bindings() {
+        return { service: 'qwenweaver-api' };
+      },
+    },
+    serializers: {
+      req: pino.stdSerializers.req,
+      res: pino.stdSerializers.res,
     },
   },
-  serializers: {
-    req: pino.stdSerializers.req,
-    res: pino.stdSerializers.res,
-  },
-});
+  pino.transport({
+    targets: [
+      {
+        target: 'pino/file',
+        options: { destination: 1 }, // 1 is stdout / console
+        level: process.env.LOG_LEVEL || 'info',
+      },
+      {
+        target: 'pino/file',
+        options: { destination: './qwenweaver.log', mkdir: true },
+        level: process.env.LOG_LEVEL || 'info',
+      },
+    ],
+  })
+);
 
 export function createModuleLogger(module: string): pino.Logger {
   return logger.child({ module });

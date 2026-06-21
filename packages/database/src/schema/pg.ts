@@ -72,3 +72,6 @@ export const pgMcpServers = pgTable('mcp_servers', {
   authConfig: jsonb('auth_config').$type<MCPAuthConfig>(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+export type PgMcpServer = typeof pgMcpServers.$inferSelect;
+export type NewPgMcpServer = typeof pgMcpServers.$inferInsert;
