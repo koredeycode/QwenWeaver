@@ -6,6 +6,7 @@ import {
   Background, 
   Controls, 
   MiniMap, 
+  Panel,
   useReactFlow 
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -39,6 +40,7 @@ const CanvasWorkspace = () => {
   const selectNode = useStore((s) => s.selectNode);
   const addNode = useStore((s) => s.addNode);
   const rearrangeGraph = useStore((s) => s.rearrangeGraph);
+  const clearGraph = useStore((s) => s.clearGraph);
 
   const status = useStore((s) => s.executionStatus);
   const runWorkflow = useStore((s) => s.runWorkflow);
@@ -50,6 +52,58 @@ const CanvasWorkspace = () => {
 
   const reactFlowInstance = useReactFlow();
   const [activeTab, setActiveTab] = useState<'workflows' | 'projects' | 'history'>('workflows');
+
+  const handleDeploy = () => {
+    alert('Workflow successfully built and queued for deployment.');
+  };
+
+  // Keyboard Shortcuts Bindings Listener
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      if (isInput) return;
+
+      // 1. Run Swarm: Ctrl + Enter or Cmd + Enter
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        event.preventDefault();
+        if (status !== 'running' && nodes.length > 0) {
+          runWorkflow();
+        }
+      }
+
+      // 2. Rearrange Layout: Ctrl + L or Cmd + L
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'l') {
+        event.preventDefault();
+        rearrangeGraph();
+      }
+
+      // 3. Save & Deploy: Ctrl + S or Cmd + S
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        handleDeploy();
+      }
+
+      // 4. Clear Canvas: Ctrl + Alt + C
+      if ((event.ctrlKey || event.metaKey) && event.altKey && event.key.toLowerCase() === 'c') {
+        event.preventDefault();
+        if (confirm('Are you sure you want to clear the canvas?')) {
+          clearGraph();
+        }
+      }
+
+      // 5. Deselect Node: Escape
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        selectNode(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [status, nodes.length, runWorkflow, rearrangeGraph, clearGraph, selectNode]);
 
   // Handle Drag-and-drop drop trigger
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -77,10 +131,6 @@ const CanvasWorkspace = () => {
   const handlePaneClick = useCallback(() => {
     selectNode(null);
   }, [selectNode]);
-
-  const handleDeploy = () => {
-    alert('Workflow successfully built and queued for deployment.');
-  };
 
   return (
     <div className="h-full w-full flex flex-col bg-[#f8fafc] text-slate-800 select-none">
@@ -243,6 +293,14 @@ const CanvasWorkspace = () => {
               className="opacity-40"
             />
             <Controls className="!bg-white !border-[#cbd5e1] !rounded-none !shadow-none [&_button]:!border-[#cbd5e1] [&_button]:!bg-transparent [&_button]:hover:!bg-slate-50 [&_svg]:!fill-slate-600" />
+            <Panel position="bottom-left" className="mb-16 bg-white border border-[#cbd5e1] p-2.5 font-mono text-[10px] text-slate-500 shadow-sm flex flex-col gap-1 select-none pointer-events-auto rounded-none">
+              <div className="font-bold text-slate-700 border-b border-slate-100 pb-1 mb-1">KEYBOARD SHORTCUTS</div>
+              <div className="flex justify-between gap-6"><span>Run Swarm:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + Enter</kbd></div>
+              <div className="flex justify-between gap-6"><span>Rearrange:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + L</kbd></div>
+              <div className="flex justify-between gap-6"><span>Save & Deploy:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + S</kbd></div>
+              <div className="flex justify-between gap-6"><span>Clear Canvas:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + Alt + C</kbd></div>
+              <div className="flex justify-between gap-6"><span>Deselect:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Esc</kbd></div>
+            </Panel>
             <MiniMap 
               style={{ height: 100, width: 140, background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: 0 }}
               nodeColor={(node) => {
