@@ -100,7 +100,7 @@ export const GanttMetrics = () => {
               <div>
                 <div className="text-[10px] text-slate-500 font-mono">LLM INFERENCE VOLUME</div>
                 <div className="text-2xl font-bold font-mono text-amber-600 mt-1">
-                  {metrics.totalTokens ? metrics.totalTokens.toLocaleString() : 0} <span className="text-xs text-slate-450 font-normal">tkn</span>
+                  {metrics.totalTokens ? metrics.totalTokens.toLocaleString() : 0} <span className="text-xs text-slate-400 font-normal">tkn</span>
                 </div>
               </div>
               <Coins className="w-8 h-8 text-amber-500/20" />

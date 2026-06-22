@@ -12,6 +12,7 @@ export const AnimatedEdge = memo(({
   targetPosition,
   style = {},
   markerEnd,
+  selected,
 }: EdgeProps) => {
   // Check if this specific edge is active/transferring data in store
   const isActive = useStore((s) => s.activeEdges.has(id));
@@ -33,9 +34,9 @@ export const AnimatedEdge = memo(({
         id={id}
         style={{
           ...style,
-          stroke: isActive ? '#ea580c' : '#cbd5e1', // Glow vs normal outline
-          strokeWidth: isActive ? 2.5 : 1.5,
-          transition: 'stroke 0.3s, stroke-width 0.3s',
+          stroke: selected ? '#2563eb' : (isActive ? '#ea580c' : '#cbd5e1'), // Blue when selected, orange when active, slate otherwise
+          strokeWidth: selected ? 3 : (isActive ? 2.5 : 1.5),
+          transition: 'stroke 0.2s, stroke-width 0.2s',
         }}
         className="react-flow__edge-path"
         d={edgePath}

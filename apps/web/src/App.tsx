@@ -4,10 +4,10 @@ import {
   ReactFlow, 
   ReactFlowProvider, 
   Background, 
-  Controls, 
   MiniMap, 
   Panel,
-  useReactFlow 
+  useReactFlow,
+  useViewport
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -16,6 +16,7 @@ import { Sidebar } from './components/Sidebar.js';
 import { Inspector } from './components/Inspector.js';
 import { GanttMetrics } from './components/GanttMetrics.js';
 import { AuthScreen } from './components/AuthScreen.js';
+import { CopilotOverlay } from './components/CopilotOverlay.js';
 import { nodeTypes } from './components/CustomNodes.js';
 import { edgeTypes } from './components/AnimatedEdge.js';
 import type { NodeType } from '@qwenweaver/types';
@@ -29,8 +30,63 @@ import {
   User,
   RefreshCw,
   Keyboard,
-  X
+  X,
+  Maximize,
+  Lock,
+  Unlock
 } from 'lucide-react';
+
+const CustomZoomControls = ({ 
+  isLocked, 
+  onToggleLock 
+}: { 
+  isLocked: boolean; 
+  onToggleLock: () => void; 
+}) => {
+  const { zoomIn, zoomOut, fitView } = useReactFlow();
+  const { zoom } = useViewport();
+  const zoomPercent = Math.round(zoom * 100);
+
+  return (
+    <Panel position="bottom-center" className="mb-4 bg-white border border-[#cbd5e1] p-0.5 shadow-sm flex flex-row items-center select-none pointer-events-auto rounded-none h-8">
+      <button
+        onClick={() => zoomOut()}
+        className="w-7 h-7 flex items-center justify-center hover:bg-slate-50 text-slate-600 font-bold transition-colors"
+        title="Zoom Out"
+      >
+        <span className="text-xs">—</span>
+      </button>
+      <div className="px-2.5 font-mono text-[10px] font-bold text-slate-500 min-w-[46px] text-center border-l border-r border-slate-100">
+        {zoomPercent}%
+      </div>
+      <button
+        onClick={() => zoomIn()}
+        className="w-7 h-7 flex items-center justify-center hover:bg-slate-50 text-slate-600 font-bold transition-colors"
+        title="Zoom In"
+      >
+        <span className="text-xs">＋</span>
+      </button>
+      <button
+        onClick={() => fitView()}
+        className="w-7 h-7 flex items-center justify-center hover:bg-slate-50 text-slate-500 hover:text-slate-700 transition-colors border-l border-slate-100"
+        title="Fit View"
+      >
+        <Maximize className="w-3.5 h-3.5" />
+      </button>
+      <button
+        onClick={onToggleLock}
+        className="w-7 h-7 flex items-center justify-center hover:bg-slate-50 text-slate-500 hover:text-slate-700 transition-colors border-l border-slate-100"
+        title={isLocked ? "Unlock Workspace Interactions" : "Lock Workspace Interactions"}
+      >
+        {isLocked ? (
+          <Lock className="w-3.5 h-3.5 text-rose-600 fill-rose-50/50" />
+        ) : (
+          <Unlock className="w-3.5 h-3.5 text-slate-400" />
+        )}
+      </button>
+    </Panel>
+  );
+};
 
 const CanvasWorkspace = () => {
   const nodes = useStore((s) => s.nodes);
@@ -54,6 +110,7 @@ const CanvasWorkspace = () => {
   const reactFlowInstance = useReactFlow();
   const [activeTab, setActiveTab] = useState<'workflows' | 'projects' | 'history'>('workflows');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isLocked, setIsLocked] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(() => {
     const saved = localStorage.getItem('qwenweaver_shortcuts_open');
     return saved !== 'false';
@@ -74,10 +131,14 @@ const CanvasWorkspace = () => {
         }
       }
 
-      // 2. Rearrange Layout: Ctrl + L or Cmd + L
+      // 2. Rearrange Layout or Toggle Lock: Ctrl + L (without shift) or Ctrl + Shift + L
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'l') {
         event.preventDefault();
-        rearrangeGraph();
+        if (event.shiftKey) {
+          setIsLocked((prev) => !prev);
+        } else {
+          rearrangeGraph();
+        }
       }
 
       // 3. Zoom In: Ctrl + = or Ctrl + +
@@ -121,6 +182,7 @@ const CanvasWorkspace = () => {
 
   const onDrop = useCallback((event: React.DragEvent) => {
     event.preventDefault();
+    if (isLocked || status === 'running') return;
     const type = event.dataTransfer.getData('application/reactflow') as NodeType;
     if (!type) return;
 
@@ -130,10 +192,11 @@ const CanvasWorkspace = () => {
     });
 
     addNode(type, position);
-  }, [reactFlowInstance, addNode]);
+  }, [reactFlowInstance, addNode, isLocked, status]);
 
   const handleNodeClick = useCallback((_: any, node: any) => {
     selectNode(node.id);
+    setIsSidebarOpen(true);
   }, [selectNode]);
 
   const handlePaneClick = useCallback(() => {
@@ -141,236 +204,249 @@ const CanvasWorkspace = () => {
   }, [selectNode]);
 
   return (
-    <div className="h-full w-full flex flex-col bg-[#f8fafc] text-slate-800 select-none">
+    <div className="h-screen w-screen flex flex-row bg-[#f8fafc] text-slate-800 select-none overflow-hidden">
       
-      {/* ─── Top Header (Matches screenshots exactly) ────────────────────────── */}
-      <header className="h-14 bg-white border-b border-[#cbd5e1] flex items-center justify-between px-6 z-20">
-        
-        {/* Left: Tab Selectors */}
-        <div className="flex items-center gap-6 h-full">
-          <button
-            onClick={() => setActiveTab('projects')}
-            className={`text-sm font-semibold h-full px-1 border-b-2 flex items-center justify-center transition-all ${
-              activeTab === 'projects' 
-                ? 'border-[#ea580c] text-slate-900 font-bold' 
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            Projects
-          </button>
-          <button
-            onClick={() => setActiveTab('workflows')}
-            className={`text-sm font-semibold h-full px-1 border-b-2 flex items-center justify-center transition-all ${
-              activeTab === 'workflows' 
-                ? 'border-[#ea580c] text-slate-900 font-bold' 
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            Workflows
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`text-sm font-semibold h-full px-1 border-b-2 flex items-center justify-center transition-all ${
-              activeTab === 'history' 
-                ? 'border-[#ea580c] text-slate-900 font-bold' 
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            History
-          </button>
-        </div>
+      {/* Left Sidebar extends to the top/bottom of viewport */}
+      <Sidebar />
 
-        {/* Right: Actions, Deploy, Run, Settings, Profile */}
-        <div className="flex items-center gap-4">
+      {/* Center Column: Header Toolbar, Canvas Workspace, Metrics Panel */}
+      <div className="flex-1 h-full flex flex-col min-w-0 bg-[#f8fafc] relative">
+        
+        {/* ─── Top Header (Matches screenshots exactly) ────────────────────────── */}
+        <header className="h-14 bg-white border-b border-[#cbd5e1] flex items-center justify-between px-6 z-20 flex-shrink-0">
           
-          {/* Engine Mode Toggle */}
-          <div className="flex items-center gap-2 border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-mono rounded-none">
-            <span className="text-slate-400">ENGINE:</span>
-            <button 
-              onClick={() => setMockMode(!mockMode)}
-              className="flex items-center gap-1.5 font-bold hover:text-slate-800 transition-colors"
-              title="Toggle Mock Mode or Live Hono API"
+          {/* Left: Tab Selectors */}
+          <div className="flex items-center gap-6 h-full">
+            <button
+              onClick={() => setActiveTab('projects')}
+              className={`text-sm font-semibold h-full px-1 border-b-2 flex items-center justify-center transition-all ${
+                activeTab === 'projects' 
+                  ? 'border-[#ea580c] text-slate-900 font-bold' 
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
             >
-              {mockMode ? (
-                <>
-                  <span className="text-[#2563eb]">MOCK SIMULATOR</span>
-                  <ToggleRight className="w-4 h-4 text-[#2563eb]" />
-                </>
-              ) : (
-                <>
-                  <span className="text-[#ea580c]">LIVE HONO API</span>
-                  <ToggleLeft className="w-4 h-4 text-[#ea580c]" />
-                </>
-              )}
+              Projects
+            </button>
+            <button
+              onClick={() => setActiveTab('workflows')}
+              className={`text-sm font-semibold h-full px-1 border-b-2 flex items-center justify-center transition-all ${
+                activeTab === 'workflows' 
+                  ? 'border-[#ea580c] text-slate-900 font-bold' 
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              Workflows
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`text-sm font-semibold h-full px-1 border-b-2 flex items-center justify-center transition-all ${
+                activeTab === 'history' 
+                  ? 'border-[#ea580c] text-slate-900 font-bold' 
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              History
             </button>
           </div>
 
-          {/* Rearrange Layout Button */}
-          <button
-            onClick={rearrangeGraph}
-            className="px-3.5 py-1.5 bg-white border border-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1.5 rounded-none hover:bg-slate-50 transition-colors"
-            title="Auto-arrange nodes in clean columns"
-          >
-            <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
-            Rearrange
-          </button>
-
-
-
-          {/* Run Workflow / Kill Button (Solid Rust-Orange) */}
-          {status === 'running' ? (
-            <button
-              onClick={stopWorkflow}
-              className="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors"
-            >
-              <Square className="w-3.5 h-3.5 fill-white" />
-              Kill Swarm
-            </button>
-          ) : (
-            <button
-              onClick={runWorkflow}
-              disabled={nodes.length === 0}
-              className="px-4 py-1.5 bg-[#9a3412] hover:bg-[#a73a00] text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors disabled:opacity-30"
-            >
-              <Play className="w-3.5 h-3.5 fill-white text-white" />
-              Run Workflow
-            </button>
-          )}
-
-          {/* Vertical Divider */}
-          <div className="h-6 w-[1px] bg-slate-200" />
-
-          {/* Settings cog */}
-          <button className="p-1 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition-colors" title="Settings">
-            <Settings className="w-4 h-4" />
-          </button>
-
-          {/* User profile / Logout */}
-          {user ? (
-            <div className="flex items-center gap-2">
+          {/* Right: Actions, Deploy, Run, Settings, Profile */}
+          <div className="flex items-center gap-4">
+            
+            {/* Engine Mode Toggle */}
+            <div className="flex items-center gap-2 border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-mono rounded-none">
+              <span className="text-slate-400">ENGINE:</span>
               <button 
-                onClick={logout}
-                title="Logout Operator Session"
-                className="p-1 hover:bg-slate-50 text-slate-500 hover:text-rose-655 flex items-center gap-1"
+                onClick={() => setMockMode(!mockMode)}
+                className="flex items-center gap-1.5 font-bold hover:text-slate-800 transition-colors"
+                title="Toggle Mock Mode or Live Hono API"
               >
-                <User className="w-4 h-4" />
-                <span className="text-xs font-mono max-w-24 truncate hidden md:inline">{user.email}</span>
+                {mockMode ? (
+                  <>
+                    <span className="text-[#2563eb]">MOCK SIMULATOR</span>
+                    <ToggleRight className="w-4 h-4 text-[#2563eb]" />
+                  </>
+                ) : (
+                  <>
+                    <span className="text-[#ea580c]">LIVE HONO API</span>
+                    <ToggleLeft className="w-4 h-4 text-[#ea580c]" />
+                  </>
+                )}
               </button>
             </div>
-          ) : (
-            <button className="p-1 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition-colors">
-              <User className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      </header>
 
-      {/* ─── Workbench & Panels ────────────────────────────────────────────── */}
-      <main className="flex-1 flex overflow-hidden relative">
-        <Sidebar />
-        
-        {/* Central Workspace + Observability Stack */}
-        <div className="flex-1 h-full flex flex-col min-w-0 bg-[#f8fafc] relative">
-          {/* React Flow Workspace Canvas */}
-          <div className="flex-1 w-full min-h-0 relative">
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              onDragOver={onDragOver}
-              onDrop={onDrop}
-              nodeTypes={nodeTypes as any}
-              edgeTypes={edgeTypes as any}
-              onNodeClick={handleNodeClick}
-              onPaneClick={handlePaneClick}
-              fitView
-              minZoom={0.2}
-              maxZoom={1.5}
+            {/* Rearrange Layout Button */}
+            <button
+              onClick={rearrangeGraph}
+              className="px-3.5 py-1.5 bg-white border border-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1.5 rounded-none hover:bg-slate-50 transition-colors"
+              title="Auto-arrange nodes in clean columns"
             >
-              <Background 
-                color="#cbd5e1" 
-                gap={16} 
-                size={1} 
-                className="opacity-40"
-              />
-              <Controls className="!bg-white !border-[#cbd5e1] !rounded-none !shadow-none [&_button]:!border-[#cbd5e1] [&_button]:!bg-transparent [&_button]:hover:!bg-slate-50 [&_svg]:!fill-slate-600" />
-              {isShortcutsOpen ? (
-                <Panel position="bottom-left" className="ml-14 mb-0 bg-white border border-[#cbd5e1] p-2.5 font-mono text-[10px] text-slate-500 shadow-sm flex flex-col gap-1 select-none pointer-events-auto rounded-none w-56">
-                  <div className="flex items-center justify-between font-bold text-slate-700 border-b border-slate-100 pb-1 mb-1">
-                    <span>KEYBOARD SHORTCUTS</span>
-                    <button 
-                      onClick={() => {
-                        setIsShortcutsOpen(false);
-                        localStorage.setItem('qwenweaver_shortcuts_open', 'false');
-                      }}
-                      className="text-slate-400 hover:text-slate-700 transition-colors p-0.5"
-                      title="Hide Legend"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                  <div className="flex justify-between gap-6"><span>Run Swarm:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + Enter</kbd></div>
-                  <div className="flex justify-between gap-6"><span>Rearrange:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + L</kbd></div>
-                  <div className="flex justify-between gap-6"><span>Zoom In/Out:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + + / -</kbd></div>
-                  <div className="flex justify-between gap-6"><span>Clear Canvas:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + Alt + C</kbd></div>
-                  <div className="flex justify-between gap-6"><span>Delete Edge:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Click Edge + Backspace</kbd></div>
-                  <div className="flex justify-between gap-6"><span>Deselect:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Esc</kbd></div>
-                </Panel>
-              ) : (
-                <Panel position="bottom-left" className="ml-14 mb-0 pointer-events-auto">
-                  <button
-                    onClick={() => {
-                      setIsShortcutsOpen(true);
-                      localStorage.setItem('qwenweaver_shortcuts_open', 'true');
-                    }}
-                    className="bg-white border border-[#cbd5e1] p-1.5 hover:bg-slate-50 text-slate-500 hover:text-slate-700 shadow-sm rounded-none text-[10px] font-mono font-bold transition-colors flex items-center gap-1.5"
-                    title="Show Keyboard Shortcuts"
-                  >
-                    <Keyboard className="w-3.5 h-3.5 text-slate-400" />
-                    Shortcuts (?)
-                  </button>
-                </Panel>
-              )}
-              <MiniMap 
-                style={{ height: 100, width: 140, background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: 0 }}
-                nodeColor={(node) => {
-                  switch (node.type) {
-                    case 'trigger':
-                      return '#10b981'; // Green
-                    case 'agent':
-                      return '#ea580c'; // Orange
-                    case 'supervisor':
-                      return '#2563eb'; // Blue
-                    case 'mcp_tool':
-                      return '#8b5cf6'; // Purple
-                    default:
-                      return '#cbd5e1'; // Slate
-                  }
-                }}
-                maskColor="rgba(241, 245, 249, 0.4)"
-              />
-            </ReactFlow>
+              <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+              Rearrange
+            </button>
 
-            {/* Floating Sidebar Toggle Button (when collapsed) */}
-            {!isSidebarOpen && (
+            {/* Run Workflow / Kill Button (Solid Rust-Orange) */}
+            {status === 'running' ? (
               <button
-                onClick={() => setIsSidebarOpen(true)}
-                className="absolute top-4 right-4 z-20 bg-white border border-[#cbd5e1] p-2 hover:bg-slate-50 text-slate-700 shadow-sm rounded-none transition-colors"
-                title="Open Properties Panel"
+                onClick={stopWorkflow}
+                className="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors"
               >
-                <Settings className="w-4 h-4" />
+                <Square className="w-3.5 h-3.5 fill-white" />
+                Kill Swarm
+              </button>
+            ) : (
+              <button
+                onClick={runWorkflow}
+                disabled={nodes.length === 0}
+                className="px-4 py-1.5 bg-[#9a3412] hover:bg-[#a73a00] text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors disabled:opacity-30"
+              >
+                <Play className="w-3.5 h-3.5 fill-white text-white" />
+                Run Workflow
+              </button>
+            )}
+
+            {/* Vertical Divider */}
+            <div className="h-6 w-[1px] bg-slate-200" />
+
+            {/* Settings cog */}
+            <button className="p-1 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition-colors" title="Settings">
+              <Settings className="w-4 h-4" />
+            </button>
+
+            {/* User profile / Logout */}
+            {user ? (
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={logout}
+                  title="Logout Operator Session"
+                  className="p-1 hover:bg-slate-50 text-slate-500 hover:text-rose-655 flex items-center gap-1"
+                >
+                  <User className="w-4 h-4" />
+                  <span className="text-xs font-mono max-w-24 truncate hidden md:inline">{user.email}</span>
+                </button>
+              </div>
+            ) : (
+              <button className="p-1 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition-colors">
+                <User className="w-4 h-4" />
               </button>
             )}
           </div>
+        </header>
 
-          {/* Observability Board centered vertically next to Canvas */}
-          <GanttMetrics />
+        {/* Workspace Layout: Split horizontally into Canvas/Metrics and Inspector */}
+        <div className="flex-1 w-full min-h-0 flex flex-row relative bg-[#f8fafc]">
+          
+          {/* Main workspace container (Canvas + Gantt) */}
+          <div className="flex-1 h-full flex flex-col min-w-0 relative">
+            {/* React Flow Workspace Canvas */}
+            <div className="flex-1 w-full min-h-0 relative">
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onDragOver={onDragOver}
+                onDrop={onDrop}
+                nodeTypes={nodeTypes as any}
+                edgeTypes={edgeTypes as any}
+                onNodeClick={handleNodeClick}
+                onPaneClick={handlePaneClick}
+                fitView
+                minZoom={0.2}
+                maxZoom={1.5}
+                nodesDraggable={!isLocked && status !== 'running'}
+                nodesConnectable={!isLocked && status !== 'running'}
+                elementsSelectable={!isLocked && status !== 'running'}
+                deleteKeyCode={isLocked || status === 'running' ? null : ['Backspace', 'Delete']}
+              >
+                <Background 
+                  color="#cbd5e1" 
+                  gap={16} 
+                  size={1} 
+                  className="opacity-40"
+                />
+                <CustomZoomControls isLocked={isLocked} onToggleLock={() => setIsLocked(!isLocked)} />
+                {isShortcutsOpen ? (
+                  <Panel position="bottom-left" className="ml-0 mb-0 bg-white border border-[#cbd5e1] p-2.5 font-mono text-[10px] text-slate-500 shadow-sm flex flex-col gap-1 select-none pointer-events-auto rounded-none w-[270px]">
+                    <div className="flex items-center justify-between font-bold text-slate-700 border-b border-slate-100 pb-1 mb-1">
+                      <span>KEYBOARD SHORTCUTS</span>
+                      <button 
+                        onClick={() => {
+                          setIsShortcutsOpen(false);
+                          localStorage.setItem('qwenweaver_shortcuts_open', 'false');
+                        }}
+                        className="text-slate-400 hover:text-slate-700 transition-colors p-0.5"
+                        title="Hide Legend"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <div className="flex justify-between gap-6"><span>Run Swarm:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + Enter</kbd></div>
+                    <div className="flex justify-between gap-6"><span>Rearrange:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + L</kbd></div>
+                    <div className="flex justify-between gap-6"><span>Toggle Lock:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + Shift + L</kbd></div>
+                    <div className="flex justify-between gap-6"><span>Zoom In/Out:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + + / -</kbd></div>
+                    <div className="flex justify-between gap-6"><span>Clear Canvas:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + Alt + C</kbd></div>
+                    <div className="flex justify-between gap-6"><span>Delete Edge:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Click Edge + Backspace</kbd></div>
+                    <div className="flex justify-between gap-6"><span>Deselect:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Esc</kbd></div>
+                  </Panel>
+                ) : (
+                  <Panel position="bottom-left" className="ml-0 mb-0 pointer-events-auto">
+                    <button
+                      onClick={() => {
+                        setIsShortcutsOpen(true);
+                        localStorage.setItem('qwenweaver_shortcuts_open', 'true');
+                      }}
+                      className="bg-white border border-[#cbd5e1] p-1.5 hover:bg-slate-50 text-slate-500 hover:text-slate-700 shadow-sm rounded-none text-[10px] font-mono font-bold transition-colors flex items-center gap-1.5"
+                      title="Show Keyboard Shortcuts"
+                    >
+                      <Keyboard className="w-3.5 h-3.5 text-slate-400" />
+                      Shortcuts (?)
+                    </button>
+                  </Panel>
+                )}
+                <MiniMap 
+                  style={{ height: 100, width: 140, background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: 0 }}
+                  nodeColor={(node) => {
+                    switch (node.type) {
+                      case 'trigger':
+                        return '#10b981'; // Green
+                      case 'agent':
+                        return '#ea580c'; // Orange
+                      case 'supervisor':
+                        return '#2563eb'; // Blue
+                      case 'mcp_tool':
+                        return '#8b5cf6'; // Purple
+                      default:
+                        return '#cbd5e1'; // Slate
+                    }
+                  }}
+                  maskColor="rgba(241, 245, 249, 0.4)"
+                />
+              </ReactFlow>
+
+              {/* Floating Sidebar Toggle Button (when collapsed) */}
+              {!isSidebarOpen && (
+                <button
+                  onClick={() => setIsSidebarOpen(true)}
+                  className="absolute top-4 right-4 z-20 bg-white border border-[#cbd5e1] p-2 hover:bg-slate-50 text-slate-700 shadow-sm rounded-none transition-colors"
+                  title="Open Properties Panel"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Observability Board centered vertically next to Canvas */}
+            <GanttMetrics />
+          </div>
+
+          {/* Right Properties Panel Inspector sits under the top nav header */}
+          {isSidebarOpen && <Inspector onClose={() => setIsSidebarOpen(false)} />}
         </div>
+      </div>
 
-        {isSidebarOpen && <Inspector onClose={() => setIsSidebarOpen(false)} />}
-      </main>
+      {/* Draggable Qwen Copilot Floating Chat Assistant */}
+      <CopilotOverlay />
     </div>
   );
 };
