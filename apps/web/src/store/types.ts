@@ -43,6 +43,7 @@ export interface GraphSlice {
   loadTemplate: (templateName: string) => void;
   loadWorkflow: (workflowId: string) => void;
   rearrangeGraph: () => void;
+  importWorkflow: (workflowData: { nodes: Node<any>[]; edges: Edge<any>[] }, merge: boolean) => boolean;
 }
 
 export interface ExecutionSlice {

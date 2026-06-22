@@ -57,6 +57,7 @@ export const EdgePayload = z.object({
   id: z.string(),
   source: z.string(),
   target: z.string(),
+  type: z.string().optional(),
   sourceHandle: z.string().optional(),
   targetHandle: z.string().optional(),
 });

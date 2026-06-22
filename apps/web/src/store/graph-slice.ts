@@ -10,6 +10,7 @@ import {
 import { StoreState, GraphSlice } from './types.js';
 import { toast } from 'sonner';
 import { MOCK_WORKFLOWS } from '../lib/mock-workflows.js';
+import { WorkflowPayload } from '@qwenweaver/types';
 
 // Initial template for the "Research Swarm"
 const RESEARCH_SWARM_TEMPLATE = {
@@ -242,5 +243,90 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
     });
 
     set({ nodes: rearrangedNodes });
+  },
+
+  importWorkflow: (workflowData, merge) => {
+    try {
+      const validatedData = {
+        name: (workflowData as any).name || 'Imported Workflow',
+        nodes: workflowData.nodes || [],
+        edges: workflowData.edges || []
+      };
+
+      const result = WorkflowPayload.safeParse(validatedData);
+      if (!result.success) {
+        const errorMsg = result.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ');
+        toast.error(`Invalid workflow structure: ${errorMsg}`);
+        return false;
+      }
+
+      const importedNodes = result.data.nodes as Node<any>[];
+      const importedEdges = (result.data.edges as Edge<any>[]).map((edge) => ({
+        ...edge,
+        type: edge.type || 'animated'
+      }));
+
+      if (!merge) {
+        set({
+          nodes: importedNodes,
+          edges: importedEdges,
+          selectedNodeId: null,
+          maximizedNodeId: null
+        });
+        toast.success(`Workflow successfully imported!`);
+        return true;
+      } else {
+        // Merge mode: map IDs to prevent collisions
+        const idMap = new Map<string, string>();
+        const timestamp = Date.now().toString().slice(-4);
+        
+        const newNodes = importedNodes.map((node) => {
+          const randomSuffix = Math.random().toString(36).slice(-4);
+          const newId = `node-${node.type}-${timestamp}-${randomSuffix}`;
+          idMap.set(node.id, newId);
+          
+          return {
+            ...node,
+            id: newId,
+            selected: false,
+            dragging: false,
+            // Offset slightly to prevent exact overlay
+            position: {
+              x: node.position.x + 50,
+              y: node.position.y + 50
+            }
+          };
+        });
+
+        const newEdges = importedEdges.map((edge) => {
+          const newSource = idMap.get(edge.source);
+          const newTarget = idMap.get(edge.target);
+          if (newSource && newTarget) {
+            return {
+              ...edge,
+              id: `e-${newSource}-${newTarget}`,
+              source: newSource,
+              target: newTarget,
+              type: edge.type || 'animated'
+            };
+          }
+          return null;
+        }).filter(Boolean) as Edge<any>[];
+
+        const existingNodes = get().nodes;
+        const existingEdges = get().edges;
+
+        set({
+          nodes: [...existingNodes, ...newNodes],
+          edges: [...existingEdges, ...newEdges],
+          selectedNodeId: null
+        });
+        toast.success(`Merged ${newNodes.length} nodes and ${newEdges.length} edges into the canvas.`);
+        return true;
+      }
+    } catch (err: any) {
+      toast.error(`Import failed: ${err.message || err}`);
+      return false;
+    }
   }
 });
