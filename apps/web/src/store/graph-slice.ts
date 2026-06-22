@@ -9,6 +9,7 @@ import {
 } from '@xyflow/react';
 import { StoreState, GraphSlice } from './types.js';
 import { toast } from 'sonner';
+import { MOCK_WORKFLOWS } from '../lib/mock-workflows.js';
 
 // Initial template for the "Research Swarm"
 const RESEARCH_SWARM_TEMPLATE = {
@@ -144,6 +145,21 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
         edges: RESEARCH_SWARM_TEMPLATE.edges,
         selectedNodeId: null
       });
+    }
+  },
+
+  loadWorkflow: (workflowId) => {
+    const wf = MOCK_WORKFLOWS.find((w) => w.id === workflowId);
+    if (wf) {
+      set({ 
+        nodes: wf.nodes as any, 
+        edges: wf.edges as any,
+        selectedNodeId: null
+      });
+      get().rearrangeGraph();
+      toast.success(`Loaded workflow: ${wf.name}`);
+    } else {
+      toast.error(`Workflow "${workflowId}" not found.`);
     }
   },
 

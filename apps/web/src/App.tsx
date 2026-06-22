@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Link, useParams, useNavigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { 
   ReactFlow, 
@@ -21,6 +21,8 @@ import { CopilotOverlay } from './components/CopilotOverlay.js';
 import { nodeTypes } from './components/CustomNodes.js';
 import { edgeTypes } from './components/AnimatedEdge.js';
 import type { NodeType } from '@qwenweaver/types';
+import { WorkflowDashboard } from './components/WorkflowDashboard.js';
+import { MOCK_WORKFLOWS } from './lib/mock-workflows.js';
 
 import { 
   Play, 
@@ -101,6 +103,7 @@ const CanvasWorkspace = () => {
   const addNode = useStore((s) => s.addNode);
   const rearrangeGraph = useStore((s) => s.rearrangeGraph);
   const clearGraph = useStore((s) => s.clearGraph);
+  const loadWorkflow = useStore((s) => s.loadWorkflow);
 
   const status = useStore((s) => s.executionStatus);
   const runWorkflow = useStore((s) => s.runWorkflow);
@@ -111,7 +114,21 @@ const CanvasWorkspace = () => {
   const logout = useStore((s) => s.logout);
 
   const reactFlowInstance = useReactFlow();
-  const [activeTab, setActiveTab] = useState<'workflows' | 'projects' | 'history'>('workflows');
+  const { id } = useParams<{ id: string }>();
+
+  // Load workflow template or clear canvas based on path parameter
+  React.useEffect(() => {
+    if (id) {
+      const isMock = MOCK_WORKFLOWS.some((w) => w.id === id);
+      if (isMock) {
+        loadWorkflow(id);
+      } else {
+        // If it's a new or blank workflow (e.g. starts with workflow-), clear the graph
+        clearGraph();
+      }
+    }
+  }, [id, loadWorkflow, clearGraph]);
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isLocked, setIsLocked] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(() => {
@@ -222,33 +239,15 @@ const CanvasWorkspace = () => {
           
           {/* Left: Tab Selectors */}
           <div className="flex items-center gap-6 h-full">
-            <button
-              onClick={() => setActiveTab('projects')}
-              className={`text-sm font-semibold h-full px-1 border-b-2 flex items-center justify-center transition-all ${
-                activeTab === 'projects' 
-                  ? 'border-[#ea580c] text-slate-900 font-bold' 
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              Projects
-            </button>
-            <button
-              onClick={() => setActiveTab('workflows')}
-              className={`text-sm font-semibold h-full px-1 border-b-2 flex items-center justify-center transition-all ${
-                activeTab === 'workflows' 
-                  ? 'border-[#ea580c] text-slate-900 font-bold' 
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
+            <Link
+              to="/"
+              className="text-sm font-bold h-full px-1 border-b-2 border-[#ea580c] text-slate-900 flex items-center justify-center transition-all"
             >
               Workflows
-            </button>
+            </Link>
             <button
-              onClick={() => setActiveTab('history')}
-              className={`text-sm font-semibold h-full px-1 border-b-2 flex items-center justify-center transition-all ${
-                activeTab === 'history' 
-                  ? 'border-[#ea580c] text-slate-900 font-bold' 
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
+              className="text-sm font-semibold h-full px-1 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center justify-center transition-all cursor-not-allowed"
+              title="History logs coming soon"
             >
               History
             </button>
@@ -481,13 +480,22 @@ function App() {
           <Route path="/login" element={<AuthScreen />} />
           <Route path="/register" element={<AuthScreen />} />
           <Route 
-            path="/*" 
+            path="/" 
+            element={
+              <ProtectedRoute>
+                <WorkflowDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/workflows/:id" 
             element={
               <ProtectedRoute>
                 <CanvasWorkspace />
               </ProtectedRoute>
             } 
           />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </ReactFlowProvider>

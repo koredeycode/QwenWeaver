@@ -39,6 +39,7 @@ export interface GraphSlice {
   selectNode: (id: string | null) => void;
   clearGraph: () => void;
   loadTemplate: (templateName: string) => void;
+  loadWorkflow: (workflowId: string) => void;
   rearrangeGraph: () => void;
 }
 

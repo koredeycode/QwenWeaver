@@ -4,6 +4,7 @@ import {
   Bot,
   Brain, 
   ChevronRight, 
+  ChevronDown,
   Wrench, 
   Plus,
   BookOpen,
@@ -11,22 +12,25 @@ import {
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
 import type { NodeType } from '@qwenweaver/types';
-import { NodeTypeDialog } from './NodeTypeDialog.js';
 
 export const Sidebar = () => {
   const addNode = useStore((s) => s.addNode);
   const loadTemplate = useStore((s) => s.loadTemplate);
 
   const [activeCategory, setActiveCategory] = useState<string | null>('agents');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const handleDragStart = (event: React.DragEvent, nodeType: NodeType) => {
-    event.dataTransfer.setData('application/reactflow', nodeType);
-    event.dataTransfer.effectAllowed = 'move';
+  const handleCreateNewWorkflow = () => {
+    const newId = `workflow-${Date.now().toString().slice(-4)}`;
+    window.open(`/workflows/${newId}`, '_blank');
   };
 
   const handleCategoryClick = (cat: string) => {
     setActiveCategory(activeCategory === cat ? null : cat);
+  };
+
+  const handleDragStart = (event: React.DragEvent, nodeType: NodeType) => {
+    event.dataTransfer.setData('application/reactflow', nodeType);
+    event.dataTransfer.effectAllowed = 'move';
   };
 
   const paletteItems = {
@@ -62,14 +66,14 @@ export const Sidebar = () => {
           </div>
         </div>
 
-        {/* CTA: + New Node Button */}
+        {/* CTA: + New Workflow Button */}
         <div className="px-4 py-2">
           <button 
-            onClick={() => setIsDialogOpen(true)}
-            className="w-full py-2 bg-[#9a3412] hover:bg-[#a73a00] text-white font-bold text-xs flex items-center justify-center gap-1.5 rounded-none transition-colors shadow-sm"
+            onClick={handleCreateNewWorkflow}
+            className="w-full py-2 bg-[#9a3412] hover:bg-[#a73a00] text-white font-bold text-xs flex items-center justify-center gap-1.5 rounded-none transition-colors shadow-sm cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            New Node
+            New Workflow
           </button>
         </div>
 
@@ -78,14 +82,21 @@ export const Sidebar = () => {
           {/* Triggers */}
           <button
             onClick={() => handleCategoryClick('triggers')}
-            className={`w-full flex items-center gap-3 px-3 py-2 text-xs font-mono font-bold transition-all rounded-none ${
+            className={`w-full flex items-center justify-between px-3 py-2 text-xs font-mono font-bold transition-all rounded-none ${
               activeCategory === 'triggers'
                 ? 'bg-[#ea580c] text-white'
                 : 'text-slate-600 hover:bg-slate-200'
             }`}
           >
-            <Play className={`w-4 h-4 ${activeCategory === 'triggers' ? 'text-white' : 'text-slate-500'}`} />
-            <span>Triggers</span>
+            <div className="flex items-center gap-3">
+              <Play className={`w-4 h-4 ${activeCategory === 'triggers' ? 'text-white' : 'text-slate-500'}`} />
+              <span>Triggers</span>
+            </div>
+            {activeCategory === 'triggers' ? (
+              <ChevronDown className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronRight className="w-3.5 h-3.5" />
+            )}
           </button>
           
           {activeCategory === 'triggers' && (
@@ -108,14 +119,21 @@ export const Sidebar = () => {
           {/* Agents */}
           <button
             onClick={() => handleCategoryClick('agents')}
-            className={`w-full flex items-center gap-3 px-3 py-2 text-xs font-mono font-bold transition-all rounded-none ${
+            className={`w-full flex items-center justify-between px-3 py-2 text-xs font-mono font-bold transition-all rounded-none ${
               activeCategory === 'agents'
                 ? 'bg-[#ea580c] text-white'
                 : 'text-slate-600 hover:bg-slate-200'
             }`}
           >
-            <Bot className={`w-4 h-4 ${activeCategory === 'agents' ? 'text-white' : 'text-slate-500'}`} />
-            <span>Agents</span>
+            <div className="flex items-center gap-3">
+              <Bot className={`w-4 h-4 ${activeCategory === 'agents' ? 'text-white' : 'text-slate-500'}`} />
+              <span>Agents</span>
+            </div>
+            {activeCategory === 'agents' ? (
+              <ChevronDown className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronRight className="w-3.5 h-3.5" />
+            )}
           </button>
 
           {activeCategory === 'agents' && (
@@ -140,14 +158,21 @@ export const Sidebar = () => {
           {/* MCP Tools */}
           <button
             onClick={() => handleCategoryClick('mcp')}
-            className={`w-full flex items-center gap-3 px-3 py-2 text-xs font-mono font-bold transition-all rounded-none ${
+            className={`w-full flex items-center justify-between px-3 py-2 text-xs font-mono font-bold transition-all rounded-none ${
               activeCategory === 'mcp'
                 ? 'bg-[#ea580c] text-white'
                 : 'text-slate-600 hover:bg-slate-200'
             }`}
           >
-            <Wrench className={`w-4 h-4 ${activeCategory === 'mcp' ? 'text-white' : 'text-slate-500'}`} />
-            <span>MCP Tools</span>
+            <div className="flex items-center gap-3">
+              <Wrench className={`w-4 h-4 ${activeCategory === 'mcp' ? 'text-white' : 'text-slate-500'}`} />
+              <span>MCP Tools</span>
+            </div>
+            {activeCategory === 'mcp' ? (
+              <ChevronDown className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronRight className="w-3.5 h-3.5" />
+            )}
           </button>
 
           {activeCategory === 'mcp' && (
@@ -193,11 +218,6 @@ export const Sidebar = () => {
         </div>
       </div>
       
-      <NodeTypeDialog 
-        isOpen={isDialogOpen} 
-        onClose={() => setIsDialogOpen(false)} 
-        onSelect={(type) => addNode(type)} 
-      />
     </div>
   );
 };
