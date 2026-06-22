@@ -31,7 +31,8 @@ export const Sidebar = () => {
 
   const paletteItems = {
     triggers: [
-      { type: 'trigger', label: 'Schedule', icon: Play, detail: 'Trigger workflow periodically on a cron schedule.' }
+      { type: 'trigger', label: 'Manual Trigger', icon: Play, detail: 'Trigger workflow manually or on a schedule.' },
+      { type: 'input_trigger', label: 'Input Trigger', icon: Play, detail: 'Enter initial instruction text to feed to the workflow.' }
     ],
     agents: [
       { type: 'agent', label: 'Normal Agent', icon: Bot, detail: 'General worker for parsing subtasks.' },

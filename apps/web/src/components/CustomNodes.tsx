@@ -7,7 +7,8 @@ import {
   ShieldAlert, 
   CheckCircle2, 
   Loader2, 
-  Wrench
+  Wrench,
+  Square
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
 
@@ -56,10 +57,26 @@ const getStatusBadge = (status: string) => {
   }
 };
 
+const getCompactStatusIndicator = (status: string) => {
+  switch (status) {
+    case 'running':
+      return <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse border border-slate-700" title="RUNNING" />;
+    case 'completed':
+      return <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981] border border-slate-700" title="COMPLETED" />;
+    case 'failed':
+      return <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e] border border-slate-700" title="FAILED" />;
+    default:
+      return <span className="w-2.5 h-2.5 rounded-full bg-slate-400 border border-slate-700" title="PENDING" />;
+  }
+};
+
 // --- 1. Trigger Node Component ---
 export const TriggerNode = memo(({ id, data }: NodeProps<any>) => {
   const status = useStore((s) => s.nodeStatuses[id] || 'pending');
   const isSelected = useStore((s) => s.selectedNodeId === id);
+  const runWorkflow = useStore((s) => s.runWorkflow);
+  const stopWorkflow = useStore((s) => s.stopWorkflow);
+  const executionStatus = useStore((s) => s.executionStatus);
 
   return (
     <div className={`w-64 bg-white border-2 ${isSelected ? 'border-primary shadow-[0_2px_12px_rgba(234,88,12,0.15)]' : getStatusStyles(status)} text-slate-800 p-3 relative font-sans shadow-sm`}>
@@ -73,6 +90,37 @@ export const TriggerNode = memo(({ id, data }: NodeProps<any>) => {
 
       <div className="text-sm font-bold tracking-tight text-slate-900">{data.label || 'Web Trigger'}</div>
       <div className="text-[10px] text-slate-500 mt-1 font-mono">{data.outputFormat?.toUpperCase() || 'TEXT'} output</div>
+
+      <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (executionStatus === 'running') {
+              stopWorkflow();
+            } else {
+              runWorkflow();
+            }
+          }}
+          className={`flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-mono font-bold border transition-colors rounded-none cursor-pointer nodrag ${
+            executionStatus === 'running'
+              ? 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'
+              : 'bg-emerald-50 border-emerald-250 text-emerald-700 hover:bg-emerald-100'
+          }`}
+        >
+          {executionStatus === 'running' ? (
+            <>
+              <Square className="w-2.5 h-2.5 fill-rose-700 text-rose-700" />
+              STOP
+            </>
+          ) : (
+            <>
+              <Play className="w-2.5 h-2.5 fill-emerald-700 text-emerald-700" />
+              RUN
+            </>
+          )}
+        </button>
+        <span className="text-[9px] text-slate-400 font-mono">Click to execute</span>
+      </div>
 
       <Handle
         type="source"
@@ -193,45 +241,118 @@ export const MCPToolNode = memo(({ id, data }: NodeProps<any>) => {
   const isSelected = useStore((s) => s.selectedNodeId === id);
 
   return (
-    <div className={`w-64 bg-white border-2 ${isSelected ? 'border-primary shadow-[0_2px_12px_rgba(234,88,12,0.15)]' : getStatusStyles(status)} text-slate-800 p-3 relative font-sans shadow-sm`}>
+    <div className={`w-52 bg-slate-900 border border-purple-550 ${isSelected ? 'shadow-[0_0_12px_rgba(168,85,247,0.4)] border-purple-400 ring-2 ring-purple-500/20' : 'border-slate-750'} text-slate-100 p-2.5 relative font-sans shadow-md rounded-none`}>
       <Handle
         type="target"
         position={Position.Left}
-        className="w-4 h-4 !bg-amber-500 !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
+        className="w-3.5 h-3.5 !bg-purple-500 !border-2 !border-slate-800 hover:scale-125 transition-all shadow-sm"
       />
 
-      <div className="flex items-center justify-between border-b border-outline-variant pb-2 mb-2">
-        <div className="flex items-center gap-2">
-          <Wrench className="w-4 h-4 text-amber-500" />
-          <span className="text-[10px] font-mono font-bold tracking-wider text-amber-500">MCP TOOL</span>
+      <div className="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-1.5">
+        <div className="flex items-center gap-1.5">
+          <Wrench className="w-3.5 h-3.5 text-purple-400" />
+          <span className="text-[9px] font-mono font-bold tracking-wider text-purple-400">MCP TOOL</span>
         </div>
-        {getStatusBadge(status)}
+        <div className="flex items-center">
+          {getCompactStatusIndicator(status)}
+        </div>
       </div>
 
-      <div className="text-sm font-bold tracking-tight text-slate-900">{data.label || 'MCP Server'}</div>
-      <div className="text-[10px] text-amber-600 mt-1 font-mono select-all bg-slate-50 p-1 px-2 border border-outline-variant overflow-x-auto truncate">
+      <div className="text-xs font-bold tracking-tight text-white truncate" title={data.label}>{data.label || 'MCP Server'}</div>
+      <div className="text-[8px] text-slate-400 mt-1 font-mono select-all bg-slate-950 p-1 border border-slate-800 overflow-x-auto truncate">
         {data.mcpServerUrl || 'http://localhost:8080'}
       </div>
 
       {output && (
-        <div className="mt-2.5 bg-slate-950 border border-slate-800 p-2 font-mono text-[11px] h-20 overflow-y-auto leading-relaxed scrollbar">
-          <span className="text-emerald-400 font-bold">{output}</span>
+        <div className="mt-1.5 bg-slate-950 border border-slate-800 p-1 font-mono text-[9px] max-h-16 overflow-y-auto leading-relaxed scrollbar">
+          <span className="text-emerald-400">{output}</span>
         </div>
       )}
 
       <Handle
         type="source"
         position={Position.Right}
-        className="w-4 h-4 !bg-amber-500 !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
+        className="w-3.5 h-3.5 !bg-purple-500 !border-2 !border-slate-800 hover:scale-125 transition-all shadow-sm"
       />
     </div>
   );
 });
 MCPToolNode.displayName = 'MCPToolNode';
 
+// --- 5. Input Trigger Node Component ---
+export const InputTriggerNode = memo(({ id, data }: NodeProps<any>) => {
+  const status = useStore((s) => s.nodeStatuses[id] || 'pending');
+  const isSelected = useStore((s) => s.selectedNodeId === id);
+  const updateNodeData = useStore((s) => s.updateNodeData);
+  const runWorkflow = useStore((s) => s.runWorkflow);
+  const stopWorkflow = useStore((s) => s.stopWorkflow);
+  const executionStatus = useStore((s) => s.executionStatus);
+
+  return (
+    <div className={`w-72 bg-white border-2 ${isSelected ? 'border-primary shadow-[0_2px_12px_rgba(234,88,12,0.15)]' : getStatusStyles(status)} text-slate-800 p-3 relative font-sans shadow-sm`}>
+      <div className="flex items-center justify-between border-b border-outline-variant pb-2 mb-2">
+        <div className="flex items-center gap-2">
+          <Play className="w-4 h-4 text-emerald-600 fill-emerald-600/10" />
+          <span className="text-[10px] font-mono font-bold tracking-wider text-emerald-600">INPUT TRIGGER</span>
+        </div>
+        {getStatusBadge(status)}
+      </div>
+
+      <div className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-1">Instruction Text:</div>
+      
+      <textarea
+        className="w-full text-xs font-mono p-1.5 border border-slate-200 focus:border-emerald-500 outline-none resize-none nodrag bg-slate-50 text-slate-800"
+        rows={3}
+        value={data.label || ''}
+        onChange={(e) => updateNodeData(id, { label: e.target.value })}
+        placeholder="Enter initial instruction text..."
+      />
+
+      <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (executionStatus === 'running') {
+              stopWorkflow();
+            } else {
+              runWorkflow();
+            }
+          }}
+          className={`flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-mono font-bold border transition-colors rounded-none cursor-pointer nodrag ${
+            executionStatus === 'running'
+              ? 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'
+              : 'bg-emerald-50 border-emerald-250 text-emerald-700 hover:bg-emerald-100'
+          }`}
+        >
+          {executionStatus === 'running' ? (
+            <>
+              <Square className="w-2.5 h-2.5 fill-rose-700 text-rose-700" />
+              STOP
+            </>
+          ) : (
+            <>
+              <Play className="w-2.5 h-2.5 fill-emerald-700 text-emerald-700" />
+              RUN
+            </>
+          )}
+        </button>
+        <span className="text-[9px] text-slate-400 font-mono">Click to execute</span>
+      </div>
+
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="w-4 h-4 !bg-emerald-500 !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
+      />
+    </div>
+  );
+});
+InputTriggerNode.displayName = 'InputTriggerNode';
+
 // Node Types registry for React Flow
 export const nodeTypes = {
   trigger: TriggerNode,
+  input_trigger: InputTriggerNode,
   agent: AgentNode,
   supervisor: SupervisorNode,
   mcp_tool: MCPToolNode,

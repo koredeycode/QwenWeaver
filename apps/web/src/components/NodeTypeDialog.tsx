@@ -34,9 +34,20 @@ export const NodeTypeDialog: React.FC<NodeTypeDialogProps> = ({ isOpen, onClose,
   const nodeOptions = [
     {
       type: 'trigger' as NodeType,
-      title: 'Trigger Node',
+      title: 'Manual Trigger Node',
       subtitle: 'Schedule / Webhook',
-      description: 'Initiate workflow execution periodically using a cron schedule.',
+      description: 'Initiate workflow execution manually or periodically using a cron schedule.',
+      icon: Play,
+      iconColor: 'text-emerald-600',
+      iconBg: 'bg-emerald-50',
+      hoverBorder: 'hover:border-emerald-500',
+      hoverBg: 'hover:bg-emerald-50/20'
+    },
+    {
+      type: 'input_trigger' as NodeType,
+      title: 'Input Trigger Node',
+      subtitle: 'Instruction Context',
+      description: 'Initiate workflow execution with a custom instruction text to feed downstream agents.',
       icon: Play,
       iconColor: 'text-emerald-600',
       iconBg: 'bg-emerald-50',

@@ -7,8 +7,8 @@ import {
   applyEdgeChanges,
   addEdge
 } from '@xyflow/react';
-import type { NodeType } from '@qwenweaver/types';
 import { StoreState, GraphSlice } from './types.js';
+import { toast } from 'sonner';
 
 // Initial template for the "Research Swarm"
 const RESEARCH_SWARM_TEMPLATE = {
@@ -84,18 +84,29 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
   onNodesChange: (changes) => set((state) => ({ nodes: applyNodeChanges(changes, state.nodes) })),
   onEdgesChange: (changes) => set((state) => ({ edges: applyEdgeChanges(changes, state.edges) })),
   
-  onConnect: (connection: Connection) => set((state) => ({ 
-    edges: addEdge({ ...connection, id: `e-${connection.source}-${connection.target}`, type: 'animated' }, state.edges) 
-  })),
+  onConnect: (connection: Connection) => set((state) => {
+    const sourceNode = state.nodes.find((n) => n.id === connection.source);
+    const targetNode = state.nodes.find((n) => n.id === connection.target);
+    if (sourceNode?.type === 'mcp_tool' && targetNode?.type === 'mcp_tool') {
+      toast.error("Error: MCP Tools cannot be directly connected to each other.");
+      return {};
+    }
+    return { 
+      edges: addEdge({ ...connection, id: `e-${connection.source}-${connection.target}`, type: 'animated' }, state.edges) 
+    };
+  }),
 
   addNode: (type, position) => {
     const id = `node-${type}-${Date.now().toString().slice(-4)}`;
+    const label = type === 'input_trigger' 
+      ? 'Initial workflow instruction' 
+      : `${type.toUpperCase()} Node`;
     const newNode: Node<any> = {
       id,
       type,
       position: position || { x: 100 + Math.random() * 200, y: 100 + Math.random() * 200 },
       data: {
-        label: `${type.toUpperCase()} Node`,
+        label,
         model: type === 'supervisor' ? 'qwen3-max' : type === 'agent' ? 'qwen-plus' : undefined,
         systemPrompt: type === 'agent' || type === 'supervisor' ? 'You are a helpful assistant.' : undefined,
         outputFormat: 'text'

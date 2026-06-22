@@ -61,8 +61,7 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
     }
   };
 
-  // Node update handlers
-  const handleLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLabelChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (selectedNodeId) updateNodeData(selectedNodeId, { label: e.target.value });
   };
 
@@ -96,10 +95,29 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
 
   const getNodeIcon = (type: string | undefined) => {
     switch (type) {
-      case 'trigger': return <Play className="w-5 h-5 text-[#ea580c] fill-[#ea580c]/10" />;
-      case 'agent': return <Bot className="w-5 h-5 text-white" />;
-      case 'supervisor': return <Brain className="w-5 h-5 text-white" />;
-      default: return <Wrench className="w-5 h-5 text-white" />;
+      case 'trigger':
+      case 'input_trigger':
+        return <Play className="w-4 h-4 text-white fill-white/10" />;
+      case 'agent':
+        return <Bot className="w-4 h-4 text-white" />;
+      case 'supervisor':
+        return <Brain className="w-4 h-4 text-white" />;
+      default:
+        return <Wrench className="w-4 h-4 text-white" />;
+    }
+  };
+
+  const getNodeIconColor = (type: string | undefined) => {
+    switch (type) {
+      case 'trigger':
+      case 'input_trigger':
+        return 'bg-emerald-600';
+      case 'agent':
+        return 'bg-[#ea580c]';
+      case 'supervisor':
+        return 'bg-[#2563eb]';
+      default:
+        return 'bg-purple-600';
     }
   };
 
@@ -127,7 +145,7 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
             {/* Header Info */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-2">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 bg-[#ea580c] flex items-center justify-center rounded-lg shadow-sm">
+                <div className={`w-8 h-8 ${getNodeIconColor(selectedNode.type)} flex items-center justify-center rounded-lg shadow-sm`}>
                   {getNodeIcon(selectedNode.type)}
                 </div>
                 <div>
@@ -147,15 +165,25 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
             <div className="space-y-3">
               <div>
                 <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-1">
-                  Node Title / Name
+                  {selectedNode.type === 'input_trigger' ? 'Instruction Text' : 'Node Title / Name'}
                 </label>
-                <input
-                  type="text"
-                  value={selectedNode.data.label || ''}
-                  onChange={handleLabelChange}
-                  className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
-                  placeholder="Enter custom node title..."
-                />
+                {selectedNode.type === 'input_trigger' ? (
+                  <textarea
+                    rows={4}
+                    value={selectedNode.data.label || ''}
+                    onChange={handleLabelChange}
+                    className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none resize-y"
+                    placeholder="Enter initial instruction text..."
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    value={selectedNode.data.label || ''}
+                    onChange={handleLabelChange}
+                    className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
+                    placeholder="Enter custom node title..."
+                  />
+                )}
               </div>
             </div>
 

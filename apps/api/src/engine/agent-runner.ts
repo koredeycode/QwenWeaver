@@ -19,7 +19,7 @@ export async function runAgent(
 ): Promise<AgentResult> {
   const startTime = performance.now();
 
-  if (node.type === 'trigger' || node.type === 'logic') {
+  if (node.type === 'trigger' || node.type === 'input_trigger' || node.type === 'logic') {
     return createPassthroughResult(node, startTime);
   }
 

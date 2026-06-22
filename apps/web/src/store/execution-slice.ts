@@ -6,6 +6,7 @@ import type {
   NodeTiming
 } from '@qwenweaver/types';
 import { StoreState, ExecutionSlice } from './types.js';
+import { toast } from 'sonner';
 
 let sseAbortController: AbortController | null = null;
 
@@ -110,8 +111,10 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
               });
             }
 
-            // Stream output character-by-character
-            const targetText = mockParagraphs[nodeId] || `Execution successfully completed for node ${nodeId}. All tasks completed.`;
+            const isInputTrigger = nodes.find((n) => n.id === nodeId)?.type === 'input_trigger';
+            const targetText = isInputTrigger
+              ? (nodes.find((n) => n.id === nodeId)?.data.label || 'No instruction text provided.')
+              : (mockParagraphs[nodeId] || `Execution successfully completed for node ${nodeId}. All tasks completed.`);
             let currentText = isSupervisor ? get().nodeOutputs[nodeId] || '' : '';
             const chunkSize = 8;
             
@@ -239,7 +242,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
       // ──────────────── REAL ENDPOINT EXECUTION ────────────────
       if (!token) {
         set({ executionStatus: 'failed' });
-        alert('Please authenticate to execute real API workflows.');
+        toast.error('Please authenticate to execute real API workflows.');
         return;
       }
 
@@ -274,7 +277,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
         if (!res.ok) {
           const err = await res.json();
           set({ executionStatus: 'failed' });
-          alert(`Workflow failed: ${err.error || 'Server error'}`);
+          toast.error(`Workflow failed: ${err.error || 'Server error'}`);
           return;
         }
 
@@ -352,7 +355,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
                   });
                 } else if (currentEvent === 'error') {
                   set({ executionStatus: 'failed' });
-                  alert(`Execution error: ${data.message || 'Unknown error'}`);
+                  toast.error(`Execution error: ${data.message || 'Unknown error'}`);
                 }
               } catch (err) {
                 console.error('Failed to parse SSE payload', err);

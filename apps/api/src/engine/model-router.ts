@@ -14,6 +14,7 @@ const MODEL_DEFAULTS: Record<string, string> = {
   agent: 'qwen-plus',
   mcp_tool: 'qwen-plus',
   trigger: 'qwen-turbo',
+  input_trigger: 'qwen-turbo',
   logic: 'qwen-turbo',
 };
 

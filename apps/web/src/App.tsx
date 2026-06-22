@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import { 
   ReactFlow, 
   ReactFlowProvider, 
@@ -87,6 +88,8 @@ const CustomZoomControls = ({
     </Panel>
   );
 };
+
+
 
 const CanvasWorkspace = () => {
   const nodes = useStore((s) => s.nodes);
@@ -202,6 +205,8 @@ const CanvasWorkspace = () => {
   const handlePaneClick = useCallback(() => {
     selectNode(null);
   }, [selectNode]);
+
+
 
   return (
     <div className="h-screen w-screen flex flex-row bg-[#f8fafc] text-slate-800 select-none overflow-hidden">
@@ -447,6 +452,12 @@ const CanvasWorkspace = () => {
 
       {/* Draggable Qwen Copilot Floating Chat Assistant */}
       <CopilotOverlay />
+      <Toaster 
+        position="bottom-right"
+        toastOptions={{
+          className: "!font-mono !text-[11px] !rounded-none !border !border-[#cbd5e1] !bg-white !text-slate-800 !shadow-sm",
+        }}
+      />
     </div>
   );
 };

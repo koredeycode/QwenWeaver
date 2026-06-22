@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const NodeType = z.enum(['trigger', 'agent', 'supervisor', 'mcp_tool', 'logic']);
+export const NodeType = z.enum(['trigger', 'agent', 'supervisor', 'mcp_tool', 'logic', 'input_trigger']);
 export type NodeType = z.infer<typeof NodeType>;
 
 export const OutputFormat = z.enum([
@@ -68,6 +68,19 @@ export const WorkflowPayload = z.object({
   description: z.string().optional(),
   nodes: z.array(NodePayload),
   edges: z.array(EdgePayload),
+}).refine((data) => {
+  const nodeMap = new Map(data.nodes.map((n) => [n.id, n]));
+  for (const edge of data.edges) {
+    const sourceNode = nodeMap.get(edge.source);
+    const targetNode = nodeMap.get(edge.target);
+    if (sourceNode?.type === 'mcp_tool' && targetNode?.type === 'mcp_tool') {
+      return false;
+    }
+  }
+  return true;
+}, {
+  message: "MCP tools cannot be connected directly to each other",
+  path: ["edges"]
 });
 export type WorkflowPayload = z.infer<typeof WorkflowPayload>;
 

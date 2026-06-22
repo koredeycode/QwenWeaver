@@ -55,7 +55,25 @@ describe('graph schemas', () => {
   it('validates node type enum', () => {
     expect(NodeType.safeParse('supervisor').success).toBe(true);
     expect(NodeType.safeParse('mcp_tool').success).toBe(true);
+    expect(NodeType.safeParse('input_trigger').success).toBe(true);
     expect(NodeType.safeParse('start').success).toBe(false);
+  });
+
+  it('rejects workflow if an edge connects two mcp_tool nodes', () => {
+    const result = WorkflowPayload.safeParse({
+      name: 'Invalid MCP Connection Workflow',
+      nodes: [
+        { id: 'mcp-1', type: 'mcp_tool', position: { x: 0, y: 0 }, data: {} },
+        { id: 'mcp-2', type: 'mcp_tool', position: { x: 100, y: 0 }, data: {} },
+      ],
+      edges: [
+        { id: 'e1', source: 'mcp-1', target: 'mcp-2' },
+      ],
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.errors[0].message).toContain('MCP tools cannot be connected directly to each other');
+    }
   });
 });
 
