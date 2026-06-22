@@ -37,6 +37,8 @@ export interface GraphSlice {
   deleteNode: (id: string) => void;
   updateNodeData: (id: string, data: Partial<NodeData>) => void;
   selectNode: (id: string | null) => void;
+  maximizedNodeId: string | null;
+  setMaximizedNodeId: (id: string | null) => void;
   clearGraph: () => void;
   loadTemplate: (templateName: string) => void;
   loadWorkflow: (workflowId: string) => void;

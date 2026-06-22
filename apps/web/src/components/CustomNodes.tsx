@@ -8,7 +8,8 @@ import {
   CheckCircle2, 
   Loader2, 
   Wrench,
-  Square
+  Square,
+  Maximize2
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
 
@@ -77,6 +78,7 @@ export const TriggerNode = memo(({ id, data }: NodeProps<any>) => {
   const runWorkflow = useStore((s) => s.runWorkflow);
   const stopWorkflow = useStore((s) => s.stopWorkflow);
   const executionStatus = useStore((s) => s.executionStatus);
+  const setMaximizedNodeId = useStore((s) => s.setMaximizedNodeId);
 
   return (
     <div className={`w-64 bg-white border-2 ${isSelected ? 'border-primary shadow-[0_2px_12px_rgba(234,88,12,0.15)]' : getStatusStyles(status)} text-slate-800 p-3 relative font-sans shadow-sm`}>
@@ -85,7 +87,19 @@ export const TriggerNode = memo(({ id, data }: NodeProps<any>) => {
           <Play className="w-4 h-4 text-emerald-600 fill-emerald-600/10" />
           <span className="text-[10px] font-mono font-bold tracking-wider text-emerald-600">TRIGGER</span>
         </div>
-        {getStatusBadge(status)}
+        <div className="flex items-center gap-1.5">
+          {getStatusBadge(status)}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setMaximizedNodeId(id);
+            }}
+            className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors nodrag cursor-pointer"
+            title="Maximize Output Terminal"
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       <div className="text-sm font-bold tracking-tight text-slate-900">{data.label || 'Web Trigger'}</div>
@@ -137,6 +151,7 @@ export const AgentNode = memo(({ id, data }: NodeProps<any>) => {
   const status = useStore((s) => s.nodeStatuses[id] || 'pending');
   const output = useStore((s) => s.nodeOutputs[id] || '');
   const isSelected = useStore((s) => s.selectedNodeId === id);
+  const setMaximizedNodeId = useStore((s) => s.setMaximizedNodeId);
 
   return (
     <div className={`w-72 bg-white border-2 ${isSelected ? 'border-primary shadow-[0_2px_12px_rgba(234,88,12,0.15)]' : getStatusStyles(status)} text-slate-800 p-3 relative font-sans shadow-sm`}>
@@ -151,7 +166,19 @@ export const AgentNode = memo(({ id, data }: NodeProps<any>) => {
           <Bot className="w-4 h-4 text-[#ea580c]" />
           <span className="text-[10px] font-mono font-bold tracking-wider text-primary">AGENT ({data.model || 'qwen-plus'})</span>
         </div>
-        {getStatusBadge(status)}
+        <div className="flex items-center gap-1.5">
+          {getStatusBadge(status)}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setMaximizedNodeId(id);
+            }}
+            className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors nodrag cursor-pointer"
+            title="Maximize Output Terminal"
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       <div className="text-sm font-bold tracking-tight text-slate-900">{data.label || 'Qwen Worker'}</div>
@@ -188,6 +215,7 @@ export const SupervisorNode = memo(({ id, data }: NodeProps<any>) => {
   const status = useStore((s) => s.nodeStatuses[id] || 'pending');
   const output = useStore((s) => s.nodeOutputs[id] || '');
   const isSelected = useStore((s) => s.selectedNodeId === id);
+  const setMaximizedNodeId = useStore((s) => s.setMaximizedNodeId);
 
   return (
     <div className={`w-80 bg-white border-2 ${isSelected ? 'border-secondary shadow-[0_2px_12px_rgba(37,99,235,0.15)]' : getStatusStyles(status, true)} text-slate-800 p-3.5 relative font-sans shadow-md`}>
@@ -202,7 +230,19 @@ export const SupervisorNode = memo(({ id, data }: NodeProps<any>) => {
           <Brain className="w-4 h-4 text-[#2563eb]" />
           <span className="text-[10px] font-mono font-bold tracking-wider text-secondary">SUPERVISOR ({data.model || 'qwen3-max'})</span>
         </div>
-        {getStatusBadge(status)}
+        <div className="flex items-center gap-1.5">
+          {getStatusBadge(status)}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setMaximizedNodeId(id);
+            }}
+            className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors nodrag cursor-pointer"
+            title="Maximize Output Terminal"
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       <div className="text-sm font-bold tracking-tight text-secondary-container">{data.label || 'Swarm Supervisor'}</div>
@@ -239,6 +279,7 @@ export const MCPToolNode = memo(({ id, data }: NodeProps<any>) => {
   const status = useStore((s) => s.nodeStatuses[id] || 'pending');
   const output = useStore((s) => s.nodeOutputs[id] || '');
   const isSelected = useStore((s) => s.selectedNodeId === id);
+  const setMaximizedNodeId = useStore((s) => s.setMaximizedNodeId);
 
   return (
     <div className={`w-52 bg-slate-900 border border-purple-550 ${isSelected ? 'shadow-[0_0_12px_rgba(168,85,247,0.4)] border-purple-400 ring-2 ring-purple-500/20' : 'border-slate-750'} text-slate-100 p-2.5 relative font-sans shadow-md rounded-none`}>
@@ -253,8 +294,18 @@ export const MCPToolNode = memo(({ id, data }: NodeProps<any>) => {
           <Wrench className="w-3.5 h-3.5 text-purple-400" />
           <span className="text-[9px] font-mono font-bold tracking-wider text-purple-400">MCP TOOL</span>
         </div>
-        <div className="flex items-center">
+        <div className="flex items-center gap-1.5">
           {getCompactStatusIndicator(status)}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setMaximizedNodeId(id);
+            }}
+            className="p-0.5 hover:bg-slate-800 text-slate-500 hover:text-slate-350 transition-colors nodrag cursor-pointer"
+            title="Maximize Output Terminal"
+          >
+            <Maximize2 className="w-3 h-3" />
+          </button>
         </div>
       </div>
 
@@ -287,6 +338,7 @@ export const InputTriggerNode = memo(({ id, data }: NodeProps<any>) => {
   const runWorkflow = useStore((s) => s.runWorkflow);
   const stopWorkflow = useStore((s) => s.stopWorkflow);
   const executionStatus = useStore((s) => s.executionStatus);
+  const setMaximizedNodeId = useStore((s) => s.setMaximizedNodeId);
 
   return (
     <div className={`w-72 bg-white border-2 ${isSelected ? 'border-primary shadow-[0_2px_12px_rgba(234,88,12,0.15)]' : getStatusStyles(status)} text-slate-800 p-3 relative font-sans shadow-sm`}>
@@ -295,7 +347,19 @@ export const InputTriggerNode = memo(({ id, data }: NodeProps<any>) => {
           <Play className="w-4 h-4 text-emerald-600 fill-emerald-600/10" />
           <span className="text-[10px] font-mono font-bold tracking-wider text-emerald-600">INPUT TRIGGER</span>
         </div>
-        {getStatusBadge(status)}
+        <div className="flex items-center gap-1.5">
+          {getStatusBadge(status)}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setMaximizedNodeId(id);
+            }}
+            className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors nodrag cursor-pointer"
+            title="Maximize Output Terminal"
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       <div className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-1">Instruction Text:</div>

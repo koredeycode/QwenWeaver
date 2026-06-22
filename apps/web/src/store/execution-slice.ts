@@ -107,7 +107,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
                     clearInterval(interval);
                     res();
                   }
-                }, 500);
+                }, 1200);
               });
             }
 
@@ -116,7 +116,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
               ? (nodes.find((n) => n.id === nodeId)?.data.label || 'No instruction text provided.')
               : (mockParagraphs[nodeId] || `Execution successfully completed for node ${nodeId}. All tasks completed.`);
             let currentText = isSupervisor ? get().nodeOutputs[nodeId] || '' : '';
-            const chunkSize = 8;
+            const chunkSize = 4;
             
             await new Promise<void>((res) => {
               let idx = 0;
@@ -131,7 +131,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
                   clearInterval(interval);
                   res();
                 }
-              }, 50);
+              }, 100);
             });
 
             // Supervisor backtracking logic trigger
@@ -149,7 +149,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
                 nodeOutputs: { ...state.nodeOutputs, 'node-agent-1': '' }
               }));
 
-              await new Promise((r) => setTimeout(r, 1000));
+              await new Promise((r) => setTimeout(r, 2500));
 
               set((state) => ({
                 nodeStatuses: { ...state.nodeStatuses, 'node-agent-1': 'running' }
@@ -170,7 +170,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
                     clearInterval(interval);
                     res();
                   }
-                }, 50);
+                }, 100);
               });
 
               set((state) => ({
@@ -180,7 +180,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
               set((state) => ({
                 nodeStatuses: { ...state.nodeStatuses, [nodeId]: 'running' }
               }));
-              await new Promise((r) => setTimeout(r, 500));
+              await new Promise((r) => setTimeout(r, 1200));
             }
 
             // Node complete

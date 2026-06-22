@@ -81,6 +81,8 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
   nodes: RESEARCH_SWARM_TEMPLATE.nodes,
   edges: RESEARCH_SWARM_TEMPLATE.edges,
   selectedNodeId: null,
+  maximizedNodeId: null,
+  setMaximizedNodeId: (id) => set({ maximizedNodeId: id }),
 
   onNodesChange: (changes) => set((state) => ({ nodes: applyNodeChanges(changes, state.nodes) })),
   onEdgesChange: (changes) => set((state) => ({ edges: applyEdgeChanges(changes, state.edges) })),
