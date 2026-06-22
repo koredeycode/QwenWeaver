@@ -10,7 +10,7 @@ import {
 import { StoreState, GraphSlice } from './types.js';
 import { toast } from 'sonner';
 import { MOCK_WORKFLOWS } from '../lib/mock-workflows.js';
-import { WorkflowPayload } from '@qwenweaver/types';
+import { WorkflowPayload, NodeData } from '@qwenweaver/types';
 
 // Initial template for the "Research Swarm"
 const RESEARCH_SWARM_TEMPLATE = {
@@ -68,14 +68,14 @@ const RESEARCH_SWARM_TEMPLATE = {
         outputFormat: 'text'
       }
     }
-  ] as Node<any>[],
+  ] as Node<NodeData>[],
   edges: [
     { id: 'e-t-a1', source: 'node-trigger', target: 'node-agent-1', type: 'animated' },
     { id: 'e-t-a2', source: 'node-trigger', target: 'node-agent-2', type: 'animated' },
     { id: 'e-a1-s', source: 'node-agent-1', target: 'node-supervisor', type: 'animated' },
     { id: 'e-a2-s', source: 'node-agent-2', target: 'node-supervisor', type: 'animated' },
     { id: 'e-s-m', source: 'node-supervisor', target: 'node-mcp-tool', type: 'animated' }
-  ] as Edge<any>[]
+  ] as Edge[]
 };
 
 export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (set, get) => ({

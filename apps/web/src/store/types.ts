@@ -27,8 +27,8 @@ export interface AuthSlice {
 }
 
 export interface GraphSlice {
-  nodes: Node<any>[];
-  edges: Edge<any>[];
+  nodes: Node<NodeData>[];
+  edges: Edge[];
   selectedNodeId: string | null;
   onNodesChange: OnNodesChange;
   onEdgesChange: OnEdgesChange;
