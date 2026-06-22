@@ -11,12 +11,14 @@ import {
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
 import type { NodeType } from '@qwenweaver/types';
+import { NodeTypeDialog } from './NodeTypeDialog.js';
 
 export const Sidebar = () => {
   const addNode = useStore((s) => s.addNode);
   const loadTemplate = useStore((s) => s.loadTemplate);
 
   const [activeCategory, setActiveCategory] = useState<string | null>('agents');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleDragStart = (event: React.DragEvent, nodeType: NodeType) => {
     event.dataTransfer.setData('application/reactflow', nodeType);
@@ -62,7 +64,7 @@ export const Sidebar = () => {
         {/* CTA: + New Node Button */}
         <div className="px-4 py-2">
           <button 
-            onClick={() => addNode('agent')}
+            onClick={() => setIsDialogOpen(true)}
             className="w-full py-2 bg-[#9a3412] hover:bg-[#a73a00] text-white font-bold text-xs flex items-center justify-center gap-1.5 rounded-none transition-colors shadow-sm"
           >
             <Plus className="w-4 h-4" />
@@ -190,6 +192,11 @@ export const Sidebar = () => {
         </div>
       </div>
       
+      <NodeTypeDialog 
+        isOpen={isDialogOpen} 
+        onClose={() => setIsDialogOpen(false)} 
+        onSelect={(type) => addNode(type)} 
+      />
     </div>
   );
 };
