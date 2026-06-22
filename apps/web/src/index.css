@@ -1,1 +1,109 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
+
+@theme {
+  /* QwenWeaver Light Mode System Theme Variables */
+  --color-surface: #f8fafc;
+  --color-surface-dim: #f1f5f9;
+  --color-surface-bright: #ffffff;
+  --color-surface-container: #ffffff;
+  --color-surface-container-high: #f8fafc;
+  --color-surface-container-highest: #f1f5f9;
+  --color-surface-container-low: #f1f5f9; /* left sidebar light blue-slate */
+  --color-surface-container-lowest: #ffffff;
+  
+  --color-on-surface: #0f172a; /* dark charcoal */
+  --color-on-surface-variant: #475569; /* muted slate */
+  
+  --color-primary: #ea580c; /* active orange */
+  --color-primary-container: #9a3412; /* rust-orange CTA */
+  --color-on-primary: #ffffff;
+  
+  --color-secondary: #2563eb; /* active blue */
+  --color-secondary-container: #1d4ed8;
+  --color-on-secondary: #ffffff;
+  
+  --color-outline: #cbd5e1; /* light borders */
+  --color-outline-variant: #e2e8f0;
+  
+  --font-sans: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-surface-container-highest);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-outline);
+  border-radius: 0px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-on-surface-variant);
+}
+
+/* React Flow custom panel alignment */
+.react-flow__panel {
+  margin: 12px !important;
+}
+
+/* Custom glowing and pulsing classes for active execution states */
+@keyframes nodePulse {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(234, 88, 12, 0.2), inset 0 0 2px rgba(234, 88, 12, 0.1);
+    border-color: #ea580c;
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(234, 88, 12, 0.6), inset 0 0 4px rgba(234, 88, 12, 0.3);
+    border-color: #f97316;
+  }
+}
+
+@keyframes supervisorPulse {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(37, 99, 235, 0.2), inset 0 0 2px rgba(37, 99, 235, 0.1);
+    border-color: #2563eb;
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(37, 99, 235, 0.6), inset 0 0 4px rgba(37, 99, 235, 0.3);
+    border-color: #3b82f6;
+  }
+}
+
+.animate-node-pulse {
+  animation: nodePulse 2s infinite ease-in-out;
+}
+
+.animate-supervisor-pulse {
+  animation: supervisorPulse 2s infinite ease-in-out;
+}
+
+/* Marching Ants glow effect for edges */
+@keyframes dash {
+  from {
+    stroke-dashoffset: 20;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-edge-glow {
+  stroke-dasharray: 5, 5;
+  animation: dash 1s linear infinite;
+}
+
+html, body, #root {
+  background-color: #f8fafc; /* canvas background */
+  color: #0f172a;
+  font-family: "Inter", sans-serif;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}

@@ -11,20 +11,22 @@
     "lint": "eslint src/"
   },
   "dependencies": {
+    "@qwenweaver/api": "workspace:*",
+    "@qwenweaver/database": "workspace:*",
+    "@qwenweaver/types": "workspace:*",
     "@xyflow/react": "^12.0.0",
+    "hono": "^4.5.0",
+    "lucide-react": "^1.21.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "zustand": "^5.0.0",
-    "@qwenweaver/types": "workspace:*",
-    "@qwenweaver/database": "workspace:*",
-    "@qwenweaver/api": "workspace:*",
-    "hono": "^4.5.0"
+    "react-router-dom": "^7.18.0",
+    "zustand": "^5.0.0"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^6.0.0",
-    "@tailwindcss/vite": "^4.0.0",
     "autoprefixer": "^10.4.0",
     "eslint": "^10.0.0",
     "postcss": "^8.4.0",
