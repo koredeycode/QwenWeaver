@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { 
   Play, 
-  Cpu, 
+  Bot,
+  Brain, 
   ChevronRight, 
   Wrench, 
   Plus,
@@ -31,8 +32,8 @@ export const Sidebar = () => {
       { type: 'trigger', label: 'Schedule', icon: Play, detail: 'Trigger workflow periodically on a cron schedule.' }
     ],
     agents: [
-      { type: 'agent', label: 'Normal Agent', icon: Cpu, detail: 'General worker for parsing subtasks.' },
-      { type: 'supervisor', label: 'Supervisor Agent', icon: Cpu, detail: 'Supervisor node to coordinate and negotiate conflicts.' }
+      { type: 'agent', label: 'Normal Agent', icon: Bot, detail: 'General worker for parsing subtasks.' },
+      { type: 'supervisor', label: 'Supervisor Agent', icon: Brain, detail: 'Supervisor node to coordinate and negotiate conflicts.' }
     ],
     mcp: [
       { type: 'mcp_tool', label: 'Local Filesystem', icon: Wrench, detail: 'Access local workspaces, files, and commands.' },
@@ -110,7 +111,7 @@ export const Sidebar = () => {
                 : 'text-slate-600 hover:bg-slate-200'
             }`}
           >
-            <Cpu className={`w-4 h-4 ${activeCategory === 'agents' ? 'text-white' : 'text-slate-500'}`} />
+            <Bot className={`w-4 h-4 ${activeCategory === 'agents' ? 'text-white' : 'text-slate-500'}`} />
             <span>Agents</span>
           </button>
 

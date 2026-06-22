@@ -7,15 +7,15 @@ import {
   Send,
   Loader2,
   HelpCircle,
-  Cpu,
-  Layers,
+  Bot,
+  Brain,
   Wrench,
   Play
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
 import type { OutputFormat } from '@qwenweaver/types';
 
-export const Inspector = () => {
+export const Inspector = ({ onClose }: { onClose: () => void }) => {
   const selectedNodeId = useStore((s) => s.selectedNodeId);
   const selectedNode = useStore((s) => s.nodes.find((n) => n.id === selectedNodeId));
   const updateNodeData = useStore((s) => s.updateNodeData);
@@ -34,6 +34,44 @@ export const Inspector = () => {
   // Local state for capabilities
   const [webBrowsing, setWebBrowsing] = useState(true);
   const [fileAccess, setFileAccess] = useState(false);
+
+  const [mcpStatus, setMcpStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  const [discoveredTools, setDiscoveredTools] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (selectedNode && selectedNode.type === 'mcp_tool') {
+      if (selectedNode.data.mcpServerId) {
+        setMcpStatus('connected');
+        setDiscoveredTools([
+          { name: 'search_repositories', desc: 'Search for GitHub repositories by query.', params: 'query: string' },
+          { name: 'create_issue', desc: 'Create a new issue in a repository.', params: 'title: string, body?: string' },
+          { name: 'get_pull_request', desc: 'Retrieve PR details.', params: 'owner: string, repo: string, number: number' },
+          { name: 'push_code', desc: 'Push code code to repository.', params: 'owner: string, repo: string, files: array' }
+        ]);
+      } else {
+        setMcpStatus('disconnected');
+        setDiscoveredTools([]);
+      }
+    }
+  }, [selectedNodeId]);
+
+  const handleConnectMcp = async () => {
+    setMcpStatus('connecting');
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    setMcpStatus('connected');
+    setDiscoveredTools([
+      { name: 'search_repositories', desc: 'Search for GitHub repositories by query.', params: 'query: string' },
+      { name: 'create_issue', desc: 'Create a new issue in a repository.', params: 'title: string, body?: string' },
+      { name: 'get_pull_request', desc: 'Retrieve PR details.', params: 'owner: string, repo: string, number: number' },
+      { name: 'push_code', desc: 'Push code code to repository.', params: 'owner: string, repo: string, files: array' }
+    ]);
+    if (selectedNodeId) {
+      updateNodeData(selectedNodeId, { 
+        mcpServerId: selectedNode?.data.mcpServerId || 'github-server',
+        mcpServerUrl: selectedNode?.data.mcpServerUrl || 'http://localhost:8000'
+      });
+    }
+  };
 
   useEffect(() => {
     if (activeTab === 'copilot') {
@@ -90,8 +128,8 @@ export const Inspector = () => {
   const getNodeIcon = (type: string | undefined) => {
     switch (type) {
       case 'trigger': return <Play className="w-5 h-5 text-[#ea580c] fill-[#ea580c]/10" />;
-      case 'agent': return <Cpu className="w-5 h-5 text-white" />;
-      case 'supervisor': return <Layers className="w-5 h-5 text-white" />;
+      case 'agent': return <Bot className="w-5 h-5 text-white" />;
+      case 'supervisor': return <Brain className="w-5 h-5 text-white" />;
       default: return <Wrench className="w-5 h-5 text-white" />;
     }
   };
@@ -99,28 +137,37 @@ export const Inspector = () => {
   return (
     <div className="w-80 h-full bg-white border-l border-[#cbd5e1] flex flex-col font-sans select-none text-slate-800">
       {/* Tabs */}
-      <div className="flex border-b border-[#cbd5e1] bg-[#f8fafc]">
+      <div className="flex items-center justify-between border-b border-[#cbd5e1] bg-[#f8fafc] pr-2">
+        <div className="flex flex-1">
+          <button
+            onClick={() => setActiveTab('config')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-mono font-bold tracking-wider transition-all border-b-2 ${
+              activeTab === 'config'
+                ? 'border-primary text-slate-900 bg-white'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <Settings className="w-3.5 h-3.5" />
+            INSPECTOR
+          </button>
+          <button
+            onClick={() => setActiveTab('copilot')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-mono font-bold tracking-wider transition-all border-b-2 ${
+              activeTab === 'copilot'
+                ? 'border-primary text-slate-900 bg-white'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <MessageSquareCode className="w-3.5 h-3.5" />
+            AI COPILOT
+          </button>
+        </div>
         <button
-          onClick={() => setActiveTab('config')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-mono font-bold tracking-wider transition-all border-b-2 ${
-            activeTab === 'config'
-              ? 'border-primary text-slate-900 bg-white'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
-          }`}
+          onClick={onClose}
+          className="p-1 hover:bg-slate-200 text-slate-400 hover:text-slate-700 border border-slate-200 transition-colors ml-2"
+          title="Close Sidebar"
         >
-          <Settings className="w-3.5 h-3.5" />
-          INSPECTOR
-        </button>
-        <button
-          onClick={() => setActiveTab('copilot')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-mono font-bold tracking-wider transition-all border-b-2 ${
-            activeTab === 'copilot'
-              ? 'border-primary text-slate-900 bg-white'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          <MessageSquareCode className="w-3.5 h-3.5" />
-          AI COPILOT
+          <X className="w-4 h-4" />
         </button>
       </div>
 
@@ -292,7 +339,7 @@ export const Inspector = () => {
 
               {/* MCP specifics */}
               {selectedNode.type === 'mcp_tool' && (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div className="text-[10px] font-mono font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-1.5">
                     MCP PARAMS
                   </div>
@@ -300,6 +347,7 @@ export const Inspector = () => {
                     <label className="text-[10px] font-mono text-slate-400 font-semibold uppercase">Server Identifier</label>
                     <input
                       type="text"
+                      placeholder="e.g. github-server"
                       value={selectedNode.data.mcpServerId || ''}
                       onChange={handleMcpIdChange}
                       className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
@@ -309,11 +357,39 @@ export const Inspector = () => {
                     <label className="text-[10px] font-mono text-slate-400 font-semibold uppercase">Endpoint URL</label>
                     <input
                       type="text"
+                      placeholder="e.g. http://localhost:8000"
                       value={selectedNode.data.mcpServerUrl || ''}
                       onChange={handleMcpUrlChange}
                       className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
                     />
                   </div>
+
+                  {/* Connect Server Button */}
+                  <button
+                    onClick={handleConnectMcp}
+                    disabled={mcpStatus === 'connecting' || !selectedNode.data.mcpServerUrl}
+                    className="w-full py-1.5 bg-[#2563eb] hover:bg-blue-700 text-white font-bold text-xs rounded-none transition-colors disabled:opacity-40"
+                  >
+                    {mcpStatus === 'connecting' ? 'Connecting to MCP...' : mcpStatus === 'connected' ? 'Reconnect Server' : 'Connect & Discover Tools'}
+                  </button>
+
+                  {/* Discovered Tools List (MCP Exposed Tools View) */}
+                  {mcpStatus === 'connected' && discoveredTools.length > 0 && (
+                    <div className="space-y-2.5">
+                      <div className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100 pb-1 mt-3">
+                        EXPOSED TOOLS ({discoveredTools.length})
+                      </div>
+                      <div className="max-h-48 overflow-y-auto space-y-2 pr-1 scrollbar">
+                        {discoveredTools.map((tool, idx) => (
+                          <div key={idx} className="p-2 bg-slate-50 border border-slate-200 font-mono text-[10px]">
+                            <div className="font-bold text-[#ea580c]">{tool.name}</div>
+                            <div className="text-[9px] text-slate-500 mt-0.5 leading-relaxed">{tool.desc}</div>
+                            <div className="text-[8px] text-slate-400 mt-1 font-bold">Args: {tool.params}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

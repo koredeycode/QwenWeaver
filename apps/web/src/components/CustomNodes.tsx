@@ -2,12 +2,12 @@ import React, { memo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { 
   Play, 
-  Cpu, 
+  Bot, 
+  Brain,
   ShieldAlert, 
   CheckCircle2, 
   Loader2, 
-  Wrench,
-  ChevronRight
+  Wrench
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
 
@@ -77,7 +77,7 @@ export const TriggerNode = memo(({ id, data }: NodeProps<any>) => {
       <Handle
         type="source"
         position={Position.Right}
-        className="w-3.5 h-3.5 !bg-emerald-500 !border-2 !border-white"
+        className="w-4 h-4 !bg-emerald-500 !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
       />
     </div>
   );
@@ -95,12 +95,12 @@ export const AgentNode = memo(({ id, data }: NodeProps<any>) => {
       <Handle
         type="target"
         position={Position.Left}
-        className="w-3.5 h-3.5 !bg-primary !border-2 !border-white"
+        className="w-4 h-4 !bg-[#ea580c] !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
       />
 
       <div className="flex items-center justify-between border-b border-outline-variant pb-2 mb-2">
         <div className="flex items-center gap-2">
-          <Cpu className="w-4 h-4 text-primary" />
+          <Bot className="w-4 h-4 text-[#ea580c]" />
           <span className="text-[10px] font-mono font-bold tracking-wider text-primary">AGENT ({data.model || 'qwen-plus'})</span>
         </div>
         {getStatusBadge(status)}
@@ -128,7 +128,7 @@ export const AgentNode = memo(({ id, data }: NodeProps<any>) => {
       <Handle
         type="source"
         position={Position.Right}
-        className="w-3.5 h-3.5 !bg-primary !border-2 !border-white"
+        className="w-4 h-4 !bg-[#ea580c] !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
       />
     </div>
   );
@@ -146,12 +146,12 @@ export const SupervisorNode = memo(({ id, data }: NodeProps<any>) => {
       <Handle
         type="target"
         position={Position.Left}
-        className="w-3.5 h-3.5 !bg-secondary !border-2 !border-white"
+        className="w-4 h-4 !bg-[#2563eb] !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
       />
 
       <div className="flex items-center justify-between border-b border-outline pb-2 mb-2">
         <div className="flex items-center gap-2">
-          <ChevronRight className="w-4 h-4 text-secondary animate-pulse" />
+          <Brain className="w-4 h-4 text-[#2563eb]" />
           <span className="text-[10px] font-mono font-bold tracking-wider text-secondary">SUPERVISOR ({data.model || 'qwen3-max'})</span>
         </div>
         {getStatusBadge(status)}
@@ -179,7 +179,7 @@ export const SupervisorNode = memo(({ id, data }: NodeProps<any>) => {
       <Handle
         type="source"
         position={Position.Right}
-        className="w-3.5 h-3.5 !bg-secondary !border-2 !border-white"
+        className="w-4 h-4 !bg-[#2563eb] !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
       />
     </div>
   );
@@ -197,7 +197,7 @@ export const MCPToolNode = memo(({ id, data }: NodeProps<any>) => {
       <Handle
         type="target"
         position={Position.Left}
-        className="w-3.5 h-3.5 !bg-amber-500 !border-2 !border-white"
+        className="w-4 h-4 !bg-amber-500 !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
       />
 
       <div className="flex items-center justify-between border-b border-outline-variant pb-2 mb-2">
@@ -222,7 +222,7 @@ export const MCPToolNode = memo(({ id, data }: NodeProps<any>) => {
       <Handle
         type="source"
         position={Position.Right}
-        className="w-3.5 h-3.5 !bg-amber-500 !border-2 !border-white"
+        className="w-4 h-4 !bg-amber-500 !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
       />
     </div>
   );
