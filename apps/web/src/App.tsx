@@ -27,7 +27,9 @@ import {
   ToggleRight,
   Settings,
   User,
-  RefreshCw
+  RefreshCw,
+  Keyboard,
+  X
 } from 'lucide-react';
 
 const CanvasWorkspace = () => {
@@ -52,6 +54,10 @@ const CanvasWorkspace = () => {
   const reactFlowInstance = useReactFlow();
   const [activeTab, setActiveTab] = useState<'workflows' | 'projects' | 'history'>('workflows');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(() => {
+    const saved = localStorage.getItem('qwenweaver_shortcuts_open');
+    return saved !== 'false';
+  });
 
   // Keyboard Shortcuts Bindings Listener
   React.useEffect(() => {
@@ -290,15 +296,43 @@ const CanvasWorkspace = () => {
                 className="opacity-40"
               />
               <Controls className="!bg-white !border-[#cbd5e1] !rounded-none !shadow-none [&_button]:!border-[#cbd5e1] [&_button]:!bg-transparent [&_button]:hover:!bg-slate-50 [&_svg]:!fill-slate-600" />
-              <Panel position="bottom-left" className="mb-16 bg-white border border-[#cbd5e1] p-2.5 font-mono text-[10px] text-slate-500 shadow-sm flex flex-col gap-1 select-none pointer-events-auto rounded-none">
-                <div className="font-bold text-slate-700 border-b border-slate-100 pb-1 mb-1">KEYBOARD SHORTCUTS</div>
-                <div className="flex justify-between gap-6"><span>Run Swarm:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + Enter</kbd></div>
-                <div className="flex justify-between gap-6"><span>Rearrange:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + L</kbd></div>
-                <div className="flex justify-between gap-6"><span>Zoom In/Out:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + + / -</kbd></div>
-                <div className="flex justify-between gap-6"><span>Clear Canvas:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + Alt + C</kbd></div>
-                <div className="flex justify-between gap-6"><span>Delete Edge:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Click Edge + Backspace</kbd></div>
-                <div className="flex justify-between gap-6"><span>Deselect:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Esc</kbd></div>
-              </Panel>
+              {isShortcutsOpen ? (
+                <Panel position="bottom-left" className="ml-14 mb-0 bg-white border border-[#cbd5e1] p-2.5 font-mono text-[10px] text-slate-500 shadow-sm flex flex-col gap-1 select-none pointer-events-auto rounded-none w-56">
+                  <div className="flex items-center justify-between font-bold text-slate-700 border-b border-slate-100 pb-1 mb-1">
+                    <span>KEYBOARD SHORTCUTS</span>
+                    <button 
+                      onClick={() => {
+                        setIsShortcutsOpen(false);
+                        localStorage.setItem('qwenweaver_shortcuts_open', 'false');
+                      }}
+                      className="text-slate-400 hover:text-slate-700 transition-colors p-0.5"
+                      title="Hide Legend"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="flex justify-between gap-6"><span>Run Swarm:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + Enter</kbd></div>
+                  <div className="flex justify-between gap-6"><span>Rearrange:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + L</kbd></div>
+                  <div className="flex justify-between gap-6"><span>Zoom In/Out:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + + / -</kbd></div>
+                  <div className="flex justify-between gap-6"><span>Clear Canvas:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + Alt + C</kbd></div>
+                  <div className="flex justify-between gap-6"><span>Delete Edge:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Click Edge + Backspace</kbd></div>
+                  <div className="flex justify-between gap-6"><span>Deselect:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Esc</kbd></div>
+                </Panel>
+              ) : (
+                <Panel position="bottom-left" className="ml-14 mb-0 pointer-events-auto">
+                  <button
+                    onClick={() => {
+                      setIsShortcutsOpen(true);
+                      localStorage.setItem('qwenweaver_shortcuts_open', 'true');
+                    }}
+                    className="bg-white border border-[#cbd5e1] p-1.5 hover:bg-slate-50 text-slate-500 hover:text-slate-700 shadow-sm rounded-none text-[10px] font-mono font-bold transition-colors flex items-center gap-1.5"
+                    title="Show Keyboard Shortcuts"
+                  >
+                    <Keyboard className="w-3.5 h-3.5 text-slate-400" />
+                    Shortcuts (?)
+                  </button>
+                </Panel>
+              )}
               <MiniMap 
                 style={{ height: 100, width: 140, background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: 0 }}
                 nodeColor={(node) => {
