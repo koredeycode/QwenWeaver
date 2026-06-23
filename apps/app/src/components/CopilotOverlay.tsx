@@ -66,41 +66,65 @@ export const CopilotOverlay = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    // Only drag on left click
-    if (e.button !== 0) return;
-    
+  const startDrag = useCallback((clientX: number, clientY: number) => {
     dragRef.current = {
       isDragging: false,
-      startX: e.clientX,
-      startY: e.clientY,
+      startX: clientX,
+      startY: clientY,
       posX: pos.x,
       posY: pos.y
     };
 
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const deltaX = moveEvent.clientX - dragRef.current.startX;
-      const deltaY = moveEvent.clientY - dragRef.current.startY;
-      
+    const handleMove = (moveClientX: number, moveClientY: number) => {
+      const deltaX = moveClientX - dragRef.current.startX;
+      const deltaY = moveClientY - dragRef.current.startY;
+
       if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
         dragRef.current.isDragging = true;
       }
-      
+
       const newX = Math.max(10, Math.min(window.innerWidth - 80, dragRef.current.posX + deltaX));
       const newY = Math.max(10, Math.min(window.innerHeight - 80, dragRef.current.posY + deltaY));
-      
+
       setPos({ x: newX, y: newY });
       localStorage.setItem('qwenweaver_copilot_pos', JSON.stringify({ x: newX, y: newY }));
     };
 
-    const handleMouseUp = () => {
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      handleMove(moveEvent.clientX, moveEvent.clientY);
+    };
+
+    const handleTouchMove = (moveEvent: TouchEvent) => {
+      const touch = moveEvent.touches[0];
+      if (touch) {
+        handleMove(touch.clientX, touch.clientY);
+      }
+    };
+
+    const handleEnd = () => {
       window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mouseup', handleEnd);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleEnd);
     };
 
     window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('mouseup', handleEnd);
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchend', handleEnd);
   }, [pos]);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    startDrag(e.clientX, e.clientY);
+  }, [startDrag]);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    if (touch) {
+      startDrag(touch.clientX, touch.clientY);
+    }
+  }, [startDrag]);
 
   const handleButtonClick = () => {
     if (dragRef.current.isDragging) return;
@@ -133,8 +157,9 @@ export const CopilotOverlay = () => {
       {/* Draggable Copilot Button */}
       <div 
         style={{ left: pos.x, top: pos.y }}
-        className="fixed z-50 select-none cursor-grab active:cursor-grabbing"
+        className="fixed z-50 select-none cursor-grab active:cursor-grabbing touch-none"
         onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
       >
         <button
           onClick={handleButtonClick}

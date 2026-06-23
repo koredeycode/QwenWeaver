@@ -34,8 +34,9 @@ export const AnimatedEdge = memo(({
         id={id}
         style={{
           ...style,
-          stroke: selected ? '#2563eb' : (isActive ? '#ea580c' : '#cbd5e1'), // Blue when selected, orange when active, slate otherwise
+          stroke: selected ? '#2563eb' : (isActive ? '#ea580c' : '#cbd5e1'),
           strokeWidth: selected ? 3 : (isActive ? 2.5 : 1.5),
+          fill: 'none',
           transition: 'stroke 0.2s, stroke-width 0.2s',
         }}
         className="react-flow__edge-path"

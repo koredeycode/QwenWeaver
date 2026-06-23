@@ -26,6 +26,7 @@ import {
   ChevronDown,
   ChevronLeft,
   Download,
+  Image,
   Info,
   Keyboard,
   Play,
@@ -355,7 +356,40 @@ export const CanvasWorkspace = () => {
               title="Auto-arrange nodes in clean columns"
             >
               <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
-              Rearrange
+              <span className="hidden md:inline">Rearrange</span>
+            </button>
+
+            {/* Download PNG Button */}
+            <button
+              onClick={async () => {
+                if (!canvasRef.current) return;
+                const toHide = canvasRef.current.querySelectorAll<HTMLElement>('[data-export-hide]');
+                toHide.forEach(el => el.style.display = 'none');
+                // Wait a frame for DOM to settle
+                await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+                try {
+                  const dataUrl = await toPng(canvasRef.current, {
+                    backgroundColor: '#ffffff',
+                    pixelRatio: 3,
+                    cacheBust: true,
+                  });
+                  toHide.forEach(el => el.style.display = '');
+                  const link = document.createElement('a');
+                  link.download = `qwen-workflow-${Date.now()}.png`;
+                  link.href = dataUrl;
+                  link.click();
+                  toast.success('Canvas exported as PNG');
+                } catch {
+                  toHide.forEach(el => el.style.display = '');
+                  toast.error('Failed to export image');
+                }
+              }}
+              disabled={nodes.length === 0}
+              className="px-3.5 py-1.5 bg-white border border-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1.5 rounded-none hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Download canvas as PNG image"
+            >
+              <Image className="w-3.5 h-3.5 text-slate-500" />
+              <span className="hidden md:inline">PNG</span>
             </button>
 
             {/* Import Button */}
@@ -365,7 +399,7 @@ export const CanvasWorkspace = () => {
               title="Import a workflow from JSON text or file"
             >
               <Download className="w-3.5 h-3.5 text-slate-500" />
-              Import
+              <span className="hidden md:inline">Import</span>
             </button>
 
             {/* Export Button */}
@@ -375,7 +409,7 @@ export const CanvasWorkspace = () => {
               title="Export current workflow config"
             >
               <Upload className="w-3.5 h-3.5 text-slate-500" />
-              Export
+              <span className="hidden md:inline">Export</span>
             </button>
 
             {/* Save Workflow Button (only shown for unsaved workflows) */}
@@ -387,7 +421,7 @@ export const CanvasWorkspace = () => {
                 title="Save this workflow"
               >
                 <Save className="w-3.5 h-3.5" />
-                Save
+                <span className="hidden md:inline">Save</span>
               </button>
             )}
 
@@ -405,7 +439,7 @@ export const CanvasWorkspace = () => {
                 title="Publish as template"
               >
                 <Upload className="w-3.5 h-3.5" />
-                Publish
+                <span className="hidden md:inline">Publish</span>
               </button>
             )}
 
@@ -417,7 +451,7 @@ export const CanvasWorkspace = () => {
               title="Clear entire canvas"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              Clear
+              <span className="hidden md:inline">Clear</span>
             </button>
 
             {/* Run Workflow / Kill Button (Solid Rust-Orange) */}
@@ -427,7 +461,7 @@ export const CanvasWorkspace = () => {
                 className="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors cursor-pointer"
               >
                 <Square className="w-3.5 h-3.5 fill-white" />
-                Kill Swarm
+                <span className="hidden md:inline">Kill Swarm</span>
               </button>
             ) : (
               <button
@@ -436,7 +470,7 @@ export const CanvasWorkspace = () => {
                 className="px-4 py-1.5 bg-[#9a3412] hover:bg-[#a73a00] text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors disabled:opacity-30 cursor-pointer"
               >
                 <Play className="w-3.5 h-3.5 fill-white text-white" />
-                Run Workflow
+                <span className="hidden md:inline">Run Workflow</span>
               </button>
             )}
 
@@ -536,7 +570,10 @@ export const CanvasWorkspace = () => {
                   size={1} 
                   className="opacity-40"
                 />
-                <CustomZoomControls isLocked={isLocked} onToggleLock={() => setIsLocked(!isLocked)} />
+                <div data-export-hide="true">
+                  <CustomZoomControls isLocked={isLocked} onToggleLock={() => setIsLocked(!isLocked)} />
+                </div>
+                <div data-export-hide="true">
                 {isShortcutsOpen ? (
                   <Panel position="bottom-left" className="ml-0 mb-0 bg-white border border-[#cbd5e1] p-2.5 font-mono text-[10px] text-slate-500 shadow-sm flex flex-col gap-1 select-none pointer-events-auto rounded-none w-[270px]">
                     <div className="flex items-center justify-between font-bold text-slate-700 border-b border-slate-100 pb-1 mb-1">
@@ -561,6 +598,7 @@ export const CanvasWorkspace = () => {
                     <div className="flex justify-between gap-6"><span>Deselect:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Esc</kbd></div>
                   </Panel>
                 ) : (
+                  <div data-export-hide="true">
                   <Panel position="bottom-left" className="ml-0 mb-0 pointer-events-auto">
                     <button
                       onClick={() => {
@@ -574,7 +612,10 @@ export const CanvasWorkspace = () => {
                       Shortcuts (?)
                     </button>
                   </Panel>
+                  </div>
                 )}
+                </div>
+                <div data-export-hide="true">
                 <MiniMap 
                   style={{ height: 100, width: 140, background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: 0 }}
                   nodeColor={(node) => {
@@ -593,6 +634,7 @@ export const CanvasWorkspace = () => {
                   }}
                   maskColor="rgba(241, 245, 249, 0.4)"
                 />
+                </div>
               </ReactFlow>
 
               {/* Floating Sidebar Toggle Button (when collapsed) */}
