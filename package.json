@@ -11,12 +11,6 @@
     "db:push": "pnpm --filter @qwenweaver/database drizzle:push",
     "db:generate": "pnpm --filter @qwenweaver/database drizzle:generate"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "better-sqlite3",
-      "esbuild"
-    ]
-  },
   "engines": {
     "node": ">=20",
     "pnpm": ">=9"
