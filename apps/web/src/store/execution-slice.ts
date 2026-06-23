@@ -249,8 +249,8 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
 
       try {
         const workflowPayload: WorkflowPayload = {
-          name: 'Canvas Workflow',
-          description: 'Executing from React Flow Visual Canvas',
+          name: get().workflowName || 'Untitled Workflow',
+          description: get().workflowDescription || 'Executing from React Flow Visual Canvas',
           nodes: nodes.map((n) => ({
             id: n.id,
             type: n.type as NodeType,

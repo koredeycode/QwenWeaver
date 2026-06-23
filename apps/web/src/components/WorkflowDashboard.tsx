@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Play, 
@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
 import { MOCK_WORKFLOWS, MockWorkflow } from '../lib/mock-workflows.js';
+import { CreateWorkflowDialog } from './CreateWorkflowDialog.js';
 
 export const WorkflowDashboard = () => {
   const navigate = useNavigate();
@@ -20,10 +21,18 @@ export const WorkflowDashboard = () => {
   const logout = useStore((s) => s.logout);
   const clearGraph = useStore((s) => s.clearGraph);
 
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+
   const handleCreateNew = () => {
+    setIsCreateOpen(true);
+  };
+
+  const handleCreateConfirm = (name: string, description: string) => {
     clearGraph();
     const newId = `workflow-${Date.now().toString().slice(-4)}`;
+    sessionStorage.setItem(`pending_wf_${newId}`, JSON.stringify({ name, description }));
     navigate(`/workflows/${newId}`);
+    setIsCreateOpen(false);
   };
 
   const getNodeCount = (workflow: MockWorkflow, type: string) => {
@@ -199,6 +208,12 @@ export const WorkflowDashboard = () => {
           </div>
         </div>
       </div>
+      {/* New Workflow Dialog */}
+      <CreateWorkflowDialog
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        onConfirm={handleCreateConfirm}
+      />
     </div>
   );
 };

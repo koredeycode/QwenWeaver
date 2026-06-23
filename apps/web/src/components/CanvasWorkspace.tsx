@@ -6,8 +6,8 @@ import {
   useReactFlow
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import React, { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useParams } from 'react-router-dom';
 
 import type { NodeType } from '@qwenweaver/types';
 import { MOCK_WORKFLOWS } from '../lib/mock-workflows.js';
@@ -21,6 +21,7 @@ import { Sidebar } from './Sidebar.js';
 
 import {
   Download,
+  Info,
   Keyboard,
   Play,
   RefreshCw,
@@ -28,6 +29,7 @@ import {
   Square,
   ToggleLeft,
   ToggleRight,
+  Trash2,
   Upload,
   User,
   X
@@ -49,6 +51,9 @@ export const CanvasWorkspace = () => {
   const rearrangeGraph = useStore((s) => s.rearrangeGraph);
   const clearGraph = useStore((s) => s.clearGraph);
   const loadWorkflow = useStore((s) => s.loadWorkflow);
+  const workflowName = useStore((s) => s.workflowName);
+  const workflowDescription = useStore((s) => s.workflowDescription);
+  const setWorkflowMeta = useStore((s) => s.setWorkflowMeta);
   const maximizedNodeId = useStore((s) => s.maximizedNodeId);
   const setMaximizedNodeId = useStore((s) => s.setMaximizedNodeId);
 
@@ -63,18 +68,23 @@ export const CanvasWorkspace = () => {
   const reactFlowInstance = useReactFlow();
   const { id } = useParams<{ id: string }>();
 
-  // Load workflow template or clear canvas based on path parameter
   useEffect(() => {
     if (id) {
       const isMock = MOCK_WORKFLOWS.some((w) => w.id === id);
       if (isMock) {
         loadWorkflow(id);
       } else {
-        // If it's a new or blank workflow (e.g. starts with workflow-), clear the graph
         clearGraph();
+        const pendingRaw = sessionStorage.getItem(`pending_wf_${id}`);
+        if (pendingRaw) {
+          try {
+            const { name, description } = JSON.parse(pendingRaw);
+            setWorkflowMeta(name, description || '');
+          } catch { /* ignore invalid JSON */ }
+        }
       }
     }
-  }, [id, loadWorkflow, clearGraph]);
+  }, [id, loadWorkflow, clearGraph, setWorkflowMeta]);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isLocked, setIsLocked] = useState(false);
@@ -85,6 +95,7 @@ export const CanvasWorkspace = () => {
 
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
 
   // Keyboard Shortcuts Bindings Listener
   useEffect(() => {
@@ -126,9 +137,7 @@ export const CanvasWorkspace = () => {
       // 5. Clear Canvas: Ctrl + Alt + C
       if ((event.ctrlKey || event.metaKey) && event.altKey && event.key.toLowerCase() === 'c') {
         event.preventDefault();
-        if (confirm('Are you sure you want to clear the canvas?')) {
-          clearGraph();
-        }
+        setIsClearConfirmOpen(true);
       }
 
       // 6. Close Maximized Node or Deselect Node: Escape
@@ -173,6 +182,19 @@ export const CanvasWorkspace = () => {
     setIsSidebarOpen(true);
   }, [selectNode]);
 
+  const [isDescOpen, setIsDescOpen] = useState(false);
+  const descRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (descRef.current && !descRef.current.contains(e.target as Node)) {
+        setIsDescOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handlePaneClick = useCallback(() => {
     selectNode(null);
   }, [selectNode]);
@@ -189,20 +211,29 @@ export const CanvasWorkspace = () => {
         {/* ─── Top Header (Matches screenshots exactly) ────────────────────────── */}
         <header className="h-14 bg-white border-b border-[#cbd5e1] flex items-center justify-between px-6 z-20 flex-shrink-0">
           
-          {/* Left: Tab Selectors */}
-          <div className="flex items-center gap-6 h-full">
-            <Link
-              to="/"
-              className="text-sm font-bold h-full px-1 border-b-2 border-[#ea580c] text-slate-900 flex items-center justify-center transition-all"
-            >
-              Workflows
-            </Link>
-            <button
-              className="text-sm font-semibold h-full px-1 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center justify-center transition-all cursor-not-allowed"
-              title="History logs coming soon"
-            >
-              History
-            </button>
+          {/* Left: Workflow name + info */}
+          <div className="flex items-center gap-3 h-full">
+            {workflowName && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-slate-900">{workflowName}</span>
+                {workflowDescription && (
+                  <div className="relative" ref={descRef}>
+                    <button
+                      onClick={() => setIsDescOpen(!isDescOpen)}
+                      className="p-0.5 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                      title="Workflow description"
+                    >
+                      <Info className="w-4 h-4" />
+                    </button>
+                    {isDescOpen && (
+                      <div className="absolute top-full left-0 mt-1 w-72 bg-white border border-slate-200 shadow-lg z-50 p-3 text-xs text-slate-600 font-sans leading-relaxed">
+                        {workflowDescription}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Right: Actions, Deploy, Run, Settings, Profile */}
@@ -258,6 +289,17 @@ export const CanvasWorkspace = () => {
             >
               <Upload className="w-3.5 h-3.5 text-slate-500" />
               Export
+            </button>
+
+            {/* Clear Canvas Button */}
+            <button
+              onClick={() => setIsClearConfirmOpen(true)}
+              disabled={nodes.length === 0}
+              className="px-3.5 py-1.5 bg-white border border-slate-200 text-slate-500 hover:text-rose-600 hover:border-rose-200 font-semibold text-xs flex items-center gap-1.5 rounded-none hover:bg-rose-50 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Clear entire canvas"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Clear
             </button>
 
             {/* Run Workflow / Kill Button (Solid Rust-Orange) */}
@@ -441,6 +483,51 @@ export const CanvasWorkspace = () => {
         edges={edges} 
         workflowId={id} 
       />
+
+      {/* Clear Canvas Confirmation Dialog */}
+      {isClearConfirmOpen && (
+        <div
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[999] flex items-center justify-center p-6 select-text pointer-events-auto"
+          onClick={() => setIsClearConfirmOpen(false)}
+        >
+          <div
+            className="bg-white border-2 border-slate-900 shadow-2xl rounded-none w-full max-w-md flex flex-col relative overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-white text-slate-800 px-6 py-4 flex items-center justify-between border-b border-slate-200">
+              <h2 className="text-sm font-bold font-mono text-slate-800 tracking-tight">CLEAR CANVAS</h2>
+              <button
+                onClick={() => setIsClearConfirmOpen(false)}
+                className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-slate-600 font-sans">
+                Are you sure you want to clear the canvas? This will remove all nodes and edges.
+              </p>
+            </div>
+            <div className="bg-slate-50 px-6 py-3 flex items-center justify-between border-t border-slate-200">
+              <button
+                onClick={() => setIsClearConfirmOpen(false)}
+                className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-mono font-bold transition-all rounded-none cursor-pointer"
+              >
+                CANCEL
+              </button>
+              <button
+                onClick={() => {
+                  clearGraph();
+                  setIsClearConfirmOpen(false);
+                }}
+                className="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-mono font-bold transition-all rounded-none cursor-pointer"
+              >
+                CLEAR CANVAS
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -82,6 +82,8 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
   nodes: RESEARCH_SWARM_TEMPLATE.nodes,
   edges: RESEARCH_SWARM_TEMPLATE.edges,
   selectedNodeId: null,
+  workflowName: '',
+  workflowDescription: '',
   maximizedNodeId: null,
   setMaximizedNodeId: (id) => set({ maximizedNodeId: id }),
 
@@ -139,7 +141,9 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
 
   selectNode: (id) => set({ selectedNodeId: id }),
 
-  clearGraph: () => set({ nodes: [], edges: [], selectedNodeId: null }),
+  setWorkflowMeta: (name, description) => set({ workflowName: name, workflowDescription: description }),
+
+  clearGraph: () => set({ nodes: [], edges: [], selectedNodeId: null, workflowName: '', workflowDescription: '' }),
 
   loadTemplate: (templateName) => {
     if (templateName === 'research') {
@@ -157,7 +161,9 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
       set({ 
         nodes: wf.nodes as any, 
         edges: wf.edges as any,
-        selectedNodeId: null
+        selectedNodeId: null,
+        workflowName: wf.name,
+        workflowDescription: wf.description
       });
       get().rearrangeGraph();
       toast.success(`Loaded workflow: ${wf.name}`);

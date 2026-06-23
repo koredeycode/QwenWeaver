@@ -30,6 +30,8 @@ export interface GraphSlice {
   nodes: Node<NodeData>[];
   edges: Edge[];
   selectedNodeId: string | null;
+  workflowName: string;
+  workflowDescription: string;
   onNodesChange: OnNodesChange;
   onEdgesChange: OnEdgesChange;
   onConnect: OnConnect;
@@ -37,6 +39,7 @@ export interface GraphSlice {
   deleteNode: (id: string) => void;
   updateNodeData: (id: string, data: Partial<NodeData>) => void;
   selectNode: (id: string | null) => void;
+  setWorkflowMeta: (name: string, description: string) => void;
   maximizedNodeId: string | null;
   setMaximizedNodeId: (id: string | null) => void;
   clearGraph: () => void;
