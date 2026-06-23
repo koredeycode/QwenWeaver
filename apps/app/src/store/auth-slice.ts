@@ -1,19 +1,36 @@
 import { StateCreator } from 'zustand';
 import { StoreState, AuthSlice } from './types.js';
-import { client, setAccessToken, setRefreshToken, clearAuth } from '../lib/api-client.js';
+import { client, setAccessToken, setRefreshToken, clearAuth, apiFetch } from '../lib/api-client.js';
+import { toast } from 'sonner';
 
 export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set, get) => {
   if (typeof window !== 'undefined') {
     window.addEventListener('auth:expired', () => {
       clearAuth();
-      set({ token: null, refreshToken: null, user: null });
+      set({ token: null, refreshToken: null, user: null, credits: null });
     });
   }
+
+  const fetchCredits = async () => {
+    try {
+      const res = await apiFetch('/api/credits');
+      if (res.ok) {
+        const data = await res.json();
+        set({ credits: data });
+        if (data.lowBalance && data.balance > 0) {
+          toast.warning(`Low credits: ${data.balance}. Some executions may be blocked.`);
+        }
+      }
+    } catch {
+      // silently fail — credits are non-critical
+    }
+  };
 
   return {
   token: localStorage.getItem('qw_token'),
   refreshToken: localStorage.getItem('qw_refresh'),
   user: localStorage.getItem('qw_user') ? JSON.parse(localStorage.getItem('qw_user')!) : null,
+  credits: null,
 
   login: async (email, password) => {
     try {
@@ -25,6 +42,7 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
           if (body.refreshToken) setRefreshToken(body.refreshToken);
           localStorage.setItem('qw_user', JSON.stringify(body.user));
           set({ token: body.token, refreshToken: body.refreshToken ?? null, user: body.user });
+          fetchCredits();
           return true;
         }
       }
@@ -44,6 +62,7 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
           if (body.refreshToken) setRefreshToken(body.refreshToken);
           localStorage.setItem('qw_user', JSON.stringify(body.user));
           set({ token: body.token, refreshToken: body.refreshToken ?? null, user: body.user });
+          fetchCredits();
           return true;
         }
       }
@@ -61,13 +80,15 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
       return true;
     }
     clearAuth();
-    set({ token: null, refreshToken: null, user: null });
+    set({ token: null, refreshToken: null, user: null, credits: null });
     return false;
   },
 
+  fetchCredits,
+
   logout: () => {
     clearAuth();
-    set({ token: null, refreshToken: null, user: null });
+    set({ token: null, refreshToken: null, user: null, credits: null });
   },
 };
 };

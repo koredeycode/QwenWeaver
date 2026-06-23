@@ -526,4 +526,114 @@ export const sqliteProvider: QueryProvider = {
       .from(sqliteSchema.sqliteTemplateCategories)
       .orderBy(sqliteSchema.sqliteTemplateCategories.sortOrder);
   },
+
+  // ─── Credits ─────────────────────────────────────────────────────────────────
+
+  async getUserCredits(userId: string) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const rows = await sqliteDb
+      .select()
+      .from(sqliteSchema.sqliteUserCredits)
+      .where(eq(sqliteSchema.sqliteUserCredits.userId, userId))
+      .limit(1);
+    if (rows.length === 0) return { balance: 0, lifetimeEarned: 0, lifetimeSpent: 0 };
+    return {
+      balance: rows[0].balance,
+      lifetimeEarned: rows[0].lifetimeEarned,
+      lifetimeSpent: rows[0].lifetimeSpent,
+    };
+  },
+
+  async grantCredits(userId: string, amount: number, type: string, description?: string, executionId?: string) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const existing = await sqliteDb
+      .select()
+      .from(sqliteSchema.sqliteUserCredits)
+      .where(eq(sqliteSchema.sqliteUserCredits.userId, userId))
+      .limit(1);
+
+    if (existing.length === 0) {
+      await sqliteDb.insert(sqliteSchema.sqliteUserCredits).values({
+        userId,
+        balance: amount,
+        lifetimeEarned: amount,
+        lifetimeSpent: 0,
+        updatedAt: Date.now(),
+      });
+    } else {
+      await sqliteDb.update(sqliteSchema.sqliteUserCredits)
+        .set({
+          balance: sql`${sqliteSchema.sqliteUserCredits.balance} + ${amount}`,
+          lifetimeEarned: sql`${sqliteSchema.sqliteUserCredits.lifetimeEarned} + ${amount}`,
+          updatedAt: Date.now(),
+        })
+        .where(eq(sqliteSchema.sqliteUserCredits.userId, userId));
+    }
+
+    await sqliteDb.insert(sqliteSchema.sqliteCreditTransactions).values({
+      id: crypto.randomUUID(),
+      userId,
+      amount,
+      type,
+      description: description ?? null,
+      executionId: executionId ?? null,
+      createdAt: Date.now(),
+    });
+  },
+
+  async deductCredits(userId: string, amount: number, description?: string, executionId?: string) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    await sqliteDb.update(sqliteSchema.sqliteUserCredits)
+      .set({
+        balance: sql`${sqliteSchema.sqliteUserCredits.balance} - ${amount}`,
+        lifetimeSpent: sql`${sqliteSchema.sqliteUserCredits.lifetimeSpent} + ${amount}`,
+        updatedAt: Date.now(),
+      })
+      .where(eq(sqliteSchema.sqliteUserCredits.userId, userId));
+
+    await sqliteDb.insert(sqliteSchema.sqliteCreditTransactions).values({
+      id: crypto.randomUUID(),
+      userId,
+      amount: -amount,
+      type: 'execution_cost',
+      description: description ?? null,
+      executionId: executionId ?? null,
+      createdAt: Date.now(),
+    });
+  },
+
+  async listCreditTransactions(userId: string, limit = 50) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const rows = await sqliteDb
+      .select()
+      .from(sqliteSchema.sqliteCreditTransactions)
+      .where(eq(sqliteSchema.sqliteCreditTransactions.userId, userId))
+      .orderBy(desc(sqliteSchema.sqliteCreditTransactions.createdAt))
+      .limit(limit);
+    return rows.map((r) => ({
+      id: r.id,
+      userId: r.userId,
+      amount: r.amount,
+      type: r.type as any,
+      description: r.description ?? null,
+      executionId: r.executionId ?? null,
+      createdAt: new Date(r.createdAt).toISOString(),
+    }));
+  },
+
+  // ─── Workflow limits ─────────────────────────────────────────────────────────
+
+  async countUserWorkflows(userId: string) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const rows = await sqliteDb
+      .select({ count: sql<number>`cast(count(*) as integer)` })
+      .from(sqliteSchema.sqliteWorkflows)
+      .where(eq(sqliteSchema.sqliteWorkflows.userId, userId));
+    return rows[0]?.count ?? 0;
+  },
 };

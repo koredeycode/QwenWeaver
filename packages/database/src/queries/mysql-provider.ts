@@ -522,4 +522,114 @@ export const mysqlProvider: QueryProvider = {
       .from(mysqlSchema.mysqlTemplateCategories)
       .orderBy(mysqlSchema.mysqlTemplateCategories.sortOrder);
   },
+
+  // ─── Credits ─────────────────────────────────────────────────────────────────
+
+  async getUserCredits(userId: string) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const rows = await mysqlDb
+      .select()
+      .from(mysqlSchema.mysqlUserCredits)
+      .where(eq(mysqlSchema.mysqlUserCredits.userId, userId))
+      .limit(1);
+    if (rows.length === 0) return { balance: 0, lifetimeEarned: 0, lifetimeSpent: 0 };
+    return {
+      balance: rows[0].balance,
+      lifetimeEarned: rows[0].lifetimeEarned,
+      lifetimeSpent: rows[0].lifetimeSpent,
+    };
+  },
+
+  async grantCredits(userId: string, amount: number, type: string, description?: string, executionId?: string) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const existing = await mysqlDb
+      .select()
+      .from(mysqlSchema.mysqlUserCredits)
+      .where(eq(mysqlSchema.mysqlUserCredits.userId, userId))
+      .limit(1);
+
+    if (existing.length === 0) {
+      await mysqlDb.insert(mysqlSchema.mysqlUserCredits).values({
+        userId,
+        balance: amount,
+        lifetimeEarned: amount,
+        lifetimeSpent: 0,
+        updatedAt: new Date(),
+      });
+    } else {
+      await mysqlDb.update(mysqlSchema.mysqlUserCredits)
+        .set({
+          balance: sql`${mysqlSchema.mysqlUserCredits.balance} + ${amount}`,
+          lifetimeEarned: sql`${mysqlSchema.mysqlUserCredits.lifetimeEarned} + ${amount}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(mysqlSchema.mysqlUserCredits.userId, userId));
+    }
+
+    await mysqlDb.insert(mysqlSchema.mysqlCreditTransactions).values({
+      id: crypto.randomUUID(),
+      userId,
+      amount,
+      type,
+      description: description ?? null,
+      executionId: executionId ?? null,
+      createdAt: new Date(),
+    });
+  },
+
+  async deductCredits(userId: string, amount: number, description?: string, executionId?: string) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    await mysqlDb.update(mysqlSchema.mysqlUserCredits)
+      .set({
+        balance: sql`${mysqlSchema.mysqlUserCredits.balance} - ${amount}`,
+        lifetimeSpent: sql`${mysqlSchema.mysqlUserCredits.lifetimeSpent} + ${amount}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(mysqlSchema.mysqlUserCredits.userId, userId));
+
+    await mysqlDb.insert(mysqlSchema.mysqlCreditTransactions).values({
+      id: crypto.randomUUID(),
+      userId,
+      amount: -amount,
+      type: 'execution_cost',
+      description: description ?? null,
+      executionId: executionId ?? null,
+      createdAt: new Date(),
+    });
+  },
+
+  async listCreditTransactions(userId: string, limit = 50) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const rows = await mysqlDb
+      .select()
+      .from(mysqlSchema.mysqlCreditTransactions)
+      .where(eq(mysqlSchema.mysqlCreditTransactions.userId, userId))
+      .orderBy(desc(mysqlSchema.mysqlCreditTransactions.createdAt))
+      .limit(limit);
+    return rows.map((r) => ({
+      id: r.id,
+      userId: r.userId,
+      amount: r.amount,
+      type: r.type as any,
+      description: r.description ?? null,
+      executionId: r.executionId ?? null,
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+    }));
+  },
+
+  // ─── Workflow limits ─────────────────────────────────────────────────────────
+
+  async countUserWorkflows(userId: string) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const rows = await mysqlDb
+      .select({ count: sql<number>`cast(count(*) as signed)` })
+      .from(mysqlSchema.mysqlWorkflows)
+      .where(eq(mysqlSchema.mysqlWorkflows.userId, userId));
+    return rows[0]?.count ?? 0;
+  },
 };

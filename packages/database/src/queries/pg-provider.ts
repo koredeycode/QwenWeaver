@@ -522,4 +522,114 @@ export const pgProvider: QueryProvider = {
       .from(pgSchema.pgTemplateCategories)
       .orderBy(pgSchema.pgTemplateCategories.sortOrder);
   },
+
+  // ─── Credits ─────────────────────────────────────────────────────────────────
+
+  async getUserCredits(userId: string) {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const rows = await pgDb
+      .select()
+      .from(pgSchema.pgUserCredits)
+      .where(eq(pgSchema.pgUserCredits.userId, userId))
+      .limit(1);
+    if (rows.length === 0) return { balance: 0, lifetimeEarned: 0, lifetimeSpent: 0 };
+    return {
+      balance: rows[0].balance,
+      lifetimeEarned: rows[0].lifetimeEarned,
+      lifetimeSpent: rows[0].lifetimeSpent,
+    };
+  },
+
+  async grantCredits(userId: string, amount: number, type: string, description?: string, executionId?: string) {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const existing = await pgDb
+      .select()
+      .from(pgSchema.pgUserCredits)
+      .where(eq(pgSchema.pgUserCredits.userId, userId))
+      .limit(1);
+
+    if (existing.length === 0) {
+      await pgDb.insert(pgSchema.pgUserCredits).values({
+        userId,
+        balance: amount,
+        lifetimeEarned: amount,
+        lifetimeSpent: 0,
+        updatedAt: new Date(),
+      });
+    } else {
+      await pgDb.update(pgSchema.pgUserCredits)
+        .set({
+          balance: sql`${pgSchema.pgUserCredits.balance} + ${amount}`,
+          lifetimeEarned: sql`${pgSchema.pgUserCredits.lifetimeEarned} + ${amount}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(pgSchema.pgUserCredits.userId, userId));
+    }
+
+    await pgDb.insert(pgSchema.pgCreditTransactions).values({
+      id: crypto.randomUUID(),
+      userId,
+      amount,
+      type,
+      description: description ?? null,
+      executionId: executionId ?? null,
+      createdAt: new Date(),
+    });
+  },
+
+  async deductCredits(userId: string, amount: number, description?: string, executionId?: string) {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    await pgDb.update(pgSchema.pgUserCredits)
+      .set({
+        balance: sql`${pgSchema.pgUserCredits.balance} - ${amount}`,
+        lifetimeSpent: sql`${pgSchema.pgUserCredits.lifetimeSpent} + ${amount}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(pgSchema.pgUserCredits.userId, userId));
+
+    await pgDb.insert(pgSchema.pgCreditTransactions).values({
+      id: crypto.randomUUID(),
+      userId,
+      amount: -amount,
+      type: 'execution_cost',
+      description: description ?? null,
+      executionId: executionId ?? null,
+      createdAt: new Date(),
+    });
+  },
+
+  async listCreditTransactions(userId: string, limit = 50) {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const rows = await pgDb
+      .select()
+      .from(pgSchema.pgCreditTransactions)
+      .where(eq(pgSchema.pgCreditTransactions.userId, userId))
+      .orderBy(desc(pgSchema.pgCreditTransactions.createdAt))
+      .limit(limit);
+    return rows.map((r) => ({
+      id: r.id,
+      userId: r.userId,
+      amount: r.amount,
+      type: r.type as any,
+      description: r.description ?? null,
+      executionId: r.executionId ?? null,
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+    }));
+  },
+
+  // ─── Workflow limits ─────────────────────────────────────────────────────────
+
+  async countUserWorkflows(userId: string) {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const rows = await pgDb
+      .select({ count: sql<number>`cast(count(*) as integer)` })
+      .from(pgSchema.pgWorkflows)
+      .where(eq(pgSchema.pgWorkflows.userId, userId));
+    return rows[0]?.count ?? 0;
+  },
 };

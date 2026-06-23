@@ -9,6 +9,15 @@ import { active_sse_connections } from '../../metrics.js';
 import type { Variables } from '../../index.js';
 import type { RouteHandler } from '@hono/zod-openapi';
 import type { executeRoute, streamRoute, getStatusRoute, listWorkflowsRoute, getWorkflowRoute, deleteWorkflowRoute, saveWorkflowRoute } from './index.js';
+import {
+  NODE_BASE_COST,
+  FIXED_COST,
+  PROMPT_TOKEN_COST,
+  COMPLETION_TOKEN_COST,
+  MIN_COST,
+  MAX_FREE_WORKFLOWS,
+  IS_SELF_HOSTED,
+} from '../../config.js';
 
 const log = createModuleLogger('routes/workflow.handlers');
 
@@ -97,6 +106,12 @@ export const handleSaveWorkflow: RouteHandler<typeof saveWorkflowRoute, { Variab
     return c.json({ error: 'Invalid workflow', details: parsed.error.format() }, 400);
   }
   const provider = getQueryProvider();
+  if (!IS_SELF_HOSTED) {
+    const workflowCount = await provider.countUserWorkflows(jwtPayload.sub);
+    if (workflowCount >= MAX_FREE_WORKFLOWS) {
+      return c.json({ error: `Workflow limit reached. Maximum ${MAX_FREE_WORKFLOWS} workflows allowed.` }, 403);
+    }
+  }
   const workflowId = await provider.saveWorkflow(jwtPayload.sub, parsed.data);
   return c.json({ workflowId }, 201);
 };
@@ -124,6 +139,16 @@ export const handleExecute: RouteHandler<typeof executeRoute, { Variables: Varia
   const provider = getQueryProvider();
   const workflowId = await provider.saveWorkflow(userId, workflow);
   await provider.createExecution(executionId, workflowId, userId);
+
+  // ─── Credit check ──────────────────────────────────────────────────────
+  if (!IS_SELF_HOSTED) {
+    const { balance } = await provider.getUserCredits(userId);
+    const estimatedCost = estimateExecutionCost(workflow);
+    if (balance < estimatedCost) {
+      log.warn({ userId, balance, estimatedCost }, 'Insufficient credits for execution');
+      return c.json({ error: 'Insufficient credits', balance, required: estimatedCost }, 402);
+    }
+  }
 
   let resolveExecution: () => void;
   const promise = new Promise<void>((resolve) => {
@@ -278,6 +303,22 @@ export const handleGetStatus: RouteHandler<typeof getStatusRoute, { Variables: V
   }, 200);
 }
 
+// ─── Cost estimation ──────────────────────────────────────────────────────────
+
+function estimateExecutionCost(workflow: z.infer<typeof WorkflowPayload>): number {
+  let total = FIXED_COST;
+  for (const node of workflow.nodes) {
+    total += NODE_BASE_COST[node.type] ?? 2;
+  }
+  return Math.max(total, MIN_COST);
+}
+
+function calculateFinalCost(workflow: z.infer<typeof WorkflowPayload>, totalTokens: number): number {
+  const baseCost = estimateExecutionCost(workflow);
+  const tokenCost = Math.round(totalTokens * (PROMPT_TOKEN_COST + COMPLETION_TOKEN_COST));
+  return Math.max(baseCost + tokenCost, MIN_COST);
+}
+
 // ─── Async execution runner ─────────────────────────────────────────────────
 
 async function runExecutionAsync(executionId: string, workflow: WorkflowPayload): Promise<void> {
@@ -310,6 +351,22 @@ async function runExecutionAsync(executionId: string, workflow: WorkflowPayload)
 
     execution.status = result.status;
     execution.result = result;
+
+    // ─── Credit deduction ────────────────────────────────────────────────
+    if (!IS_SELF_HOSTED && result.status === 'completed') {
+      try {
+        const totalTokens = result.metrics?.totalTokens ?? 0;
+        const cost = calculateFinalCost(workflow, totalTokens);
+        const provider = getQueryProvider();
+        const dbExec = await provider.getExecution(executionId);
+        if (dbExec) {
+          await provider.deductCredits(dbExec.userId, cost, `Execution ${executionId}`, executionId);
+          log.info({ executionId, cost, totalTokens }, 'Credits deducted for execution');
+        }
+      } catch (err) {
+        log.error({ executionId, error: (err as Error).message }, 'Failed to deduct credits');
+      }
+    }
 
     log.info(
       { executionId, status: result.status },

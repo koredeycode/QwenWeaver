@@ -21,9 +21,11 @@ export interface AuthSlice {
   token: string | null;
   refreshToken: string | null;
   user: { id: string; email: string } | null;
+  credits: { balance: number; lifetimeEarned: number; lifetimeSpent: number; lowBalance: boolean } | null;
   login: (email: string, password: string) => Promise<boolean>;
   register: (email: string, password: string) => Promise<boolean>;
   refreshAccessToken: () => Promise<boolean>;
+  fetchCredits: () => Promise<void>;
   logout: () => void;
 }
 

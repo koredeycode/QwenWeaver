@@ -27,6 +27,8 @@ interface UserWorkflow {
 export const WorkflowDashboard = () => {
   const navigate = useNavigate();
   const user = useStore((s) => s.user);
+  const credits = useStore((s) => s.credits);
+  const fetchCredits = useStore((s) => s.fetchCredits);
   const logout = useStore((s) => s.logout);
   const clearGraph = useStore((s) => s.clearGraph);
   const loadUnsavedWorkflow = useStore((s) => s.loadUnsavedWorkflow);
@@ -47,6 +49,10 @@ export const WorkflowDashboard = () => {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
+
+  useEffect(() => {
+    if (user) fetchCredits();
+  }, [user]);
 
   const fetchWorkflows = () => {
     setWorkflowsLoading(true);
@@ -170,13 +176,34 @@ export const WorkflowDashboard = () => {
               >
                 <User className="w-4 h-4" />
                 <span className="text-xs font-mono max-w-24 truncate hidden md:inline">{user.email}</span>
+                {credits && (
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-none ${credits.lowBalance ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
+                    {credits.balance}
+                  </span>
+                )}
                 <ChevronDown className="w-3 h-3" />
               </button>
               {profileOpen && (
-                <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-slate-200 shadow-lg z-50">
+                <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-slate-200 shadow-lg z-50">
                   <div className="px-3 py-2 text-xs text-slate-500 font-mono border-b border-slate-100 truncate">
                     {user.email}
                   </div>
+                  {credits && (
+                    <div className="px-3 py-2 text-xs border-b border-slate-100 space-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Credits</span>
+                        <span className={`font-bold ${credits.lowBalance ? 'text-amber-600' : 'text-slate-700'}`}>{credits.balance}</span>
+                      </div>
+                      <div className="flex justify-between text-[10px] text-slate-400">
+                        <span>Earned</span>
+                        <span>{credits.lifetimeEarned}</span>
+                      </div>
+                      <div className="flex justify-between text-[10px] text-slate-400">
+                        <span>Spent</span>
+                        <span>{credits.lifetimeSpent}</span>
+                      </div>
+                    </div>
+                  )}
                   <button
                     onClick={logout}
                     className="w-full flex items-center gap-2 px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 font-semibold transition-colors cursor-pointer"

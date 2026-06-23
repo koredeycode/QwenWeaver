@@ -1,6 +1,6 @@
 import type { SavedMCPServerInput, SavedMCPServer } from './mcp.js';
 import type { TemplateRow, TemplateReviewRow, TemplateCategoryRow } from './templates.js';
-import type { WorkflowPayload, ExecutionMetrics, AgentLogInput, AgentLogOutput } from '@qwenweaver/types';
+import type { WorkflowPayload, ExecutionMetrics, AgentLogInput, AgentLogOutput, CreditTransaction } from '@qwenweaver/types';
 import { getConnection } from '../index.js';
 import { sqliteProvider } from './sqlite-provider.js';
 import { pgProvider } from './pg-provider.js';
@@ -119,6 +119,15 @@ export interface QueryProvider {
 
   /** Runs a lightweight query to verify the database connection is alive. */
   healthCheck(): Promise<void>;
+
+  // Credits
+  getUserCredits(userId: string): Promise<{ balance: number; lifetimeEarned: number; lifetimeSpent: number }>;
+  grantCredits(userId: string, amount: number, type: string, description?: string, executionId?: string): Promise<void>;
+  deductCredits(userId: string, amount: number, description?: string, executionId?: string): Promise<void>;
+  listCreditTransactions(userId: string, limit?: number): Promise<CreditTransaction[]>;
+
+  // Workflow limits
+  countUserWorkflows(userId: string): Promise<number>;
 }
 
 export function getQueryProvider(): QueryProvider {

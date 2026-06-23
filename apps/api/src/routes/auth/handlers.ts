@@ -8,6 +8,8 @@ import {
   JWT_SECRET,
   ACCESS_TOKEN_EXPIRY_SECONDS,
   REFRESH_TOKEN_EXPIRY_SECONDS,
+  SIGNUP_CREDITS,
+  IS_SELF_HOSTED,
 } from '../../config.js';
 import type { RouteHandler } from '@hono/zod-openapi';
 import type { registerRoute, loginRoute, refreshRoute } from './index.js';
@@ -35,7 +37,10 @@ export const handleRegister: RouteHandler<typeof registerRoute, { Variables: Var
     const passwordHash = await bcrypt.hash(password, 10);
     
     await provider.createUser(id, email, passwordHash);
-    
+    if (!IS_SELF_HOSTED) {
+      await provider.grantCredits(id, SIGNUP_CREDITS, 'signup_bonus', 'Welcome credits');
+    }
+
     log.info({ userId: id, email }, 'User registered successfully');
     
     // Short-lived access token + long-lived refresh token

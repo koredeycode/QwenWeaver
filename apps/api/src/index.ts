@@ -13,6 +13,7 @@ import { copilotRoutes } from './routes/copilot/index.js';
 import { mcpRoutes } from './routes/mcp/index.js';
 import { authRoutes } from './routes/auth/index.js';
 import { analyticsRoutes } from './routes/analytics/index.js';
+import { creditsRoutes } from './routes/credits/index.js';
 import { templateRoutes } from './routes/templates/index.js';
 import { register } from './metrics.js';
 import { getQueryProvider } from '@qwenweaver/database';
@@ -94,7 +95,8 @@ const routes = app
   .route('/api/execution', executionRoutes)
   .route('/api/copilot', copilotRoutes)
   .route('/api/mcp', mcpRoutes)
-  .route('/api/analytics', analyticsRoutes);
+  .route('/api/analytics', analyticsRoutes)
+  .route('/api/credits', creditsRoutes);
 
 
 // Expose metrics endpoint only in development/test environments

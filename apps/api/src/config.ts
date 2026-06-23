@@ -45,3 +45,21 @@ export const RATE_LIMIT = {
 // ─── JWT Token Expiry (L-6) ─────────────────────────────────────────────────
 export const ACCESS_TOKEN_EXPIRY_SECONDS = 60 * 60; // 1 hour
 export const REFRESH_TOKEN_EXPIRY_SECONDS = 60 * 60 * 24 * 7; // 7 days
+
+// ─── Credits & Limits ──────────────────────────────────────────────────────────
+export const IS_SELF_HOSTED = !!process.env.TEMPLATE_API_URL;
+export const SIGNUP_CREDITS = IS_SELF_HOSTED ? 0 : 1000;
+export const MAX_FREE_WORKFLOWS = IS_SELF_HOSTED ? Infinity : 2;
+export const LOW_CREDIT_WARNING = 100;
+export const NODE_BASE_COST: Record<string, number> = {
+  trigger: 0,
+  input_trigger: 0,
+  agent: 5,
+  supervisor: 15,
+  mcp_tool: 2,
+  logic: 1,
+};
+export const FIXED_COST = 5;
+export const PROMPT_TOKEN_COST = 0.001;
+export const COMPLETION_TOKEN_COST = 0.002;
+export const MIN_COST = 5;

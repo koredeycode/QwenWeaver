@@ -96,57 +96,5 @@ export const sqliteTemplateCategories = sqliteTable('template_categories', {
   sortOrder: integer('sort_order').default(0),
 });
 
-export const sqliteTemplates = sqliteTable('templates', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  description: text('description'),
-  workflowData: text('workflow_data', { mode: 'json' }).notNull().$type<import('@qwenweaver/types').WorkflowPayload>(),
-  categoryId: text('category_id').references(() => sqliteTemplateCategories.id),
-  tags: text('tags', { mode: 'json' }).$type<string[]>(),
-  authorId: text('author_id').notNull().references(() => sqliteUsers.id),
-  thumbnail: text('thumbnail'),
-  downloads: integer('downloads').default(0).notNull(),
-  avgRating: integer('avg_rating').default(0).notNull(),
-  ratingCount: integer('rating_count').default(0).notNull(),
-  featured: integer('featured').default(0).notNull(),
-  createdAt: integer('created_at').notNull(),
-  updatedAt: integer('updated_at').notNull(),
-}, (table) => [
-  index('templates_category_id_idx').on(table.categoryId),
-  index('templates_author_id_idx').on(table.authorId),
-]);
-
-export const sqliteTemplateReviews = sqliteTable('template_reviews', {
-  id: text('id').primaryKey(),
-  templateId: text('template_id').notNull().references(() => sqliteTemplates.id, { onDelete: 'cascade' }),
-  userId: text('user_id').notNull().references(() => sqliteUsers.id),
-  rating: integer('rating').notNull(),
-  review: text('review'),
-  createdAt: integer('created_at').notNull(),
-}, (table) => [
-  index('template_reviews_template_id_idx').on(table.templateId),
-  index('template_reviews_user_id_idx').on(table.userId),
-]);
-
-export const sqliteUserCredits = sqliteTable('user_credits', {
-  userId: text('user_id').primaryKey().references(() => sqliteUsers.id, { onDelete: 'cascade' }),
-  balance: integer('balance').notNull().default(0),
-  lifetimeEarned: integer('lifetime_earned').notNull().default(0),
-  lifetimeSpent: integer('lifetime_spent').notNull().default(0),
-  updatedAt: integer('updated_at').notNull(),
-});
-
-export const sqliteCreditTransactions = sqliteTable('credit_transactions', {
-  id: text('id').primaryKey(),
-  userId: text('user_id').notNull().references(() => sqliteUsers.id, { onDelete: 'cascade' }),
-  amount: integer('amount').notNull(),
-  type: text('type').notNull(), // signup_bonus | execution_cost | admin_grant
-  description: text('description'),
-  executionId: text('execution_id'),
-  createdAt: integer('created_at').notNull(),
-}, (table) => [
-  index('credit_transactions_user_id_idx').on(table.userId),
-]);
-
 export type SqliteMcpServer = typeof sqliteMcpServers.$inferSelect;
 export type NewSqliteMcpServer = typeof sqliteMcpServers.$inferInsert;

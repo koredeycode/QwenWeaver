@@ -84,7 +84,14 @@ export const executeRoute = createRoute({
       description: 'Created',
     },
     400: { content: { 'application/json': { schema: errorResponseSchema } }, description: 'Bad Request' },
-    500: { content: { 'application/json': { schema: errorResponseSchema } }, description: 'Internal Server Error' },
+    402: {
+      content: {
+        'application/json': {
+          schema: z.object({ error: z.string(), balance: z.number(), required: z.number() }),
+        },
+      },
+      description: 'Insufficient credits',
+    },
   },
 });
 
@@ -158,6 +165,7 @@ export const saveWorkflowRoute = createRoute({
       description: 'Created',
     },
     400: { content: { 'application/json': { schema: errorResponseSchema } }, description: 'Bad Request' },
+    403: { content: { 'application/json': { schema: errorResponseSchema } }, description: 'Workflow limit reached' },
   },
 });
 export const workflowRoutes = new OpenAPIHono<{ Variables: Variables }>()
