@@ -82,6 +82,7 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
   nodes: RESEARCH_SWARM_TEMPLATE.nodes,
   edges: RESEARCH_SWARM_TEMPLATE.edges,
   selectedNodeId: null,
+  workflowId: null,
   workflowName: '',
   workflowDescription: '',
   maximizedNodeId: null,
@@ -143,7 +144,7 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
 
   setWorkflowMeta: (name, description) => set({ workflowName: name, workflowDescription: description }),
 
-  clearGraph: () => set({ nodes: [], edges: [], selectedNodeId: null, workflowName: '', workflowDescription: '' }),
+  clearGraph: () => set({ nodes: [], edges: [], selectedNodeId: null, workflowId: null, workflowName: '', workflowDescription: '' }),
 
   loadTemplate: (templateName) => {
     if (templateName === 'research') {
@@ -162,6 +163,7 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
         nodes: wf.nodes as any, 
         edges: wf.edges as any,
         selectedNodeId: null,
+        workflowId: null,
         workflowName: wf.name,
         workflowDescription: wf.description
       });
@@ -170,6 +172,18 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
     } else {
       toast.error(`Workflow "${workflowId}" not found.`);
     }
+  },
+
+  loadUnsavedWorkflow: (nodes, edges, name, description = '') => {
+    set({
+      nodes: nodes as any,
+      edges: edges as any,
+      selectedNodeId: null,
+      workflowId: null,
+      workflowName: name,
+      workflowDescription: description,
+    });
+    get().rearrangeGraph();
   },
 
   rearrangeGraph: () => {

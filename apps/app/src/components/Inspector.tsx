@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Settings, 
+  Eye, 
   Trash2, 
   X, 
   HelpCircle,
@@ -126,7 +126,7 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
       {/* Title Header */}
       <div className="flex items-center justify-between border-b border-[#cbd5e1] bg-[#f8fafc] px-4 py-2.5">
         <div className="flex items-center gap-1.5 text-xs font-mono font-bold tracking-wider text-slate-900">
-          <Settings className="w-3.5 h-3.5 text-slate-500" />
+          <Eye className="w-3.5 h-3.5 text-slate-500" />
           PROPERTIES INSPECTOR
         </div>
         <button

@@ -88,6 +88,46 @@ export const mysqlMcpServers = mysqlTable('mcp_servers', {
   index('mcp_servers_user_id_idx').on(table.userId),
 ]);
 
+export const mysqlTemplateCategories = mysqlTable('template_categories', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 255 }).notNull().unique(),
+  icon: text('icon'),
+  sortOrder: int('sort_order').default(0),
+});
+
+export const mysqlTemplates = mysqlTable('templates', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  workflowData: json('workflow_data').notNull().$type<import('@qwenweaver/types').WorkflowPayload>(),
+  categoryId: varchar('category_id', { length: 36 }).references(() => mysqlTemplateCategories.id),
+  tags: json('tags').$type<string[]>(),
+  authorId: varchar('author_id', { length: 36 }).notNull().references(() => mysqlUsers.id),
+  thumbnail: text('thumbnail'),
+  downloads: int('downloads').default(0).notNull(),
+  avgRating: int('avg_rating').default(0).notNull(),
+  ratingCount: int('rating_count').default(0).notNull(),
+  featured: int('featured').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+  index('templates_category_id_idx').on(table.categoryId),
+  index('templates_author_id_idx').on(table.authorId),
+]);
+
+export const mysqlTemplateReviews = mysqlTable('template_reviews', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  templateId: varchar('template_id', { length: 36 }).notNull().references(() => mysqlTemplates.id, { onDelete: 'cascade' }),
+  userId: varchar('user_id', { length: 36 }).notNull().references(() => mysqlUsers.id),
+  rating: int('rating').notNull(),
+  review: text('review'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  index('template_reviews_template_id_idx').on(table.templateId),
+  index('template_reviews_user_id_idx').on(table.userId),
+]);
+
 export type MysqlMcpServer = typeof mysqlMcpServers.$inferSelect;
 export type MysqlUser = typeof mysqlUsers.$inferSelect;
 export type NewMysqlMcpServer = typeof mysqlMcpServers.$inferInsert;

@@ -10,7 +10,8 @@
     "test": "vitest run",
     "lint": "eslint src/",
     "drizzle:generate": "drizzle-kit generate",
-    "drizzle:push": "drizzle-kit push"
+    "drizzle:push": "drizzle-kit push",
+    "seed": "tsx src/seed.ts"
   },
   "dependencies": {
     "@qwenweaver/types": "workspace:*",

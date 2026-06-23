@@ -13,6 +13,7 @@ import { copilotRoutes } from './routes/copilot/index.js';
 import { mcpRoutes } from './routes/mcp/index.js';
 import { authRoutes } from './routes/auth/index.js';
 import { analyticsRoutes } from './routes/analytics/index.js';
+import { templateRoutes } from './routes/templates/index.js';
 import { register } from './metrics.js';
 import { getQueryProvider } from '@qwenweaver/database';
 import { rateLimiter } from './middleware/rate-limiter.js';
@@ -59,6 +60,8 @@ app.use('/api/copilot/*', rateLimiter('copilot', RATE_LIMIT.copilot));
 // General API rate limiting
 app.use('/api/*', rateLimiter('api', RATE_LIMIT.api));
 
+// Public template routes — mounted before JWT middleware (removed; now in routes chain below)
+
 // Auth middleware using centralized JWT_SECRET from config
 app.use(
   '/api/*',
@@ -82,9 +85,10 @@ app.use(
   }
 );
 
-// ─── Mount route modules ────────────────────────────────────────────────────
+// ─── Mount route modules (all in one chain for proper AppType) ───────────
 
 const routes = app
+  .route('/api/templates', templateRoutes)
   .route('/api/auth', authRoutes)
   .route('/api/workflow', workflowRoutes)
   .route('/api/execution', executionRoutes)

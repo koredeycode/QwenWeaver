@@ -1,9 +1,11 @@
 import { relations } from 'drizzle-orm';
 import {
   pgWorkflows, pgNodes, pgEdges, pgExecutions, pgAgentLogs, pgMcpServers,
+  pgTemplates, pgTemplateCategories, pgTemplateReviews,
 } from './pg.js';
 import {
   sqliteWorkflows, sqliteNodes, sqliteEdges, sqliteExecutions, sqliteAgentLogs, sqliteMcpServers,
+  sqliteTemplates, sqliteTemplateCategories, sqliteTemplateReviews,
 } from './sqlite.js';
 
 export const pgWorkflowsRelations = relations(pgWorkflows, ({ many }) => ({
@@ -43,6 +45,25 @@ export const pgAgentLogsRelations = relations(pgAgentLogs, ({ one }) => ({
 
 export const pgMcpServersRelations = relations(pgMcpServers, () => ({}));
 
+export const pgTemplateCategoriesRelations = relations(pgTemplateCategories, ({ many }) => ({
+  templates: many(pgTemplates),
+}));
+
+export const pgTemplatesRelations = relations(pgTemplates, ({ one, many }) => ({
+  category: one(pgTemplateCategories, {
+    fields: [pgTemplates.categoryId],
+    references: [pgTemplateCategories.id],
+  }),
+  reviews: many(pgTemplateReviews),
+}));
+
+export const pgTemplateReviewsRelations = relations(pgTemplateReviews, ({ one }) => ({
+  template: one(pgTemplates, {
+    fields: [pgTemplateReviews.templateId],
+    references: [pgTemplates.id],
+  }),
+}));
+
 export const sqliteWorkflowsRelations = relations(sqliteWorkflows, ({ many }) => ({
   nodes: many(sqliteNodes),
   edges: many(sqliteEdges),
@@ -79,3 +100,22 @@ export const sqliteAgentLogsRelations = relations(sqliteAgentLogs, ({ one }) => 
 }));
 
 export const sqliteMcpServersRelations = relations(sqliteMcpServers, () => ({}));
+
+export const sqliteTemplateCategoriesRelations = relations(sqliteTemplateCategories, ({ many }) => ({
+  templates: many(sqliteTemplates),
+}));
+
+export const sqliteTemplatesRelations = relations(sqliteTemplates, ({ one, many }) => ({
+  category: one(sqliteTemplateCategories, {
+    fields: [sqliteTemplates.categoryId],
+    references: [sqliteTemplateCategories.id],
+  }),
+  reviews: many(sqliteTemplateReviews),
+}));
+
+export const sqliteTemplateReviewsRelations = relations(sqliteTemplateReviews, ({ one }) => ({
+  template: one(sqliteTemplates, {
+    fields: [sqliteTemplateReviews.templateId],
+    references: [sqliteTemplates.id],
+  }),
+}));

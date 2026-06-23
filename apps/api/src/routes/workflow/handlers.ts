@@ -8,7 +8,7 @@ import { createModuleLogger } from '../../logger.js';
 import { active_sse_connections } from '../../metrics.js';
 import type { Variables } from '../../index.js';
 import type { RouteHandler } from '@hono/zod-openapi';
-import type { executeRoute, streamRoute, getStatusRoute } from './index.js';
+import type { executeRoute, streamRoute, getStatusRoute, listWorkflowsRoute, getWorkflowRoute, deleteWorkflowRoute, saveWorkflowRoute } from './index.js';
 
 const log = createModuleLogger('routes/workflow.handlers');
 
@@ -48,7 +48,6 @@ class SSEQueue {
       try {
         await fn();
       } catch (err) {
-        // Log SSE write errors at debug level instead of silencing
         log.debug(
           { error: (err as Error).message },
           'SSE write failed (client may have disconnected)',
@@ -60,6 +59,47 @@ class SSEQueue {
 }
 
 // ─── Route Handlers ─────────────────────────────────────────────────────────
+
+export const handleListWorkflows: RouteHandler<typeof listWorkflowsRoute, { Variables: Variables }> = async (c) => {
+  const jwtPayload = c.get('jwtPayload');
+  const provider = getQueryProvider();
+  const workflows = await provider.listUserWorkflows(jwtPayload.sub);
+  return c.json({ workflows }, 200);
+};
+
+export const handleGetWorkflow: RouteHandler<typeof getWorkflowRoute, { Variables: Variables }> = async (c) => {
+  const jwtPayload = c.get('jwtPayload');
+  const { workflowId } = c.req.valid('param');
+  const provider = getQueryProvider();
+  const workflow = await provider.getWorkflow(workflowId, jwtPayload.sub);
+  if (!workflow) {
+    return c.json({ error: 'Workflow not found' }, 404);
+  }
+  return c.json(workflow, 200);
+};
+
+export const handleDeleteWorkflow: RouteHandler<typeof deleteWorkflowRoute, { Variables: Variables }> = async (c) => {
+  const jwtPayload = c.get('jwtPayload');
+  const { workflowId } = c.req.valid('param');
+  const provider = getQueryProvider();
+  const deleted = await provider.deleteWorkflow(workflowId, jwtPayload.sub);
+  if (!deleted) {
+    return c.json({ error: 'Workflow not found' }, 404);
+  }
+  return c.json({ success: true }, 200);
+};
+
+export const handleSaveWorkflow: RouteHandler<typeof saveWorkflowRoute, { Variables: Variables }> = async (c) => {
+  const jwtPayload = c.get('jwtPayload');
+  const raw = await c.req.json();
+  const parsed = WorkflowPayload.safeParse(raw);
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid workflow', details: parsed.error.format() }, 400);
+  }
+  const provider = getQueryProvider();
+  const workflowId = await provider.saveWorkflow(jwtPayload.sub, parsed.data);
+  return c.json({ workflowId }, 201);
+};
 
 export const handleExecute: RouteHandler<typeof executeRoute, { Variables: Variables }> = async (c) => {
   // Validate body through Zod instead of blind cast

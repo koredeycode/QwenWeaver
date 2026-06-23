@@ -1,9 +1,43 @@
 import type { SavedMCPServerInput, SavedMCPServer } from './mcp.js';
+import type { TemplateRow, TemplateReviewRow, TemplateCategoryRow } from './templates.js';
 import type { WorkflowPayload, ExecutionMetrics, AgentLogInput, AgentLogOutput } from '@qwenweaver/types';
 import { getConnection } from '../index.js';
 import { sqliteProvider } from './sqlite-provider.js';
 import { pgProvider } from './pg-provider.js';
 import { mysqlProvider } from './mysql-provider.js';
+
+export interface WorkflowRow {
+  id: string;
+  name: string;
+  description: string | null;
+  createdAt: number | Date | string;
+  nodeCounts?: Record<string, number>;
+}
+
+export interface WorkflowNodeRow {
+  id: string;
+  type: string;
+  data: unknown;
+  positionX: number;
+  positionY: number;
+}
+
+export interface WorkflowEdgeRow {
+  id: string;
+  sourceNode: string;
+  targetNode: string;
+  sourceHandle: string | null;
+  targetHandle: string | null;
+}
+
+export interface WorkflowDetail {
+  id: string;
+  name: string;
+  description: string | null;
+  createdAt: number | Date | string;
+  nodes: WorkflowNodeRow[];
+  edges: WorkflowEdgeRow[];
+}
 
 export interface QueryProvider {
   // Auth
@@ -16,6 +50,9 @@ export interface QueryProvider {
   deleteMcpServer(id: string, userId: string): Promise<boolean>;
 
   saveWorkflow(userId: string, workflow: WorkflowPayload): Promise<string>;
+  listUserWorkflows(userId: string): Promise<WorkflowRow[]>;
+  getWorkflow(id: string, userId: string): Promise<WorkflowDetail | null>;
+  deleteWorkflow(id: string, userId: string): Promise<boolean>;
 
   createExecution(executionId: string, workflowId: string, userId: string): Promise<void>;
   updateExecution(executionId: string, status: string, metrics?: ExecutionMetrics): Promise<void>;
@@ -65,6 +102,20 @@ export interface QueryProvider {
       totalTokens?: number;
     }>;
   }>;
+
+  // Templates
+  listTemplates(options?: { categoryId?: string; featured?: boolean; search?: string; limit?: number; offset?: number }): Promise<TemplateRow[]>;
+  countTemplates(options?: { categoryId?: string; featured?: boolean; search?: string }): Promise<number>;
+  getTemplate(id: string): Promise<TemplateRow | null>;
+  createTemplate(id: string, data: {
+    name: string; description?: string | null; workflowData: WorkflowPayload;
+    categoryId?: string | null; tags?: string[] | null; authorId: string; thumbnail?: string | null;
+  }): Promise<void>;
+  deleteTemplate(id: string): Promise<boolean>;
+  incrementTemplateDownloads(id: string): Promise<void>;
+  listTemplateReviews(templateId: string): Promise<TemplateReviewRow[]>;
+  upsertTemplateReview(id: string, templateId: string, userId: string, rating: number, review?: string | null): Promise<void>;
+  listTemplateCategories(): Promise<TemplateCategoryRow[]>;
 
   /** Runs a lightweight query to verify the database connection is alive. */
   healthCheck(): Promise<void>;

@@ -20,7 +20,7 @@ Use exact flags. Never `npm` or `yarn`.
 | Execute one workspace | `pnpm --filter <name> <cmd>` |
 | DB migrations (SQLite dev) | `pnpm db:push` |
 
-Workspace names: `@qwenweaver/web`, `@qwenweaver/api`, `@qwenweaver/database`, `@qwenweaver/types`, `@qwenweaver/mcp-client`.
+Workspace names: `@qwenweaver/app`, `@qwenweaver/api`, `@qwenweaver/database`, `@qwenweaver/types`, `@qwenweaver/mcp-client`, `@qwenweaver/site`.
 
 ### Before committing
 
@@ -42,10 +42,14 @@ chore: bump hono to 4.12
 ## 2. Project Structure
 
 ```
-apps/web/          React 19 + Vite + @xyflow/react v12 + Zustand + Tailwind + shadcn/ui
+apps/app/          React 19 + Vite + @xyflow/react v12 + Zustand + Tailwind + shadcn/ui
   src/store/       Zustand atomic state slices
   src/components/  React Flow custom nodes & edges
   App.tsx          Main visual canvas
+
+apps/site/          React 19 + Vite + Tailwind v4
+  src/docs/         MDX documentation pages
+  src/pages/        Marketing pages (home, pricing, self-hosted)
 
 apps/api/          Hono.js edge-optimized backend
   src/engine/      Kahn's Algorithm DAG compiler, parallel execution

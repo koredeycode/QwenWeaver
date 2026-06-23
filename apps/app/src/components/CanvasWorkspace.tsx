@@ -7,11 +7,13 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 
 import type { NodeType } from '@qwenweaver/types';
 import { MOCK_WORKFLOWS } from '../lib/mock-workflows.js';
+import { apiFetch, isSelfHosted, getSaaSUrl } from '../lib/api-client.js';
 import { useStore } from '../store/index.js';
+import { toast } from 'sonner';
 import { edgeTypes } from './AnimatedEdge.js';
 import { CopilotOverlay } from './CopilotOverlay.js';
 import { nodeTypes } from './CustomNodes.js';
@@ -20,25 +22,28 @@ import { Inspector } from './Inspector.js';
 import { Sidebar } from './Sidebar.js';
 
 import {
+  ChevronDown,
+  ChevronLeft,
   Download,
   Info,
   Keyboard,
   Play,
   RefreshCw,
+  Save,
   Settings,
   Square,
-  ToggleLeft,
-  ToggleRight,
   Trash2,
   Upload,
   User,
-  X
+  X,
+  LogOut,
 } from 'lucide-react';
 
 import { CustomZoomControls } from './CustomZoomControls.js';
 import { ExportWorkflowModal } from './ExportWorkflowModal.js';
 import { ImportWorkflowModal } from './ImportWorkflowModal.js';
 import { MaximizedNodeOverlay } from './MaximizedNodeOverlay.js';
+import { SaveWorkflowDialog } from './SaveWorkflowDialog.js';
 
 export const CanvasWorkspace = () => {
   const nodes = useStore((s) => s.nodes);
@@ -51,8 +56,10 @@ export const CanvasWorkspace = () => {
   const rearrangeGraph = useStore((s) => s.rearrangeGraph);
   const clearGraph = useStore((s) => s.clearGraph);
   const loadWorkflow = useStore((s) => s.loadWorkflow);
+
   const workflowName = useStore((s) => s.workflowName);
   const workflowDescription = useStore((s) => s.workflowDescription);
+  const workflowId = useStore((s) => s.workflowId);
   const setWorkflowMeta = useStore((s) => s.setWorkflowMeta);
   const maximizedNodeId = useStore((s) => s.maximizedNodeId);
   const setMaximizedNodeId = useStore((s) => s.setMaximizedNodeId);
@@ -60,31 +67,123 @@ export const CanvasWorkspace = () => {
   const status = useStore((s) => s.executionStatus);
   const runWorkflow = useStore((s) => s.runWorkflow);
   const stopWorkflow = useStore((s) => s.stopWorkflow);
-  const mockMode = useStore((s) => s.mockMode);
-  const setMockMode = useStore((s) => s.setMockMode);
   const user = useStore((s) => s.user);
   const logout = useStore((s) => s.logout);
 
   const reactFlowInstance = useReactFlow();
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   useEffect(() => {
     if (id) {
+      if (id === 'unsaved') return;
+
       const isMock = MOCK_WORKFLOWS.some((w) => w.id === id);
       if (isMock) {
         loadWorkflow(id);
       } else {
-        clearGraph();
-        const pendingRaw = sessionStorage.getItem(`pending_wf_${id}`);
-        if (pendingRaw) {
+        // Check for forked workflow data in localStorage
+        const forkedRaw = localStorage.getItem(`forked_wf_${id}`);
+        if (forkedRaw) {
           try {
-            const { name, description } = JSON.parse(pendingRaw);
-            setWorkflowMeta(name, description || '');
+            const { workflowData, name } = JSON.parse(forkedRaw);
+            if (workflowData?.nodes && workflowData?.edges) {
+              const store = useStore.getState();
+              store.clearGraph();
+              store.setWorkflowMeta(name || '', '');
+              // Directly set nodes/edges like loadWorkflow does, bypassing importWorkflow validation
+              useStore.setState({
+                nodes: workflowData.nodes as any,
+                edges: workflowData.edges as any,
+                selectedNodeId: null,
+                maximizedNodeId: null,
+              });
+              store.rearrangeGraph();
+              localStorage.removeItem(`forked_wf_${id}`);
+              return;
+            }
           } catch { /* ignore invalid JSON */ }
         }
+
+        // Try to load from API (saved workflow from the server)
+        apiFetch(`/api/workflow/detail/${id}`)
+          .then(r => r.ok ? r.json() : null)
+          .then(wf => {
+            if (!wf || !wf.nodes || !wf.edges) {
+              clearGraph();
+              const pendingRaw = sessionStorage.getItem(`pending_wf_${id}`);
+              if (pendingRaw) {
+                try {
+                  const { name, description } = JSON.parse(pendingRaw);
+                  setWorkflowMeta(name, description || '');
+                } catch { /* ignore invalid JSON */ }
+              }
+              return;
+            }
+            useStore.setState({
+              nodes: wf.nodes.map((n: any) => ({
+                id: n.id,
+                type: n.type,
+                position: { x: n.positionX, y: n.positionY },
+                data: n.data,
+              })),
+              edges: wf.edges.map((e: any) => ({
+                id: e.id,
+                source: e.sourceNode,
+                target: e.targetNode,
+                sourceHandle: e.sourceHandle ?? undefined,
+                targetHandle: e.targetHandle ?? undefined,
+                type: 'animated',
+              })),
+              selectedNodeId: null,
+              maximizedNodeId: null,
+              workflowId: wf.id,
+              workflowName: wf.name,
+              workflowDescription: wf.description ?? '',
+            });
+          })
+          .catch(() => {
+            clearGraph();
+            const pendingRaw = sessionStorage.getItem(`pending_wf_${id}`);
+            if (pendingRaw) {
+              try {
+                const { name, description } = JSON.parse(pendingRaw);
+                setWorkflowMeta(name, description || '');
+              } catch { /* ignore invalid JSON */ }
+            }
+          });
       }
     }
-  }, [id, loadWorkflow, clearGraph, setWorkflowMeta]);
+  }, [id, loadWorkflow, clearGraph, setWorkflowMeta, rearrangeGraph]);
+
+  const initialFitDone = useRef(false);
+
+  useEffect(() => {
+    if (nodes.length > 0 && !initialFitDone.current) {
+      initialFitDone.current = true;
+      const timer = setTimeout(() => {
+        reactFlowInstance.fitView({ duration: 200 });
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+    if (nodes.length === 0) {
+      initialFitDone.current = false;
+    }
+  }, [nodes.length, reactFlowInstance]);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isLocked, setIsLocked] = useState(false);
@@ -238,28 +337,6 @@ export const CanvasWorkspace = () => {
 
           {/* Right: Actions, Deploy, Run, Settings, Profile */}
           <div className="flex items-center gap-4">
-            
-            {/* Engine Mode Toggle */}
-            <div className="flex items-center gap-2 border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-mono rounded-none">
-              <span className="text-slate-400">ENGINE:</span>
-              <button 
-                onClick={() => setMockMode(!mockMode)}
-                className="flex items-center gap-1.5 font-bold hover:text-slate-800 transition-colors cursor-pointer"
-                title="Toggle Mock Mode or Live Hono API"
-              >
-                {mockMode ? (
-                  <>
-                    <span className="text-[#2563eb]">MOCK SIMULATOR</span>
-                    <ToggleRight className="w-4 h-4 text-[#2563eb]" />
-                  </>
-                ) : (
-                  <>
-                    <span className="text-[#ea580c]">LIVE HONO API</span>
-                    <ToggleLeft className="w-4 h-4 text-[#ea580c]" />
-                  </>
-                )}
-              </button>
-            </div>
 
             {/* Rearrange Layout Button */}
             <button
@@ -290,6 +367,37 @@ export const CanvasWorkspace = () => {
               <Upload className="w-3.5 h-3.5 text-slate-500" />
               Export
             </button>
+
+            {/* Save Workflow Button (only shown for unsaved workflows) */}
+            {!workflowId && (
+              <button
+                onClick={() => setSaveDialogOpen(true)}
+                disabled={nodes.length === 0}
+                className="px-3.5 py-1.5 bg-[#9a3412] hover:bg-[#a73a00] text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Save this workflow"
+              >
+                <Save className="w-3.5 h-3.5" />
+                Save
+              </button>
+            )}
+
+            {/* Publish as Template Button */}
+            {workflowId && nodes.length > 0 && (
+              <button
+                onClick={() => {
+                  if (isSelfHosted()) {
+                    window.location.href = getSaaSUrl() + '/login?redirect=/templates/new';
+                  } else {
+                    toast.info('Publish feature coming soon');
+                  }
+                }}
+                className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors cursor-pointer"
+                title="Publish as template"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                Publish
+              </button>
+            )}
 
             {/* Clear Canvas Button */}
             <button
@@ -332,15 +440,29 @@ export const CanvasWorkspace = () => {
 
             {/* User profile / Logout */}
             {user ? (
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={logout}
-                  title="Logout Operator Session"
-                  className="p-1 hover:bg-slate-50 text-slate-500 hover:text-rose-655 flex items-center gap-1 cursor-pointer"
+              <div className="relative" ref={profileRef}>
+                <button
+                  onClick={() => setProfileOpen(!profileOpen)}
+                  className="flex items-center gap-1.5 p-1 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
                 >
                   <User className="w-4 h-4" />
                   <span className="text-xs font-mono max-w-24 truncate hidden md:inline">{user.email}</span>
+                  <ChevronDown className="w-3 h-3" />
                 </button>
+                {profileOpen && (
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-slate-200 shadow-lg z-50">
+                    <div className="px-3 py-2 text-xs text-slate-500 font-mono border-b border-slate-100 truncate">
+                      {user.email}
+                    </div>
+                    <button
+                      onClick={logout}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 font-semibold transition-colors cursor-pointer"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      Logout
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <button className="p-1 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer">
@@ -449,7 +571,7 @@ export const CanvasWorkspace = () => {
                   className="absolute top-4 right-4 z-20 bg-white border border-[#cbd5e1] p-2 hover:bg-slate-50 text-slate-700 shadow-sm rounded-none transition-colors cursor-pointer"
                   title="Open Properties Panel"
                 >
-                  <Settings className="w-4 h-4" />
+                  <ChevronLeft className="w-4 h-4" />
                 </button>
               )}
             </div>
@@ -528,6 +650,49 @@ export const CanvasWorkspace = () => {
           </div>
         </div>
       )}
+
+      <SaveWorkflowDialog
+        isOpen={saveDialogOpen}
+        initialName={workflowName}
+        initialDescription={workflowDescription}
+        onClose={() => setSaveDialogOpen(false)}
+        onConfirm={async (name, description) => {
+          try {
+            const payload = {
+              id: crypto.randomUUID(),
+              name,
+              description,
+              nodes: nodes.map((n) => ({
+                id: n.id,
+                type: n.type,
+                position: n.position,
+                data: n.data,
+              })),
+              edges: edges.map((e) => ({
+                id: e.id,
+                source: e.source,
+                target: e.target,
+                sourceHandle: e.sourceHandle,
+                targetHandle: e.targetHandle,
+                type: e.type,
+              })),
+            };
+            const res = await apiFetch('/api/workflow', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+            if (!res.ok) throw new Error('Save failed');
+            const data = await res.json();
+            useStore.setState({ workflowId: data.workflowId, workflowName: name, workflowDescription: description });
+            setSaveDialogOpen(false);
+            navigate(`/workflows/${data.workflowId}`, { replace: true });
+            toast.success('Workflow saved!');
+          } catch {
+            toast.error('Failed to save workflow');
+          }
+        }}
+      />
     </div>
   );
 };

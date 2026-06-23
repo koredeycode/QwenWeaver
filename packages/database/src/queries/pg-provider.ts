@@ -1,7 +1,7 @@
 import { type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import { eq, and, sql, desc } from 'drizzle-orm';
+import { eq, and, sql, desc, count, inArray } from 'drizzle-orm';
 import { getConnection, pgSchema } from '../index.js';
-import type { QueryProvider } from './provider.js';
+import type { QueryProvider, WorkflowRow, WorkflowDetail } from './provider.js';
 import type { SavedMCPServerInput, SavedMCPServer } from './mcp.js';
 import type { WorkflowPayload, ExecutionMetrics, AgentLogInput, AgentLogOutput } from '@qwenweaver/types';
 
@@ -145,6 +145,95 @@ export const pgProvider: QueryProvider = {
     }
 
     return workflowId;
+  },
+
+  async listUserWorkflows(userId: string): Promise<WorkflowRow[]> {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const workflows = await pgDb.select({
+      id: pgSchema.pgWorkflows.id,
+      name: pgSchema.pgWorkflows.name,
+      description: pgSchema.pgWorkflows.description,
+      createdAt: pgSchema.pgWorkflows.createdAt,
+    })
+      .from(pgSchema.pgWorkflows)
+      .where(eq(pgSchema.pgWorkflows.userId, userId))
+      .orderBy(desc(pgSchema.pgWorkflows.createdAt));
+
+    if (workflows.length === 0) return workflows;
+
+    const wfIds = workflows.map(w => w.id);
+    const counts = await pgDb
+      .select({
+        workflowId: pgSchema.pgNodes.workflowId,
+        type: pgSchema.pgNodes.type,
+        count: count(),
+      })
+      .from(pgSchema.pgNodes)
+      .where(inArray(pgSchema.pgNodes.workflowId, wfIds as any[]))
+      .groupBy(pgSchema.pgNodes.workflowId, pgSchema.pgNodes.type);
+
+    const countsByWf: Record<string, Record<string, number>> = {};
+    for (const row of counts) {
+      if (!row.workflowId) continue;
+      if (!countsByWf[row.workflowId]) countsByWf[row.workflowId] = {};
+      countsByWf[row.workflowId][row.type] = row.count;
+    }
+
+    return workflows.map(w => ({
+      ...w,
+      nodeCounts: countsByWf[w.id] ?? {},
+    }));
+  },
+
+  async getWorkflow(id: string, userId: string): Promise<WorkflowDetail | null> {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const wf = await pgDb
+      .select({
+        id: pgSchema.pgWorkflows.id,
+        name: pgSchema.pgWorkflows.name,
+        description: pgSchema.pgWorkflows.description,
+        createdAt: pgSchema.pgWorkflows.createdAt,
+      })
+      .from(pgSchema.pgWorkflows)
+      .where(and(eq(pgSchema.pgWorkflows.id, id), eq(pgSchema.pgWorkflows.userId, userId)))
+      .limit(1);
+    if (wf.length === 0) return null;
+
+    const nodes = await pgDb
+      .select({
+        id: pgSchema.pgNodes.id,
+        type: pgSchema.pgNodes.type,
+        data: pgSchema.pgNodes.data,
+        positionX: pgSchema.pgNodes.positionX,
+        positionY: pgSchema.pgNodes.positionY,
+      })
+      .from(pgSchema.pgNodes)
+      .where(eq(pgSchema.pgNodes.workflowId, id));
+
+    const edges = await pgDb
+      .select({
+        id: pgSchema.pgEdges.id,
+        sourceNode: pgSchema.pgEdges.source,
+        targetNode: pgSchema.pgEdges.target,
+        sourceHandle: pgSchema.pgEdges.sourceHandle,
+        targetHandle: pgSchema.pgEdges.targetHandle,
+      })
+      .from(pgSchema.pgEdges)
+      .where(eq(pgSchema.pgEdges.workflowId, id));
+
+    return { ...wf[0], nodes, edges };
+  },
+
+  async deleteWorkflow(id: string, userId: string): Promise<boolean> {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const result = await pgDb
+      .delete(pgSchema.pgWorkflows)
+      .where(and(eq(pgSchema.pgWorkflows.id, id), eq(pgSchema.pgWorkflows.userId, userId)));
+    const rowCount = (result as unknown as { rowCount: number }).rowCount;
+    return (rowCount ?? 0) > 0;
   },
 
   async createExecution(executionId: string, workflowId: string, userId: string): Promise<void> {
@@ -295,5 +384,142 @@ export const pgProvider: QueryProvider = {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
     await pgDb.execute(sql`SELECT 1`);
+  },
+
+  // ─── Templates ──────────────────────────────────────────────────────────────
+
+  async listTemplates(options) {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const s = pgSchema;
+    const conditions: any[] = [];
+
+    if (options?.categoryId) conditions.push(eq(s.pgTemplates.categoryId, options.categoryId));
+    if (options?.featured) conditions.push(eq(s.pgTemplates.featured, 1));
+    if (options?.search) conditions.push(sql`${s.pgTemplates.name} ILIKE ${'%' + options.search + '%'}`);
+
+    let query: any = pgDb.select().from(s.pgTemplates).orderBy(desc(s.pgTemplates.downloads));
+    if (conditions.length > 0) query = query.where(and(...conditions));
+
+    return await query.limit(options?.limit ?? 50).offset(options?.offset ?? 0);
+  },
+
+  async countTemplates(options) {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const s = pgSchema;
+    const conditions: any[] = [];
+
+    if (options?.categoryId) conditions.push(eq(s.pgTemplates.categoryId, options.categoryId));
+    if (options?.featured) conditions.push(eq(s.pgTemplates.featured, 1));
+    if (options?.search) conditions.push(sql`${s.pgTemplates.name} ILIKE ${'%' + options.search + '%'}`);
+
+    let query: any = pgDb.select({ count: sql<number>`cast(count(*) as integer)` }).from(s.pgTemplates);
+    if (conditions.length > 0) query = query.where(and(...conditions));
+
+    const result = await query;
+    return result[0]?.count ?? 0;
+  },
+
+  async getTemplate(id: string) {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const rows = await pgDb.select().from(pgSchema.pgTemplates).where(eq(pgSchema.pgTemplates.id, id)).limit(1);
+    return rows[0] ?? null;
+  },
+
+  async createTemplate(id: string, data) {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    await pgDb.insert(pgSchema.pgTemplates).values({
+      id,
+      name: data.name,
+      description: data.description ?? null,
+      workflowData: data.workflowData as any,
+      categoryId: data.categoryId ?? null,
+      tags: data.tags ?? null,
+      authorId: data.authorId,
+      thumbnail: data.thumbnail ?? null,
+      downloads: 0,
+      avgRating: 0,
+      ratingCount: 0,
+      featured: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  },
+
+  async deleteTemplate(id: string) {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    await pgDb.delete(pgSchema.pgTemplates).where(eq(pgSchema.pgTemplates.id, id));
+    return true;
+  },
+
+  async incrementTemplateDownloads(id: string) {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    await pgDb.update(pgSchema.pgTemplates)
+      .set({ downloads: sql`${pgSchema.pgTemplates.downloads} + 1` })
+      .where(eq(pgSchema.pgTemplates.id, id));
+  },
+
+  async listTemplateReviews(templateId: string) {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    return await pgDb.select()
+      .from(pgSchema.pgTemplateReviews)
+      .where(eq(pgSchema.pgTemplateReviews.templateId, templateId))
+      .orderBy(desc(pgSchema.pgTemplateReviews.createdAt));
+  },
+
+  async upsertTemplateReview(id: string, templateId: string, userId: string, rating: number, review?: string | null) {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const existing = await pgDb.select()
+      .from(pgSchema.pgTemplateReviews)
+      .where(and(
+        eq(pgSchema.pgTemplateReviews.templateId, templateId),
+        eq(pgSchema.pgTemplateReviews.userId, userId),
+      ))
+      .limit(1);
+
+    if (existing.length > 0) {
+      await pgDb.update(pgSchema.pgTemplateReviews)
+        .set({ rating, review: review ?? null })
+        .where(eq(pgSchema.pgTemplateReviews.id, existing[0].id));
+
+      const stats = await pgDb.select({
+        avg: sql<number>`cast(avg(${pgSchema.pgTemplateReviews.rating}) as integer)`,
+        count: sql<number>`cast(count(*) as integer)`,
+      }).from(pgSchema.pgTemplateReviews)
+        .where(eq(pgSchema.pgTemplateReviews.templateId, templateId));
+
+      await pgDb.update(pgSchema.pgTemplates)
+        .set({ avgRating: stats[0]?.avg ?? 0, ratingCount: stats[0]?.count ?? 0 })
+        .where(eq(pgSchema.pgTemplates.id, templateId));
+    } else {
+      await pgDb.insert(pgSchema.pgTemplateReviews).values({
+        id, templateId, userId, rating, review: review ?? null,
+      });
+
+      const stats = await pgDb.select({
+        avg: sql<number>`cast(avg(${pgSchema.pgTemplateReviews.rating}) as integer)`,
+        count: sql<number>`cast(count(*) as integer)`,
+      }).from(pgSchema.pgTemplateReviews)
+        .where(eq(pgSchema.pgTemplateReviews.templateId, templateId));
+
+      await pgDb.update(pgSchema.pgTemplates)
+        .set({ avgRating: stats[0]?.avg ?? 0, ratingCount: stats[0]?.count ?? 0 })
+        .where(eq(pgSchema.pgTemplates.id, templateId));
+    }
+  },
+
+  async listTemplateCategories() {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    return await pgDb.select()
+      .from(pgSchema.pgTemplateCategories)
+      .orderBy(pgSchema.pgTemplateCategories.sortOrder);
   },
 };

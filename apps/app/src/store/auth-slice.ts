@@ -5,17 +5,8 @@ import { client } from '../lib/api-client.js';
 export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set, get) => ({
   token: localStorage.getItem('qw_token'),
   user: localStorage.getItem('qw_user') ? JSON.parse(localStorage.getItem('qw_user')!) : null,
-  mockMode: true, // Default to mock mode for easy out-of-the-box preview
 
   login: async (email, password) => {
-    if (get().mockMode) {
-      const mockUser = { id: 'mock-user-123', email };
-      localStorage.setItem('qw_token', 'mock-jwt-token');
-      localStorage.setItem('qw_user', JSON.stringify(mockUser));
-      set({ token: 'mock-jwt-token', user: mockUser });
-      return true;
-    }
-    
     try {
       const res = await client.api.auth.login.$post({ json: { email, password } });
       if (res.ok) {
@@ -34,14 +25,6 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
   },
 
   register: async (email, password) => {
-    if (get().mockMode) {
-      const mockUser = { id: 'mock-user-123', email };
-      localStorage.setItem('qw_token', 'mock-jwt-token');
-      localStorage.setItem('qw_user', JSON.stringify(mockUser));
-      set({ token: 'mock-jwt-token', user: mockUser });
-      return true;
-    }
-
     try {
       const res = await client.api.auth.register.$post({ json: { email, password } });
       if (res.ok) {
@@ -64,16 +47,4 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
     localStorage.removeItem('qw_user');
     set({ token: null, user: null });
   },
-
-  setMockMode: (mock) => {
-    set({ mockMode: mock });
-    if (mock) {
-      if (!get().token) {
-        const mockUser = { id: 'mock-user-123', email: 'demo@qwenweaver.dev' };
-        localStorage.setItem('qw_token', 'mock-jwt-token');
-        localStorage.setItem('qw_user', JSON.stringify(mockUser));
-        set({ token: 'mock-jwt-token', user: mockUser });
-      }
-    }
-  }
 });

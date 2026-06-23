@@ -4,7 +4,7 @@
     { "path": "packages/types" },
     { "path": "packages/database" },
     { "path": "packages/mcp-client" },
-    { "path": "apps/web" },
+    { "path": "apps/app" },
     { "path": "apps/api" }
   ],
   "compilerOptions": {

@@ -10,6 +10,7 @@ import type {
   NodeData, 
   ExecutionMetrics
 } from '@qwenweaver/types';
+import type { TemplateSummary, TemplateDetail, TemplateCategory, TemplateReview } from '../lib/templates-client.js';
 
 export interface CopilotMessage {
   role: 'user' | 'assistant';
@@ -19,17 +20,16 @@ export interface CopilotMessage {
 export interface AuthSlice {
   token: string | null;
   user: { id: string; email: string } | null;
-  mockMode: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   register: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  setMockMode: (mock: boolean) => void;
 }
 
 export interface GraphSlice {
   nodes: Node<NodeData>[];
   edges: Edge[];
   selectedNodeId: string | null;
+  workflowId: string | null;
   workflowName: string;
   workflowDescription: string;
   onNodesChange: OnNodesChange;
@@ -45,6 +45,7 @@ export interface GraphSlice {
   clearGraph: () => void;
   loadTemplate: (templateName: string) => void;
   loadWorkflow: (workflowId: string) => void;
+  loadUnsavedWorkflow: (nodes: Node<any>[], edges: Edge<any>[], name: string, description?: string) => void;
   rearrangeGraph: () => void;
   importWorkflow: (workflowData: { nodes: Node<any>[]; edges: Edge<any>[] }, merge: boolean) => boolean;
 }
@@ -66,5 +67,20 @@ export interface CopilotSlice {
   sendCopilotMessage: (message: string) => Promise<void>;
 }
 
+export interface TemplateSlice {
+  templates: TemplateSummary[];
+  templatesTotal: number;
+  templatesLoading: boolean;
+  selectedTemplate: TemplateDetail | null;
+  selectedTemplateReviews: TemplateReview[];
+  categories: TemplateCategory[];
+  categoriesLoading: boolean;
+  fetchTemplates: (params?: { categoryId?: string; featured?: boolean; search?: string; limit?: number; offset?: number }) => Promise<void>;
+  fetchTemplate: (id: string) => Promise<void>;
+  fetchReviews: (id: string) => Promise<void>;
+  fetchCategories: () => Promise<void>;
+  forkTemplate: (id: string) => Promise<boolean>;
+}
+
 // Combined Global Zustand State type
-export type StoreState = AuthSlice & GraphSlice & ExecutionSlice & CopilotSlice;
+export type StoreState = AuthSlice & GraphSlice & ExecutionSlice & CopilotSlice & TemplateSlice;

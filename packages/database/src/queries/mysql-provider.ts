@@ -1,7 +1,7 @@
 import { type MySql2Database } from 'drizzle-orm/mysql2';
-import { eq, and, sql, desc } from 'drizzle-orm';
+import { eq, and, sql, desc, count, inArray } from 'drizzle-orm';
 import { getConnection, mysqlSchema } from '../index.js';
-import type { QueryProvider } from './provider.js';
+import type { QueryProvider, WorkflowRow, WorkflowDetail } from './provider.js';
 import type { SavedMCPServerInput, SavedMCPServer } from './mcp.js';
 import type { WorkflowPayload, ExecutionMetrics, AgentLogInput, AgentLogOutput } from '@qwenweaver/types';
 
@@ -145,6 +145,95 @@ export const mysqlProvider: QueryProvider = {
     }
 
     return workflowId;
+  },
+
+  async listUserWorkflows(userId: string): Promise<WorkflowRow[]> {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const workflows = await mysqlDb.select({
+      id: mysqlSchema.mysqlWorkflows.id,
+      name: mysqlSchema.mysqlWorkflows.name,
+      description: mysqlSchema.mysqlWorkflows.description,
+      createdAt: mysqlSchema.mysqlWorkflows.createdAt,
+    })
+      .from(mysqlSchema.mysqlWorkflows)
+      .where(eq(mysqlSchema.mysqlWorkflows.userId, userId))
+      .orderBy(desc(mysqlSchema.mysqlWorkflows.createdAt));
+
+    if (workflows.length === 0) return workflows;
+
+    const wfIds = workflows.map(w => w.id);
+    const counts = await mysqlDb
+      .select({
+        workflowId: mysqlSchema.mysqlNodes.workflowId,
+        type: mysqlSchema.mysqlNodes.type,
+        count: count(),
+      })
+      .from(mysqlSchema.mysqlNodes)
+      .where(inArray(mysqlSchema.mysqlNodes.workflowId, wfIds as any[]))
+      .groupBy(mysqlSchema.mysqlNodes.workflowId, mysqlSchema.mysqlNodes.type);
+
+    const countsByWf: Record<string, Record<string, number>> = {};
+    for (const row of counts) {
+      if (!row.workflowId) continue;
+      if (!countsByWf[row.workflowId]) countsByWf[row.workflowId] = {};
+      countsByWf[row.workflowId][row.type] = row.count;
+    }
+
+    return workflows.map(w => ({
+      ...w,
+      nodeCounts: countsByWf[w.id] ?? {},
+    }));
+  },
+
+  async getWorkflow(id: string, userId: string): Promise<WorkflowDetail | null> {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const wf = await mysqlDb
+      .select({
+        id: mysqlSchema.mysqlWorkflows.id,
+        name: mysqlSchema.mysqlWorkflows.name,
+        description: mysqlSchema.mysqlWorkflows.description,
+        createdAt: mysqlSchema.mysqlWorkflows.createdAt,
+      })
+      .from(mysqlSchema.mysqlWorkflows)
+      .where(and(eq(mysqlSchema.mysqlWorkflows.id, id), eq(mysqlSchema.mysqlWorkflows.userId, userId)))
+      .limit(1);
+    if (wf.length === 0) return null;
+
+    const nodes = await mysqlDb
+      .select({
+        id: mysqlSchema.mysqlNodes.id,
+        type: mysqlSchema.mysqlNodes.type,
+        data: mysqlSchema.mysqlNodes.data,
+        positionX: mysqlSchema.mysqlNodes.positionX,
+        positionY: mysqlSchema.mysqlNodes.positionY,
+      })
+      .from(mysqlSchema.mysqlNodes)
+      .where(eq(mysqlSchema.mysqlNodes.workflowId, id));
+
+    const edges = await mysqlDb
+      .select({
+        id: mysqlSchema.mysqlEdges.id,
+        sourceNode: mysqlSchema.mysqlEdges.source,
+        targetNode: mysqlSchema.mysqlEdges.target,
+        sourceHandle: mysqlSchema.mysqlEdges.sourceHandle,
+        targetHandle: mysqlSchema.mysqlEdges.targetHandle,
+      })
+      .from(mysqlSchema.mysqlEdges)
+      .where(eq(mysqlSchema.mysqlEdges.workflowId, id));
+
+    return { ...wf[0], nodes, edges };
+  },
+
+  async deleteWorkflow(id: string, userId: string): Promise<boolean> {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const result = await mysqlDb
+      .delete(mysqlSchema.mysqlWorkflows)
+      .where(and(eq(mysqlSchema.mysqlWorkflows.id, id), eq(mysqlSchema.mysqlWorkflows.userId, userId)));
+    const affectedRows = (result as unknown as { affectedRows: number }).affectedRows;
+    return (affectedRows ?? 0) > 0;
   },
 
   async createExecution(executionId: string, workflowId: string, userId: string): Promise<void> {
@@ -295,5 +384,142 @@ export const mysqlProvider: QueryProvider = {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
     await mysqlDb.execute(sql`SELECT 1`);
+  },
+
+  // ─── Templates ──────────────────────────────────────────────────────────────
+
+  async listTemplates(options) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const s = mysqlSchema;
+    const conditions: any[] = [];
+
+    if (options?.categoryId) conditions.push(eq(s.mysqlTemplates.categoryId, options.categoryId));
+    if (options?.featured) conditions.push(eq(s.mysqlTemplates.featured, 1));
+    if (options?.search) conditions.push(sql`${s.mysqlTemplates.name} LIKE ${'%' + options.search + '%'}`);
+
+    let query: any = mysqlDb.select().from(s.mysqlTemplates).orderBy(desc(s.mysqlTemplates.downloads));
+    if (conditions.length > 0) query = query.where(and(...conditions));
+
+    return await query.limit(options?.limit ?? 50).offset(options?.offset ?? 0);
+  },
+
+  async countTemplates(options) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const s = mysqlSchema;
+    const conditions: any[] = [];
+
+    if (options?.categoryId) conditions.push(eq(s.mysqlTemplates.categoryId, options.categoryId));
+    if (options?.featured) conditions.push(eq(s.mysqlTemplates.featured, 1));
+    if (options?.search) conditions.push(sql`${s.mysqlTemplates.name} LIKE ${'%' + options.search + '%'}`);
+
+    let query: any = mysqlDb.select({ count: sql<number>`cast(count(*) as unsigned)` }).from(s.mysqlTemplates);
+    if (conditions.length > 0) query = query.where(and(...conditions));
+
+    const result = await query;
+    return result[0]?.count ?? 0;
+  },
+
+  async getTemplate(id: string) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const rows = await mysqlDb.select().from(mysqlSchema.mysqlTemplates).where(eq(mysqlSchema.mysqlTemplates.id, id)).limit(1);
+    return rows[0] ?? null;
+  },
+
+  async createTemplate(id: string, data) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    await mysqlDb.insert(mysqlSchema.mysqlTemplates).values({
+      id,
+      name: data.name,
+      description: data.description ?? null,
+      workflowData: data.workflowData as any,
+      categoryId: data.categoryId ?? null,
+      tags: data.tags ?? null,
+      authorId: data.authorId,
+      thumbnail: data.thumbnail ?? null,
+      downloads: 0,
+      avgRating: 0,
+      ratingCount: 0,
+      featured: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  },
+
+  async deleteTemplate(id: string) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    await mysqlDb.delete(mysqlSchema.mysqlTemplates).where(eq(mysqlSchema.mysqlTemplates.id, id));
+    return true;
+  },
+
+  async incrementTemplateDownloads(id: string) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    await mysqlDb.update(mysqlSchema.mysqlTemplates)
+      .set({ downloads: sql`${mysqlSchema.mysqlTemplates.downloads} + 1` })
+      .where(eq(mysqlSchema.mysqlTemplates.id, id));
+  },
+
+  async listTemplateReviews(templateId: string) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    return await mysqlDb.select()
+      .from(mysqlSchema.mysqlTemplateReviews)
+      .where(eq(mysqlSchema.mysqlTemplateReviews.templateId, templateId))
+      .orderBy(desc(mysqlSchema.mysqlTemplateReviews.createdAt));
+  },
+
+  async upsertTemplateReview(id: string, templateId: string, userId: string, rating: number, review?: string | null) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const existing = await mysqlDb.select()
+      .from(mysqlSchema.mysqlTemplateReviews)
+      .where(and(
+        eq(mysqlSchema.mysqlTemplateReviews.templateId, templateId),
+        eq(mysqlSchema.mysqlTemplateReviews.userId, userId),
+      ))
+      .limit(1);
+
+    if (existing.length > 0) {
+      await mysqlDb.update(mysqlSchema.mysqlTemplateReviews)
+        .set({ rating, review: review ?? null })
+        .where(eq(mysqlSchema.mysqlTemplateReviews.id, existing[0].id));
+
+      const stats = await mysqlDb.select({
+        avg: sql<number>`cast(avg(${mysqlSchema.mysqlTemplateReviews.rating}) as unsigned)`,
+        count: sql<number>`cast(count(*) as unsigned)`,
+      }).from(mysqlSchema.mysqlTemplateReviews)
+        .where(eq(mysqlSchema.mysqlTemplateReviews.templateId, templateId));
+
+      await mysqlDb.update(mysqlSchema.mysqlTemplates)
+        .set({ avgRating: stats[0]?.avg ?? 0, ratingCount: stats[0]?.count ?? 0 })
+        .where(eq(mysqlSchema.mysqlTemplates.id, templateId));
+    } else {
+      await mysqlDb.insert(mysqlSchema.mysqlTemplateReviews).values({
+        id, templateId, userId, rating, review: review ?? null,
+      });
+
+      const stats = await mysqlDb.select({
+        avg: sql<number>`cast(avg(${mysqlSchema.mysqlTemplateReviews.rating}) as unsigned)`,
+        count: sql<number>`cast(count(*) as unsigned)`,
+      }).from(mysqlSchema.mysqlTemplateReviews)
+        .where(eq(mysqlSchema.mysqlTemplateReviews.templateId, templateId));
+
+      await mysqlDb.update(mysqlSchema.mysqlTemplates)
+        .set({ avgRating: stats[0]?.avg ?? 0, ratingCount: stats[0]?.count ?? 0 })
+        .where(eq(mysqlSchema.mysqlTemplates.id, templateId));
+    }
+  },
+
+  async listTemplateCategories() {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    return await mysqlDb.select()
+      .from(mysqlSchema.mysqlTemplateCategories)
+      .orderBy(mysqlSchema.mysqlTemplateCategories.sortOrder);
   },
 };

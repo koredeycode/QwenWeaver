@@ -1,7 +1,7 @@
 import { type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import { eq, and, sql, desc } from 'drizzle-orm';
+import { eq, and, sql, desc, count, inArray } from 'drizzle-orm';
 import { getConnection, sqliteSchema } from '../index.js';
-import type { QueryProvider } from './provider.js';
+import type { QueryProvider, WorkflowRow, WorkflowDetail, WorkflowNodeRow, WorkflowEdgeRow } from './provider.js';
 import type { SavedMCPServerInput, SavedMCPServer } from './mcp.js';
 import type { WorkflowPayload, ExecutionMetrics, AgentLogInput, AgentLogOutput } from '@qwenweaver/types';
 
@@ -145,6 +145,97 @@ export const sqliteProvider: QueryProvider = {
     }
 
     return workflowId;
+  },
+
+  async listUserWorkflows(userId: string): Promise<WorkflowRow[]> {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const workflows = await sqliteDb.select({
+      id: sqliteSchema.sqliteWorkflows.id,
+      name: sqliteSchema.sqliteWorkflows.name,
+      description: sqliteSchema.sqliteWorkflows.description,
+      createdAt: sqliteSchema.sqliteWorkflows.createdAt,
+    })
+      .from(sqliteSchema.sqliteWorkflows)
+      .where(eq(sqliteSchema.sqliteWorkflows.userId, userId))
+      .orderBy(desc(sqliteSchema.sqliteWorkflows.createdAt));
+
+    if (workflows.length === 0) return workflows;
+
+    // Fetch node type counts for all returned workflows
+    const wfIds = workflows.map(w => w.id);
+    const counts = await sqliteDb
+      .select({
+        workflowId: sqliteSchema.sqliteNodes.workflowId,
+        type: sqliteSchema.sqliteNodes.type,
+        count: count(),
+      })
+      .from(sqliteSchema.sqliteNodes)
+      .where(inArray(sqliteSchema.sqliteNodes.workflowId, wfIds as any[]))
+      .groupBy(sqliteSchema.sqliteNodes.workflowId, sqliteSchema.sqliteNodes.type);
+
+    // Build a lookup: workflowId -> { type: count }
+    const countsByWf: Record<string, Record<string, number>> = {};
+    for (const row of counts) {
+      if (!row.workflowId) continue;
+      if (!countsByWf[row.workflowId]) countsByWf[row.workflowId] = {};
+      countsByWf[row.workflowId][row.type] = row.count;
+    }
+
+    return workflows.map(w => ({
+      ...w,
+      nodeCounts: countsByWf[w.id] ?? {},
+    }));
+  },
+
+  async getWorkflow(id: string, userId: string): Promise<WorkflowDetail | null> {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const wf = await sqliteDb
+      .select({
+        id: sqliteSchema.sqliteWorkflows.id,
+        name: sqliteSchema.sqliteWorkflows.name,
+        description: sqliteSchema.sqliteWorkflows.description,
+        createdAt: sqliteSchema.sqliteWorkflows.createdAt,
+      })
+      .from(sqliteSchema.sqliteWorkflows)
+      .where(and(eq(sqliteSchema.sqliteWorkflows.id, id), eq(sqliteSchema.sqliteWorkflows.userId, userId)))
+      .limit(1);
+    if (wf.length === 0) return null;
+
+    const nodes = await sqliteDb
+      .select({
+        id: sqliteSchema.sqliteNodes.id,
+        type: sqliteSchema.sqliteNodes.type,
+        data: sqliteSchema.sqliteNodes.data,
+        positionX: sqliteSchema.sqliteNodes.positionX,
+        positionY: sqliteSchema.sqliteNodes.positionY,
+      })
+      .from(sqliteSchema.sqliteNodes)
+      .where(eq(sqliteSchema.sqliteNodes.workflowId, id));
+
+    const edges = await sqliteDb
+      .select({
+        id: sqliteSchema.sqliteEdges.id,
+        sourceNode: sqliteSchema.sqliteEdges.source,
+        targetNode: sqliteSchema.sqliteEdges.target,
+        sourceHandle: sqliteSchema.sqliteEdges.sourceHandle,
+        targetHandle: sqliteSchema.sqliteEdges.targetHandle,
+      })
+      .from(sqliteSchema.sqliteEdges)
+      .where(eq(sqliteSchema.sqliteEdges.workflowId, id));
+
+    return { ...wf[0], nodes, edges };
+  },
+
+  async deleteWorkflow(id: string, userId: string): Promise<boolean> {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const result = await sqliteDb
+      .delete(sqliteSchema.sqliteWorkflows)
+      .where(and(eq(sqliteSchema.sqliteWorkflows.id, id), eq(sqliteSchema.sqliteWorkflows.userId, userId)));
+    const changes = (result as unknown as { changes: number }).changes;
+    return changes > 0;
   },
 
   async createExecution(executionId: string, workflowId: string, userId: string): Promise<void> {
@@ -295,5 +386,144 @@ export const sqliteProvider: QueryProvider = {
     const { db } = getConnection();
     const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
     await sqliteDb.select({ one: sql`1` }).from(sql`(SELECT 1)`);
+  },
+
+  // ─── Templates ──────────────────────────────────────────────────────────────
+
+  async listTemplates(options) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const s = sqliteSchema;
+    const conditions: any[] = [];
+
+    if (options?.categoryId) conditions.push(eq(s.sqliteTemplates.categoryId, options.categoryId));
+    if (options?.featured) conditions.push(eq(s.sqliteTemplates.featured, 1));
+    if (options?.search) conditions.push(sql`${s.sqliteTemplates.name} LIKE ${'%' + options.search + '%'}`);
+
+    let query: any = sqliteDb.select().from(s.sqliteTemplates).orderBy(desc(s.sqliteTemplates.downloads));
+    if (conditions.length > 0) query = query.where(and(...conditions));
+
+    return await query.limit(options?.limit ?? 50).offset(options?.offset ?? 0);
+  },
+
+  async countTemplates(options) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const s = sqliteSchema;
+    const conditions: any[] = [];
+
+    if (options?.categoryId) conditions.push(eq(s.sqliteTemplates.categoryId, options.categoryId));
+    if (options?.featured) conditions.push(eq(s.sqliteTemplates.featured, 1));
+    if (options?.search) conditions.push(sql`${s.sqliteTemplates.name} LIKE ${'%' + options.search + '%'}`);
+
+    let query: any = sqliteDb.select({ count: sql<number>`cast(count(*) as integer)` }).from(s.sqliteTemplates);
+    if (conditions.length > 0) query = query.where(and(...conditions));
+
+    const result = await query;
+    return result[0]?.count ?? 0;
+  },
+
+  async getTemplate(id: string) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const rows = await sqliteDb.select().from(sqliteSchema.sqliteTemplates).where(eq(sqliteSchema.sqliteTemplates.id, id)).limit(1);
+    return rows[0] ?? null;
+  },
+
+  async createTemplate(id: string, data) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    await sqliteDb.insert(sqliteSchema.sqliteTemplates).values({
+      id,
+      name: data.name,
+      description: data.description ?? null,
+      workflowData: data.workflowData as any,
+      categoryId: data.categoryId ?? null,
+      tags: data.tags ?? null,
+      authorId: data.authorId,
+      thumbnail: data.thumbnail ?? null,
+      downloads: 0,
+      avgRating: 0,
+      ratingCount: 0,
+      featured: 0,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  },
+
+  async deleteTemplate(id: string) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    await sqliteDb.delete(sqliteSchema.sqliteTemplates).where(eq(sqliteSchema.sqliteTemplates.id, id));
+    return true;
+  },
+
+  async incrementTemplateDownloads(id: string) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    await sqliteDb.update(sqliteSchema.sqliteTemplates)
+      .set({ downloads: sql`${sqliteSchema.sqliteTemplates.downloads} + 1` })
+      .where(eq(sqliteSchema.sqliteTemplates.id, id));
+  },
+
+  async listTemplateReviews(templateId: string) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    return await sqliteDb.select()
+      .from(sqliteSchema.sqliteTemplateReviews)
+      .where(eq(sqliteSchema.sqliteTemplateReviews.templateId, templateId))
+      .orderBy(desc(sqliteSchema.sqliteTemplateReviews.createdAt));
+  },
+
+  async upsertTemplateReview(id: string, templateId: string, userId: string, rating: number, review?: string | null) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const existing = await sqliteDb.select()
+      .from(sqliteSchema.sqliteTemplateReviews)
+      .where(and(
+        eq(sqliteSchema.sqliteTemplateReviews.templateId, templateId),
+        eq(sqliteSchema.sqliteTemplateReviews.userId, userId),
+      ))
+      .limit(1);
+
+    if (existing.length > 0) {
+      const oldRating = existing[0].rating;
+      await sqliteDb.update(sqliteSchema.sqliteTemplateReviews)
+        .set({ rating, review: review ?? null, createdAt: Date.now() })
+        .where(eq(sqliteSchema.sqliteTemplateReviews.id, existing[0].id));
+
+      // Recalculate avg rating
+      const stats = await sqliteDb.select({
+        avg: sql<number>`cast(avg(${sqliteSchema.sqliteTemplateReviews.rating}) as integer)`,
+        count: sql<number>`cast(count(*) as integer)`,
+      }).from(sqliteSchema.sqliteTemplateReviews)
+        .where(eq(sqliteSchema.sqliteTemplateReviews.templateId, templateId));
+
+      await sqliteDb.update(sqliteSchema.sqliteTemplates)
+        .set({ avgRating: stats[0]?.avg ?? 0, ratingCount: stats[0]?.count ?? 0 })
+        .where(eq(sqliteSchema.sqliteTemplates.id, templateId));
+    } else {
+      await sqliteDb.insert(sqliteSchema.sqliteTemplateReviews).values({
+        id, templateId, userId, rating, review: review ?? null, createdAt: Date.now(),
+      });
+
+      const stats = await sqliteDb.select({
+        avg: sql<number>`cast(avg(${sqliteSchema.sqliteTemplateReviews.rating}) as integer)`,
+        count: sql<number>`cast(count(*) as integer)`,
+      }).from(sqliteSchema.sqliteTemplateReviews)
+        .where(eq(sqliteSchema.sqliteTemplateReviews.templateId, templateId));
+
+      await sqliteDb.update(sqliteSchema.sqliteTemplates)
+        .set({ avgRating: stats[0]?.avg ?? 0, ratingCount: stats[0]?.count ?? 0 })
+        .where(eq(sqliteSchema.sqliteTemplates.id, templateId));
+    }
+  },
+
+  async listTemplateCategories() {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    return await sqliteDb.select()
+      .from(sqliteSchema.sqliteTemplateCategories)
+      .orderBy(sqliteSchema.sqliteTemplateCategories.sortOrder);
   },
 };

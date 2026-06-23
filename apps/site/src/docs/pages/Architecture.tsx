@@ -12,8 +12,8 @@ export function Architecture() {
 
       <h2>High-Level Overview</h2>
       <pre><code>{`┌─────────────┐     ┌──────────────┐     ┌──────────────┐
-│  Landing     │     │  Web App     │     │  API Server   │
-│  (landing)   │────►│  (web)       │────►│  (api)        │
+│  Site        │     │  App         │     │  API Server   │
+│  (site)      │────►│  (app)       │────►│  (api)        │
 │  Vite+React  │     │  ReactFlow   │     │  Hono.js      │
 └─────────────┘     │  Zustand      │     │  Drizzle ORM  │
                     │  React Router │     │  Vercel AI SDK│
@@ -35,11 +35,11 @@ export function Architecture() {
         </thead>
         <tbody>
           <tr>
-            <td><code>apps/landing</code></td>
+            <td><code>apps/site</code></td>
             <td>Marketing site. Vite + React + Tailwind. Deployed to root domain.</td>
           </tr>
           <tr>
-            <td><code>apps/web</code></td>
+            <td><code>apps/app</code></td>
             <td>Main application SPA. React Flow canvas, Zustand state, Tailwind UI.</td>
           </tr>
           <tr>

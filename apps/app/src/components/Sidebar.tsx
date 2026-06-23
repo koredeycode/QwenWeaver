@@ -17,6 +17,7 @@ import {
 import { useStore } from '../store/index.js';
 import type { NodeType } from '@qwenweaver/types';
 import { CreateWorkflowDialog } from './CreateWorkflowDialog.js';
+import { isSelfHosted, getSaaSUrl } from '../lib/api-client.js';
 
 export const Sidebar = () => {
   const addNode = useStore((s) => s.addNode);
@@ -356,10 +357,9 @@ export const Sidebar = () => {
         {/* Community templates */}
         <div className="flex flex-col gap-1">
           <a
-            href="#"
+            href={isSelfHosted() ? getSaaSUrl() + '/templates' : '/templates'}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={(e) => { e.preventDefault(); loadTemplate('research'); }}
             className="flex items-center gap-2.5 px-2 py-1 text-xs text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
           >
             <Users className="w-4 h-4" />

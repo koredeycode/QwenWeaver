@@ -1,0 +1,60 @@
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
+import { ReactFlowProvider } from '@xyflow/react';
+import { useStore } from './store/index.js';
+import { AuthScreen } from './components/AuthScreen.js';
+import { WorkflowDashboard } from './components/WorkflowDashboard.js';
+import { CanvasWorkspace } from './components/CanvasWorkspace.js';
+import { TemplateGallery } from './components/TemplateGallery.js';
+import { TemplateDetailPage } from './components/TemplateDetail.js';
+import { isSelfHosted, getSaaSUrl } from './lib/api-client.js';
+
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const token = useStore((s) => s.token);
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  return <>{children}</>;
+};
+
+function App() {
+  if (isSelfHosted()) {
+    const saasUrl = getSaaSUrl();
+    return (
+      <ReactFlowProvider>
+        <Toaster position="top-right" />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<AuthScreen />} />
+            <Route path="/register" element={<AuthScreen />} />
+            <Route path="/" element={<ProtectedRoute><WorkflowDashboard /></ProtectedRoute>} />
+            <Route path="/workflows/:id" element={<ProtectedRoute><CanvasWorkspace /></ProtectedRoute>} />
+            <Route path="/templates" element={<Navigate to={saasUrl + '/templates'} replace />} />
+            <Route path="/templates/:id" element={<Navigate to={saasUrl + '/templates/'} replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </ReactFlowProvider>
+    );
+  }
+
+  return (
+    <ReactFlowProvider>
+      <Toaster position="top-right" />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<AuthScreen />} />
+          <Route path="/register" element={<AuthScreen />} />
+          <Route path="/" element={<ProtectedRoute><WorkflowDashboard /></ProtectedRoute>} />
+          <Route path="/workflows/:id" element={<ProtectedRoute><CanvasWorkspace /></ProtectedRoute>} />
+          <Route path="/templates" element={<ProtectedRoute><TemplateGallery /></ProtectedRoute>} />
+          <Route path="/templates/:id" element={<ProtectedRoute><TemplateDetailPage /></ProtectedRoute>} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </ReactFlowProvider>
+  );
+}
+
+export default App;

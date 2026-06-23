@@ -88,5 +88,45 @@ export const pgMcpServers = pgTable('mcp_servers', {
   index('mcp_servers_user_id_idx').on(table.userId),
 ]);
 
+export const pgTemplateCategories = pgTable('template_categories', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: varchar('name', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 255 }).notNull().unique(),
+  icon: text('icon'),
+  sortOrder: integer('sort_order').default(0),
+});
+
+export const pgTemplates = pgTable('templates', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  description: text('description'),
+  workflowData: jsonb('workflow_data').notNull().$type<import('@qwenweaver/types').WorkflowPayload>(),
+  categoryId: uuid('category_id').references(() => pgTemplateCategories.id),
+  tags: jsonb('tags').$type<string[]>(),
+  authorId: uuid('author_id').notNull().references(() => pgUsers.id),
+  thumbnail: text('thumbnail'),
+  downloads: integer('downloads').default(0).notNull(),
+  avgRating: integer('avg_rating').default(0).notNull(),
+  ratingCount: integer('rating_count').default(0).notNull(),
+  featured: integer('featured').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+  index('templates_category_id_idx').on(table.categoryId),
+  index('templates_author_id_idx').on(table.authorId),
+]);
+
+export const pgTemplateReviews = pgTable('template_reviews', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  templateId: uuid('template_id').notNull().references(() => pgTemplates.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => pgUsers.id),
+  rating: integer('rating').notNull(),
+  review: text('review'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  index('template_reviews_template_id_idx').on(table.templateId),
+  index('template_reviews_user_id_idx').on(table.userId),
+]);
+
 export type PgMcpServer = typeof pgMcpServers.$inferSelect;
 export type NewPgMcpServer = typeof pgMcpServers.$inferInsert;
