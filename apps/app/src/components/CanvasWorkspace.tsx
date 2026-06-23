@@ -309,7 +309,7 @@ export const CanvasWorkspace = () => {
   }, [selectNode]);
 
   return (
-    <div className="h-screen w-screen flex flex-row bg-[#f8fafc] text-slate-800 select-none overflow-hidden">
+    <div className="h-dvh w-screen flex flex-row bg-[#f8fafc] text-slate-800 select-none overflow-x-hidden overflow-y-auto">
       
       {/* Left Sidebar extends to the top/bottom of viewport */}
       <Sidebar />
@@ -608,7 +608,9 @@ export const CanvasWorkspace = () => {
             </div>
 
             {/* Observability Board centered vertically next to Canvas */}
-            <GanttMetrics />
+            <div className="flex-shrink-0">
+              <GanttMetrics />
+            </div>
           </div>
 
           {/* Right Properties Panel Inspector sits under the top nav header */}

@@ -179,7 +179,7 @@ export const Sidebar = () => {
   }
 
   return (
-    <div className="w-64 h-full bg-[#f1f5f9] border-r border-[#cbd5e1] flex flex-col font-sans select-none justify-between text-slate-700 relative">
+    <div className="w-64 h-full bg-[#f1f5f9] border-r border-[#cbd5e1] flex flex-col font-sans select-none text-slate-700 relative">
       <button
         onClick={() => setCollapsed(true)}
         className="absolute -right-3 top-3 w-6 h-6 bg-white border border-[#cbd5e1] flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 shadow-sm cursor-pointer z-10"
@@ -189,7 +189,7 @@ export const Sidebar = () => {
       </button>
 
       {/* Upper Section */}
-      <div className="flex flex-col">
+      <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">
         {/* Brand Block */}
         <div className="p-4 pb-2 flex items-center gap-3">
           <div className="w-8 h-8 bg-[#ea580c] flex items-center justify-center text-white font-mono font-bold text-lg select-none">
@@ -353,7 +353,7 @@ export const Sidebar = () => {
       </div>
 
       {/* Footer Section */}
-      <div className="p-3 border-t border-[#cbd5e1] space-y-2 bg-[#edf2f7]">
+      <div className="p-3 border-t border-[#cbd5e1] space-y-2 bg-[#edf2f7] flex-shrink-0 mt-auto">
         {/* Community templates */}
         <div className="flex flex-col gap-1">
           <a

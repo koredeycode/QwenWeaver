@@ -14,7 +14,7 @@ export const GanttMetrics = () => {
   const metrics = useStore((s) => s.metrics);
   const nodes = useStore((s) => s.nodes);
 
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
 
   if (status === 'idle' || !metrics) {
     return (
@@ -66,7 +66,7 @@ export const GanttMetrics = () => {
       </div>
 
       {isOpen && (
-        <div className="p-4 bg-white space-y-4 grid grid-cols-1 lg:grid-cols-4 gap-4 items-start border-t border-slate-100">
+        <div className="p-4 bg-white space-y-4 grid grid-cols-1 lg:grid-cols-4 gap-4 items-start border-t border-slate-100 max-h-64 overflow-y-auto">
           {/* Key Metrics Cards */}
           <div className="lg:col-span-1 space-y-2">
             <div className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-1">
