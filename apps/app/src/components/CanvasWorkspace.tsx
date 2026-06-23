@@ -37,6 +37,7 @@ import {
   Trash2,
   Upload,
   User,
+  Wrench,
   X,
   LogOut,
 } from 'lucide-react';
@@ -81,6 +82,8 @@ export const CanvasWorkspace = () => {
 
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const toolsRef = useRef<HTMLDivElement>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -89,6 +92,9 @@ export const CanvasWorkspace = () => {
     const handleClick = (e: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
         setProfileOpen(false);
+      }
+      if (toolsRef.current && !toolsRef.current.contains(e.target as Node)) {
+        setToolsOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClick);
@@ -349,68 +355,49 @@ export const CanvasWorkspace = () => {
           {/* Right: Actions, Deploy, Run, Settings, Profile */}
           <div className="flex items-center gap-4">
 
-            {/* Rearrange Layout Button */}
-            <button
-              onClick={rearrangeGraph}
-              className="px-3.5 py-1.5 bg-white border border-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1.5 rounded-none hover:bg-slate-50 transition-colors cursor-pointer"
-              title="Auto-arrange nodes in clean columns"
-            >
-              <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
-              <span className="hidden md:inline">Rearrange</span>
-            </button>
+            {/* Tools Dropdown (secondary actions) */}
+            <div className="relative" ref={toolsRef}>
+              <button
+                onClick={() => setToolsOpen(!toolsOpen)}
+                disabled={nodes.length === 0}
+                className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1.5 rounded-none hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                title="More tools"
+              >
+                <Wrench className="w-3.5 h-3.5 text-slate-500" />
+                <span className="hidden md:inline">More</span>
+              </button>
 
-            {/* Download PNG Button */}
-            <button
-              onClick={async () => {
-                if (!canvasRef.current) return;
-                const toHide = canvasRef.current.querySelectorAll<HTMLElement>('[data-export-hide]');
-                toHide.forEach(el => el.style.display = 'none');
-                // Wait a frame for DOM to settle
-                await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-                try {
-                  const dataUrl = await toPng(canvasRef.current, {
-                    backgroundColor: '#ffffff',
-                    pixelRatio: 3,
-                    cacheBust: true,
-                  });
-                  toHide.forEach(el => el.style.display = '');
-                  const link = document.createElement('a');
-                  link.download = `qwen-workflow-${Date.now()}.png`;
-                  link.href = dataUrl;
-                  link.click();
-                  toast.success('Canvas exported as PNG');
-                } catch {
-                  toHide.forEach(el => el.style.display = '');
-                  toast.error('Failed to export image');
-                }
-              }}
-              disabled={nodes.length === 0}
-              className="px-3.5 py-1.5 bg-white border border-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1.5 rounded-none hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-              title="Download canvas as PNG image"
-            >
-              <Image className="w-3.5 h-3.5 text-slate-500" />
-              <span className="hidden md:inline">PNG</span>
-            </button>
-
-            {/* Import Button */}
-            <button
-              onClick={() => setIsImportOpen(true)}
-              className="px-3.5 py-1.5 bg-white border border-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1.5 rounded-none hover:bg-slate-50 transition-colors cursor-pointer"
-              title="Import a workflow from JSON text or file"
-            >
-              <Download className="w-3.5 h-3.5 text-slate-500" />
-              <span className="hidden md:inline">Import</span>
-            </button>
-
-            {/* Export Button */}
-            <button
-              onClick={() => setIsExportOpen(true)}
-              className="px-3.5 py-1.5 bg-white border border-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1.5 rounded-none hover:bg-slate-50 transition-colors cursor-pointer"
-              title="Export current workflow config"
-            >
-              <Upload className="w-3.5 h-3.5 text-slate-500" />
-              <span className="hidden md:inline">Export</span>
-            </button>
+              {toolsOpen && (
+                <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-slate-200 shadow-lg z-50 flex flex-col">
+                  <button onClick={() => { rearrangeGraph(); setToolsOpen(false); }} className="flex items-center gap-3 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100" title="Auto-arrange nodes in clean columns">
+                    <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+                    Smart Arrange
+                  </button>
+                  <button onClick={async () => { setToolsOpen(false); if (!canvasRef.current) return; const toHide = canvasRef.current.querySelectorAll<HTMLElement>('[data-export-hide]'); toHide.forEach(el => el.style.display = 'none'); await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); try { const dataUrl = await toPng(canvasRef.current, { backgroundColor: '#ffffff', pixelRatio: 3, cacheBust: true }); toHide.forEach(el => el.style.display = ''); const link = document.createElement('a'); link.download = `qwen-workflow-${Date.now()}.png`; link.href = dataUrl; link.click(); toast.success('Canvas exported as PNG'); } catch { toHide.forEach(el => el.style.display = ''); toast.error('Failed to export image'); } }} disabled={nodes.length === 0} className="flex items-center gap-3 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100" title="Download canvas as PNG image">
+                    <Image className="w-3.5 h-3.5 text-slate-500" />
+                    Export to PNG
+                  </button>
+                  <button onClick={() => { setIsImportOpen(true); setToolsOpen(false); }} className="flex items-center gap-3 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100" title="Import a workflow from JSON text or file">
+                    <Download className="w-3.5 h-3.5 text-slate-500" />
+                    Import
+                  </button>
+                  <button onClick={() => { setIsExportOpen(true); setToolsOpen(false); }} className="flex items-center gap-3 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100" title="Export current workflow config">
+                    <Upload className="w-3.5 h-3.5 text-slate-500" />
+                    Export
+                  </button>
+                  {workflowId && nodes.length > 0 && (
+                    <button onClick={() => { if (isSelfHosted()) { window.location.href = getSaaSUrl() + '/login?redirect=/templates/new'; } else { setPublishDialogOpen(true); } setToolsOpen(false); }} className="flex items-center gap-3 px-3 py-2 text-xs text-purple-700 hover:bg-purple-50 transition-colors cursor-pointer border-b border-slate-100" title="Publish as template">
+                      <Upload className="w-3.5 h-3.5" />
+                      Publish
+                    </button>
+                  )}
+                  <button onClick={() => { setIsClearConfirmOpen(true); setToolsOpen(false); }} disabled={nodes.length === 0} className="flex items-center gap-3 px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer" title="Clear entire canvas">
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Clear
+                  </button>
+                </div>
+              )}
+            </div>
 
             {/* Save Workflow Button (only shown for unsaved workflows) */}
             {!workflowId && (
@@ -424,35 +411,6 @@ export const CanvasWorkspace = () => {
                 <span className="hidden md:inline">Save</span>
               </button>
             )}
-
-            {/* Publish as Template Button */}
-            {workflowId && nodes.length > 0 && (
-              <button
-                onClick={() => {
-                  if (isSelfHosted()) {
-                    window.location.href = getSaaSUrl() + '/login?redirect=/templates/new';
-                  } else {
-                    setPublishDialogOpen(true);
-                  }
-                }}
-                className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors cursor-pointer"
-                title="Publish as template"
-              >
-                <Upload className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">Publish</span>
-              </button>
-            )}
-
-            {/* Clear Canvas Button */}
-            <button
-              onClick={() => setIsClearConfirmOpen(true)}
-              disabled={nodes.length === 0}
-              className="px-3.5 py-1.5 bg-white border border-slate-200 text-slate-500 hover:text-rose-600 hover:border-rose-200 font-semibold text-xs flex items-center gap-1.5 rounded-none hover:bg-rose-50 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-              title="Clear entire canvas"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Clear</span>
-            </button>
 
             {/* Run Workflow / Kill Button (Solid Rust-Orange) */}
             {status === 'running' ? (

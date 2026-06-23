@@ -4,9 +4,18 @@ import type {
 } from '@qwenweaver/types';
 import { StoreState, ExecutionSlice } from './types.js';
 import { toast } from 'sonner';
-import { apiFetch } from '../lib/api-client.js';
 
-let eventSource: EventSource | null = null;
+let mockTimer: ReturnType<typeof setTimeout> | null = null;
+let mockAborted = false;
+
+function delay(ms: number) {
+  return new Promise<void>((resolve) => {
+    const id = setTimeout(() => {
+      if (!mockAborted) resolve();
+    }, ms);
+    mockTimer = id;
+  });
+}
 
 export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSlice> = (set, get) => ({
   activeExecutionId: null,
@@ -17,130 +26,153 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
   metrics: null,
 
   runWorkflow: async () => {
+    mockAborted = false;
+
     // Reset previous execution state
     set({
       executionStatus: 'pending',
       nodeStatuses: {},
       nodeOutputs: {},
       activeEdges: new Set(),
-      metrics: null
+      metrics: null,
     });
 
     const { nodes, edges } = get();
-
-    const payload = {
-      id: crypto.randomUUID(),
-      name: get().workflowName || 'Untitled Workflow',
-      nodes: nodes.map((n) => ({
-        id: n.id,
-        type: n.type,
-        position: n.position,
-        data: n.data,
-      })),
-      edges: edges.map((e) => ({
-        id: e.id,
-        source: e.source,
-        target: e.target,
-        sourceHandle: e.sourceHandle,
-        targetHandle: e.targetHandle,
-      })),
-    };
-
-    const res = await apiFetch('/api/workflow/execute', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    if (res.status === 402) {
-      const data = await res.json();
-      toast.error(`Insufficient credits. Balance: ${data.balance}, Required: ${data.required}.`);
+    if (nodes.length === 0) {
       set({ executionStatus: 'idle' });
       return;
     }
 
-    if (!res.ok) {
-      toast.error('Failed to start execution');
-      set({ executionStatus: 'idle' });
-      return;
+    set({ executionStatus: 'running' });
+
+    // Build adjacency and in-degree for Kahn's algorithm
+    const inDegree: Record<string, number> = {};
+    const adj: Record<string, string[]> = {};
+    for (const n of nodes) {
+      inDegree[n.id] = 0;
+      adj[n.id] = [];
+    }
+    for (const e of edges) {
+      adj[e.source]?.push(e.target);
+      if (inDegree[e.target] !== undefined) inDegree[e.target]++;
     }
 
-    const { executionId } = await res.json();
-    set({ activeExecutionId: executionId, executionStatus: 'running' });
+    // Topological batches
+    const batches: string[][] = [];
+    const tempDegree = { ...inDegree };
+    let queue = Object.keys(tempDegree).filter((id) => tempDegree[id] === 0);
+    while (queue.length > 0) {
+      batches.push(queue);
+      const next: string[] = [];
+      for (const id of queue) {
+        for (const t of adj[id] || []) {
+          tempDegree[t]--;
+          if (tempDegree[t] === 0) next.push(t);
+        }
+      }
+      queue = next;
+    }
 
-    // Open SSE stream
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-    const token = localStorage.getItem('qw_token');
-    const url = `${baseUrl}/api/workflow/${executionId}/stream?token=${token}`;
+    // Mock metrics tracking
+    const allNodeTimings: NodeTiming[] = [];
+    const startTime = Date.now();
 
-    eventSource = new EventSource(url);
+    // Simulate batch-by-batch execution
+    for (let b = 0; b < batches.length; b++) {
+      if (mockAborted) break;
 
-    eventSource.addEventListener('status_update', (e) => {
-      try {
-        const { nodeId, status } = JSON.parse(e.data);
-        set((state) => ({
-          nodeStatuses: { ...state.nodeStatuses, [nodeId]: status },
-        }));
-      } catch { /* ignore parse errors */ }
-    });
-
-    eventSource.addEventListener('token', (e) => {
-      try {
-        const { nodeId, chunk } = JSON.parse(e.data);
-        set((state) => ({
-          nodeOutputs: {
-            ...state.nodeOutputs,
-            [nodeId]: (state.nodeOutputs[nodeId] || '') + chunk,
-          },
-        }));
-      } catch { /* ignore parse errors */ }
-    });
-
-    eventSource.addEventListener('edge_active', (e) => {
-      try {
-        const { sourceId, targetId } = JSON.parse(e.data);
-        const { edges } = get();
-        const edge = edges.find((ed) => ed.source === sourceId && ed.target === targetId);
-        if (edge) {
-          set((state) => {
-            const newActive = new Set(state.activeEdges);
-            newActive.add(edge.id);
-            return { activeEdges: newActive };
+      // Activate incoming edges for this batch
+      for (const nodeId of batches[b]) {
+        const incomingEdge = edges.find((e) => e.target === nodeId);
+        if (incomingEdge) {
+          set((s) => {
+            const a = new Set(s.activeEdges);
+            a.add(incomingEdge.id);
+            return { activeEdges: a };
           });
           setTimeout(() => {
-            set((state) => {
-              const newActive = new Set(state.activeEdges);
-              newActive.delete(edge.id);
-              return { activeEdges: newActive };
+            set((s) => {
+              const a = new Set(s.activeEdges);
+              a.delete(incomingEdge.id);
+              return { activeEdges: a };
             });
-          }, 1500);
+          }, 1200);
         }
-      } catch { /* ignore parse errors */ }
+      }
+
+      // Run all nodes in this batch in parallel (simulated)
+      await Promise.all(
+        batches[b].map(async (nodeId) => {
+          if (mockAborted) return;
+          const node = nodes.find((n) => n.id === nodeId);
+          const nodeStart = Date.now();
+
+          // status: running
+          set((s) => ({
+            nodeStatuses: { ...s.nodeStatuses, [nodeId]: 'running' },
+          }));
+
+          // Simulate thinking time per node (1.5-3s)
+          const thinkTime = 1500 + Math.random() * 1500;
+          const tokenCount = Math.floor(50 + Math.random() * 200);
+
+          // Stream tokens gradually
+          const tokens = `[${node?.type || 'node'} output for "${node?.data?.label || nodeId}"]\n${' '.repeat(20)}Processing...\n${' '.repeat(20)}Analyzing inputs...\n`;
+          const chunkSize = Math.max(1, Math.floor(tokens.length / 5));
+          for (let i = 0; i < tokens.length; i += chunkSize) {
+            if (mockAborted) return;
+            await delay(Math.max(1, Math.floor(thinkTime / (tokens.length / chunkSize))));
+            set((s) => ({
+              nodeOutputs: {
+                ...s.nodeOutputs,
+                [nodeId]: (s.nodeOutputs[nodeId] || '') + tokens.slice(i, i + chunkSize),
+              },
+            }));
+          }
+
+          if (mockAborted) return;
+
+          // status: completed
+          set((s) => ({
+            nodeStatuses: { ...s.nodeStatuses, [nodeId]: 'completed' },
+          }));
+
+          allNodeTimings.push({
+            nodeId,
+            status: 'completed',
+            durationMs: Date.now() - nodeStart,
+            tokensUsed: tokenCount,
+          });
+        })
+      );
+    }
+
+    if (mockAborted) return;
+
+    const totalLatency = Date.now() - startTime;
+    const totalTokens = allNodeTimings.reduce((s, t) => s + (t.tokensUsed || 0), 0);
+    const sequentialTime = allNodeTimings.reduce((s, t) => s + t.durationMs, 0);
+    const speedupS = totalLatency > 0 ? Math.round((sequentialTime / totalLatency) * 100) / 100 : 1;
+
+    set({
+      executionStatus: 'completed',
+      metrics: {
+        speedupS,
+        totalTokens,
+        totalLatencyMs: totalLatency,
+        nodeTimings: allNodeTimings,
+      },
     });
 
-    eventSource.addEventListener('complete', (e) => {
-      try {
-        const { metrics } = JSON.parse(e.data);
-        set({ executionStatus: 'completed', metrics });
-        toast.success(`Workflow completed! Tokens used: ${metrics?.totalTokens ?? 0}`);
-      } catch { /* ignore parse errors */ }
-      eventSource?.close();
-      eventSource = null;
-    });
-
-    eventSource.addEventListener('error', () => {
-      eventSource?.close();
-      eventSource = null;
-      set({ executionStatus: 'failed' });
-      toast.error('Execution stream disconnected');
-    });
+    toast.success(`Workflow completed! Tokens used: ${totalTokens}`);
   },
 
   stopWorkflow: () => {
-    if (eventSource) {
-      eventSource.close();
-      eventSource = null;
+    mockAborted = true;
+    if (mockTimer) {
+      clearTimeout(mockTimer);
+      mockTimer = null;
     }
     set({ executionStatus: 'idle', activeExecutionId: null });
-  }
+  },
 });
