@@ -1,4 +1,3 @@
-import type { Context } from 'hono';
 import { sign, verify } from 'hono/jwt';
 import bcrypt from 'bcryptjs';
 import { getQueryProvider } from '@qwenweaver/database';
@@ -10,10 +9,12 @@ import {
   ACCESS_TOKEN_EXPIRY_SECONDS,
   REFRESH_TOKEN_EXPIRY_SECONDS,
 } from '../../config.js';
+import type { RouteHandler } from '@hono/zod-openapi';
+import type { registerRoute, loginRoute, refreshRoute } from './index.js';
 
 const log = createModuleLogger('routes/auth.handlers');
 
-export async function handleRegister(c: Context<{ Variables: Variables }>) {
+export const handleRegister: RouteHandler<typeof registerRoute, { Variables: Variables }> = async (c) => {
   try {
     const body = await c.req.json();
     const result = authSchema.safeParse(body);
@@ -53,9 +54,9 @@ export async function handleRegister(c: Context<{ Variables: Variables }>) {
     log.error({ error: (err as Error).message }, 'Registration failed');
     return c.json({ error: 'Internal Server Error' }, 500);
   }
-}
+};
 
-export async function handleLogin(c: Context<{ Variables: Variables }>) {
+export const handleLogin: RouteHandler<typeof loginRoute, { Variables: Variables }> = async (c) => {
   try {
     const body = await c.req.json();
     const result = authSchema.safeParse(body);
@@ -95,10 +96,10 @@ export async function handleLogin(c: Context<{ Variables: Variables }>) {
     log.error({ error: (err as Error).message }, 'Login failed');
     return c.json({ error: 'Internal Server Error' }, 500);
   }
-}
+};
 
 // Refresh token endpoint
-export async function handleRefreshToken(c: Context<{ Variables: Variables }>) {
+export const handleRefreshToken: RouteHandler<typeof refreshRoute, { Variables: Variables }> = async (c) => {
   try {
     const body = await c.req.json();
     const { refreshToken } = body as { refreshToken?: string };
@@ -133,4 +134,4 @@ export async function handleRefreshToken(c: Context<{ Variables: Variables }>) {
     log.warn({ error: (err as Error).message }, 'Token refresh failed');
     return c.json({ error: 'Invalid or expired refresh token' }, 401);
   }
-}
+};

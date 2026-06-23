@@ -1,4 +1,3 @@
-import type { Context } from 'hono';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { NodePayload, EdgePayload } from '@qwenweaver/types';
@@ -11,11 +10,13 @@ import {
 import { createModuleLogger } from '../../logger.js';
 import { getProvider } from '../../engine/model-router.js'; // Reuse singleton
 import type { Variables } from '../../index.js';
+import type { RouteHandler } from '@hono/zod-openapi';
+import type { copilotRoute } from './index.js';
 
 const log = createModuleLogger('routes/copilot.handlers');
 
 
-export async function handleCopilot(c: Context<{ Variables: Variables }>) {
+export const handleCopilot: RouteHandler<typeof copilotRoute, { Variables: Variables }> = async (c) => {
   // Validate body through Zod instead of blind cast
   const raw = await c.req.json();
   const parsed = CopilotGenerateBody.safeParse(raw);
@@ -97,4 +98,4 @@ export async function handleCopilot(c: Context<{ Variables: Variables }>) {
     log.error({ error: errorMessage }, 'Copilot generation failed');
     return c.json({ error: 'Failed to generate graph', details: errorMessage }, 500);
   }
-}
+};

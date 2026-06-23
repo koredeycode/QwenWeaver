@@ -1,36 +1,36 @@
-import React, { useCallback, useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { 
-  ReactFlow, 
-  Background, 
-  MiniMap, 
+import {
+  Background,
+  MiniMap,
   Panel,
+  ReactFlow,
   useReactFlow
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
 
-import { useStore } from '../store/index.js';
-import { Sidebar } from './Sidebar.js';
-import { Inspector } from './Inspector.js';
-import { GanttMetrics } from './GanttMetrics.js';
-import { CopilotOverlay } from './CopilotOverlay.js';
-import { nodeTypes } from './CustomNodes.js';
-import { edgeTypes } from './AnimatedEdge.js';
 import type { NodeType } from '@qwenweaver/types';
 import { MOCK_WORKFLOWS } from '../lib/mock-workflows.js';
+import { useStore } from '../store/index.js';
+import { edgeTypes } from './AnimatedEdge.js';
+import { CopilotOverlay } from './CopilotOverlay.js';
+import { nodeTypes } from './CustomNodes.js';
+import { GanttMetrics } from './GanttMetrics.js';
+import { Inspector } from './Inspector.js';
+import { Sidebar } from './Sidebar.js';
 
-import { 
-  X,
-  ToggleRight,
-  ToggleLeft,
-  RefreshCw,
-  Square,
-  Play,
-  Settings,
-  User,
+import {
+  Download,
   Keyboard,
+  Play,
+  RefreshCw,
+  Settings,
+  Square,
+  ToggleLeft,
+  ToggleRight,
   Upload,
-  Download
+  User,
+  X
 } from 'lucide-react';
 
 import { CustomZoomControls } from './CustomZoomControls.js';
@@ -246,7 +246,7 @@ export const CanvasWorkspace = () => {
               className="px-3.5 py-1.5 bg-white border border-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1.5 rounded-none hover:bg-slate-50 transition-colors cursor-pointer"
               title="Import a workflow from JSON text or file"
             >
-              <Upload className="w-3.5 h-3.5 text-slate-500" />
+              <Download className="w-3.5 h-3.5 text-slate-500" />
               Import
             </button>
 
@@ -256,7 +256,7 @@ export const CanvasWorkspace = () => {
               className="px-3.5 py-1.5 bg-white border border-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1.5 rounded-none hover:bg-slate-50 transition-colors cursor-pointer"
               title="Export current workflow config"
             >
-              <Download className="w-3.5 h-3.5 text-slate-500" />
+              <Upload className="w-3.5 h-3.5 text-slate-500" />
               Export
             </button>
 
@@ -427,6 +427,12 @@ export const CanvasWorkspace = () => {
       {/* Maximized Node Terminal Dialog Overlay */}
       <MaximizedNodeOverlay />
 
+      {/* Import Workflow Configuration Modal */}
+      <ImportWorkflowModal 
+        isOpen={isImportOpen} 
+        onClose={() => setIsImportOpen(false)} 
+      />
+
       {/* Export Workflow Configuration Modal */}
       <ExportWorkflowModal 
         isOpen={isExportOpen} 
@@ -434,12 +440,6 @@ export const CanvasWorkspace = () => {
         nodes={nodes} 
         edges={edges} 
         workflowId={id} 
-      />
-
-      {/* Import Workflow Configuration Modal */}
-      <ImportWorkflowModal 
-        isOpen={isImportOpen} 
-        onClose={() => setIsImportOpen(false)} 
       />
     </div>
   );

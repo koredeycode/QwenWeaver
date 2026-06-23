@@ -1,6 +1,6 @@
 import { StateCreator } from 'zustand';
 import { StoreState, AuthSlice } from './types.js';
-import { api } from '../lib/api-client.js';
+import { client } from '../lib/api-client.js';
 
 export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set, get) => ({
   token: localStorage.getItem('qw_token'),
@@ -17,7 +17,7 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
     }
     
     try {
-      const res = await (api as any).api.auth.login.$post({ json: { email, password } });
+      const res = await client.api.auth.login.$post({ json: { email, password } });
       if (res.ok) {
         const body = await res.json();
         if ('token' in body) {
@@ -43,7 +43,7 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
     }
 
     try {
-      const res = await (api as any).api.auth.register.$post({ json: { email, password } });
+      const res = await client.api.auth.register.$post({ json: { email, password } });
       if (res.ok) {
         const body = await res.json();
         if ('token' in body) {

@@ -3,7 +3,7 @@ import { handleLogin, handleRegister, handleRefreshToken } from './handlers.js';
 import type { Variables } from '../../index.js';
 import { authSchema, userResponseSchema, errorResponseSchema } from './schema.js';
 
-export const authRoutes = new OpenAPIHono<{ Variables: Variables }>();
+
 
 export const registerRoute = createRoute({
   method: 'post',
@@ -69,9 +69,7 @@ export const refreshRoute = createRoute({
     400: { content: { 'application/json': { schema: errorResponseSchema } }, description: 'Bad Request' },
     401: { content: { 'application/json': { schema: errorResponseSchema } }, description: 'Unauthorized' },
   },
-});
-
-authRoutes.openapi(registerRoute, handleRegister);
-authRoutes.openapi(loginRoute, handleLogin);
-authRoutes.openapi(refreshRoute, handleRefreshToken);
-
+});export const authRoutes = new OpenAPIHono<{ Variables: Variables }>()
+  .openapi(registerRoute, handleRegister)
+  .openapi(loginRoute, handleLogin)
+  .openapi(refreshRoute, handleRefreshToken);

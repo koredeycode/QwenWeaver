@@ -2,7 +2,7 @@ import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
 import type { Variables } from '../../index.js';
 import { handleGetExecution, handleGetExecutionLogs } from './handlers.js';
 
-export const executionRoutes = new OpenAPIHono<{ Variables: Variables }>();
+
 
 const errorResponseSchema = z.object({
   error: z.string(),
@@ -59,7 +59,7 @@ export const getExecutionLogsRoute = createRoute({
     },
     404: { content: { 'application/json': { schema: errorResponseSchema } }, description: 'Execution not found or unauthorized' },
   },
-});
+});export const executionRoutes = new OpenAPIHono<{ Variables: Variables }>()
+  .openapi(getExecutionRoute, handleGetExecution)
+  .openapi(getExecutionLogsRoute, handleGetExecutionLogs);
 
-executionRoutes.openapi(getExecutionRoute, handleGetExecution);
-executionRoutes.openapi(getExecutionLogsRoute, handleGetExecutionLogs);

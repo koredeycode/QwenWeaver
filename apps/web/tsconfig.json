@@ -9,5 +9,10 @@
     "skipLibCheck": true,
     "types": ["vite/client"]
   },
+  "references": [
+    { "path": "../api" },
+    { "path": "../../packages/types" },
+    { "path": "../../packages/database" }
+  ],
   "include": ["src"]
 }

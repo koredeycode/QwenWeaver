@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/index.js';
-import { Upload, X } from 'lucide-react';
+import { Download, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ImportWorkflowModalProps {
@@ -64,7 +64,7 @@ export const ImportWorkflowModal = ({
         {/* Header */}
         <div className="bg-white text-slate-800 px-6 py-4 flex items-center justify-between border-b border-slate-200">
           <div className="flex items-center gap-2.5">
-            <Upload className="w-4 h-4 text-[#ea580c]" />
+            <Download className="w-4 h-4 text-[#ea580c]" />
             <h2 className="text-sm font-bold font-mono text-slate-800 tracking-tight">IMPORT WORKFLOW</h2>
           </div>
           <button 
@@ -113,7 +113,7 @@ export const ImportWorkflowModal = ({
           <div>
             <label className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block mb-1">Method 1: Upload JSON File</label>
             <label className="border-2 border-dashed border-slate-200 hover:border-slate-350 bg-slate-50 py-4 px-3 flex flex-col items-center justify-center cursor-pointer transition-all hover:bg-slate-100/50">
-              <Upload className="w-5 h-5 text-slate-400 mb-1" />
+              <Download className="w-5 h-5 text-slate-400 mb-1" />
               <span className="text-xs font-mono font-bold text-slate-600">CHOOSE OR DROP JSON FILE</span>
               <input 
                 type="file" 

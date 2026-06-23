@@ -1,4 +1,3 @@
-import type { Context } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
 import { WorkflowPayload, SSEEventType } from '@qwenweaver/types';
@@ -8,6 +7,8 @@ import { executeWorkflow } from '../../engine/executor.js';
 import { createModuleLogger } from '../../logger.js';
 import { active_sse_connections } from '../../metrics.js';
 import type { Variables } from '../../index.js';
+import type { RouteHandler } from '@hono/zod-openapi';
+import type { executeRoute, streamRoute, getStatusRoute } from './index.js';
 
 const log = createModuleLogger('routes/workflow.handlers');
 
@@ -60,7 +61,7 @@ class SSEQueue {
 
 // ─── Route Handlers ─────────────────────────────────────────────────────────
 
-export async function handleExecute(c: Context<{ Variables: Variables }>) {
+export const handleExecute: RouteHandler<typeof executeRoute, { Variables: Variables }> = async (c) => {
   // Validate body through Zod instead of blind cast
   const raw = await c.req.json();
   const parsed = WorkflowPayload.safeParse(raw);
@@ -109,7 +110,7 @@ export async function handleExecute(c: Context<{ Variables: Variables }>) {
   return c.json({ executionId, status: 'pending' }, 201);
 }
 
-export async function handleStream(c: Context<{ Variables: Variables }>) {
+export const handleStream: RouteHandler<typeof streamRoute, { Variables: Variables }> = async (c) => {
   const executionId = c.req.param('executionId')!;
   const userId = c.get('jwtPayload').sub;
   const provider = getQueryProvider();
@@ -208,7 +209,7 @@ export async function handleStream(c: Context<{ Variables: Variables }>) {
   });
 }
 
-export async function handleGetStatus(c: Context<{ Variables: Variables }>) {
+export const handleGetStatus: RouteHandler<typeof getStatusRoute, { Variables: Variables }> = async (c) => {
   const executionId = c.req.param('executionId')!;
   const userId = c.get('jwtPayload').sub;
   const provider = getQueryProvider();

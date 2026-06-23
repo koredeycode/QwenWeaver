@@ -7,6 +7,7 @@ import type {
 } from '@qwenweaver/types';
 import { StoreState, ExecutionSlice } from './types.js';
 import { toast } from 'sonner';
+import { client } from '../lib/api-client.js';
 
 let sseAbortController: AbortController | null = null;
 
@@ -265,32 +266,46 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
           }))
         };
 
-        const res = await fetch('/api/workflow/execute', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(workflowPayload)
-        });
+        const res = await client.api.workflow.execute.$post(
+          { json: workflowPayload },
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        );
 
         if (!res.ok) {
           const err = await res.json();
+          const errorMsg = err && typeof err === 'object' && 'error' in err ? String((err as any).error) : 'Server error';
           set({ executionStatus: 'failed' });
-          toast.error(`Workflow failed: ${err.error || 'Server error'}`);
+          toast.error(`Workflow failed: ${errorMsg}`);
           return;
         }
 
-        const { executionId } = await res.json();
+        const data = await res.json();
+        if (!data || typeof data !== 'object' || !('executionId' in data)) {
+          set({ executionStatus: 'failed' });
+          toast.error('Workflow failed: Invalid server response');
+          return;
+        }
+        const executionId = (data as any).executionId;
         set({ activeExecutionId: executionId, executionStatus: 'running' });
 
         sseAbortController = new AbortController();
-        const sseRes = await fetch(`/api/workflow/${executionId}/stream`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
+        const sseRes = await client.api.workflow[':executionId'].stream.$get(
+          {
+            param: { executionId }
           },
-          signal: sseAbortController.signal
-        });
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            },
+            init: {
+              signal: sseAbortController.signal
+            }
+          }
+        );
 
         if (!sseRes.ok || !sseRes.body) {
           set({ executionStatus: 'failed' });

@@ -1,13 +1,14 @@
-import type { Context } from 'hono';
 import { getQueryProvider } from '@qwenweaver/database';
 import { discoverMCPTools } from '../../engine/mcp-bridge.js';
 import { createModuleLogger } from '../../logger.js';
 import type { Variables } from '../../index.js';
 import { SaveServerBody } from './schema.js';
+import type { RouteHandler } from '@hono/zod-openapi';
+import type { discoverToolsRoute, saveServerRoute, listServersRoute, deleteServerRoute } from './index.js';
 
 const log = createModuleLogger('routes/mcp.handlers');
 
-export async function handleDiscoverTools(c: Context<{ Variables: Variables }>) {
+export const handleDiscoverTools: RouteHandler<typeof discoverToolsRoute, { Variables: Variables }> = async (c) => {
   const serverId = c.req.query('serverId');
   const userId = c.get('jwtPayload').sub;
 
@@ -32,9 +33,9 @@ export async function handleDiscoverTools(c: Context<{ Variables: Variables }>) 
   const tools = await discoverMCPTools(tempNode);
 
   return c.json({ tools, count: tools.length }, 200);
-}
+};
 
-export async function handleSaveServer(c: Context<{ Variables: Variables }>) {
+export const handleSaveServer: RouteHandler<typeof saveServerRoute, { Variables: Variables }> = async (c) => {
   // Validate body through Zod instead of blind cast
   const raw = await c.req.json();
   const parsed = SaveServerBody.safeParse(raw);
@@ -60,16 +61,16 @@ export async function handleSaveServer(c: Context<{ Variables: Variables }>) {
   log.info({ id, name: body.name, transport: body.transport }, 'MCP server saved');
 
   return c.json(server, 201);
-}
+};
 
-export async function handleListServers(c: Context<{ Variables: Variables }>) {
+export const handleListServers: RouteHandler<typeof listServersRoute, { Variables: Variables }> = async (c) => {
   const userId = c.get('jwtPayload').sub;
   const provider = getQueryProvider();
   const servers = await provider.getMcpServers(userId);
   return c.json({ servers, count: servers.length }, 200);
-}
+};
 
-export async function handleDeleteServer(c: Context<{ Variables: Variables }>) {
+export const handleDeleteServer: RouteHandler<typeof deleteServerRoute, { Variables: Variables }> = async (c) => {
   const id = c.req.param('id')!;
   const userId = c.get('jwtPayload').sub;
   
@@ -83,4 +84,4 @@ export async function handleDeleteServer(c: Context<{ Variables: Variables }>) {
   log.info({ id }, 'MCP server deleted');
 
   return c.json({ deleted: true }, 200);
-}
+};

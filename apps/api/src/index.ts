@@ -84,12 +84,14 @@ app.use(
 
 // ─── Mount route modules ────────────────────────────────────────────────────
 
-app.route('/api/auth', authRoutes);
-app.route('/api/workflow', workflowRoutes);
-app.route('/api/execution', executionRoutes);
-app.route('/api/copilot', copilotRoutes);
-app.route('/api/mcp', mcpRoutes);
-app.route('/api/analytics', analyticsRoutes);
+const routes = app
+  .route('/api/auth', authRoutes)
+  .route('/api/workflow', workflowRoutes)
+  .route('/api/execution', executionRoutes)
+  .route('/api/copilot', copilotRoutes)
+  .route('/api/mcp', mcpRoutes)
+  .route('/api/analytics', analyticsRoutes);
+
 
 // Expose metrics endpoint only in development/test environments
 if (process.env.NODE_ENV !== 'production') {
@@ -214,4 +216,4 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 export default app;
-export type AppType = typeof app;
+export type AppType = typeof routes;

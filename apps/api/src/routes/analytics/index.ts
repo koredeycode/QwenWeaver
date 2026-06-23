@@ -3,7 +3,7 @@ import type { Variables } from '../../index.js';
 import { handleGetAnalyticsSummary } from './handlers.js';
 import { AnalyticsSummarySchema } from './schema.js';
 
-export const analyticsRoutes = new OpenAPIHono<{ Variables: Variables }>();
+
 
 const errorResponseSchema = z.object({
   error: z.string(),
@@ -25,6 +25,6 @@ export const getAnalyticsSummaryRoute = createRoute({
     },
     500: { content: { 'application/json': { schema: errorResponseSchema } }, description: 'Internal Server Error' },
   },
-});
+});export const analyticsRoutes = new OpenAPIHono<{ Variables: Variables }>()
+  .openapi(getAnalyticsSummaryRoute, handleGetAnalyticsSummary);
 
-analyticsRoutes.openapi(getAnalyticsSummaryRoute, handleGetAnalyticsSummary);

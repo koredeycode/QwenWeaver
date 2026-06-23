@@ -3,7 +3,7 @@ import type { Variables } from '../../index.js';
 import { WorkflowPayload } from '@qwenweaver/types';
 import { handleExecute, handleStream, handleGetStatus } from './handlers.js';
 
-export const workflowRoutes = new OpenAPIHono<{ Variables: Variables }>();
+
 
 const errorResponseSchema = z.object({
   error: z.string(),
@@ -71,10 +71,10 @@ export const getStatusRoute = createRoute({
     404: { content: { 'application/json': { schema: errorResponseSchema } }, description: 'Not Found' },
   },
 });
-
-workflowRoutes.openapi(executeRoute, handleExecute);
-workflowRoutes.openapi(streamRoute, handleStream);
-workflowRoutes.openapi(getStatusRoute, handleGetStatus);
+export const workflowRoutes = new OpenAPIHono<{ Variables: Variables }>()
+  .openapi(executeRoute, handleExecute)
+  .openapi(streamRoute, handleStream)
+  .openapi(getStatusRoute, handleGetStatus);
 
 export type { ActiveExecution } from './handlers.js';
 export { activeExecutions } from './handlers.js';

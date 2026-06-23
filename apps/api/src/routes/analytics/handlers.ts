@@ -1,11 +1,12 @@
-import type { Context } from 'hono';
 import { getQueryProvider } from '@qwenweaver/database';
 import { createModuleLogger } from '../../logger.js';
 import type { Variables } from '../../index.js';
+import type { RouteHandler } from '@hono/zod-openapi';
+import type { getAnalyticsSummaryRoute } from './index.js';
 
 const log = createModuleLogger('routes/analytics.handlers');
 
-export async function handleGetAnalyticsSummary(c: Context<{ Variables: Variables }>) {
+export const handleGetAnalyticsSummary: RouteHandler<typeof getAnalyticsSummaryRoute, { Variables: Variables }> = async (c) => {
   const userId = c.get('jwtPayload').sub;
   const provider = getQueryProvider();
 
@@ -20,4 +21,4 @@ export async function handleGetAnalyticsSummary(c: Context<{ Variables: Variable
     log.error({ userId, error: (error as Error).message }, 'Failed to get analytics summary');
     return c.json({ error: 'Internal Server Error' }, 500);
   }
-}
+};

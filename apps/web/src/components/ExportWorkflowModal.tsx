@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Node, Edge } from '@xyflow/react';
 import type { NodeData } from '@qwenweaver/types';
-import { Download, Copy, Check, X } from 'lucide-react';
+import { Upload, Copy, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ExportWorkflowModalProps {
@@ -71,7 +71,7 @@ export const ExportWorkflowModal = ({
         {/* Header */}
         <div className="bg-white text-slate-800 px-6 py-4 flex items-center justify-between border-b border-slate-200">
           <div className="flex items-center gap-2.5">
-            <Download className="w-4 h-4 text-[#ea580c]" />
+            <Upload className="w-4 h-4 text-[#ea580c]" />
             <h2 className="text-sm font-bold font-mono text-slate-800 tracking-tight">EXPORT WORKFLOW</h2>
           </div>
           <button 
@@ -108,7 +108,7 @@ export const ExportWorkflowModal = ({
               onClick={handleDownload}
               className="py-2.5 px-4 bg-slate-900 hover:bg-[#ea580c] hover:border-[#ea580c] border border-slate-900 text-white text-xs font-mono font-bold flex items-center justify-center gap-2 transition-all cursor-pointer rounded-none"
             >
-              <Download className="w-4 h-4" />
+              <Upload className="w-4 h-4" />
               DOWNLOAD JSON FILE
             </button>
           </div>

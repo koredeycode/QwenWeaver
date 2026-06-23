@@ -8,7 +8,7 @@ import {
   handleDeleteServer,
 } from './handlers.js';
 
-export const mcpRoutes = new OpenAPIHono<{ Variables: Variables }>();
+
 
 const errorResponseSchema = z.object({
   error: z.string(),
@@ -100,8 +100,9 @@ export const deleteServerRoute = createRoute({
     404: { content: { 'application/json': { schema: errorResponseSchema } }, description: 'Not found' },
   },
 });
+export const mcpRoutes = new OpenAPIHono<{ Variables: Variables }>()
+  .openapi(discoverToolsRoute, handleDiscoverTools)
+  .openapi(saveServerRoute, handleSaveServer)
+  .openapi(listServersRoute, handleListServers)
+  .openapi(deleteServerRoute, handleDeleteServer);
 
-mcpRoutes.openapi(discoverToolsRoute, handleDiscoverTools);
-mcpRoutes.openapi(saveServerRoute, handleSaveServer);
-mcpRoutes.openapi(listServersRoute, handleListServers);
-mcpRoutes.openapi(deleteServerRoute, handleDeleteServer);

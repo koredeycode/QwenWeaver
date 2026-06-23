@@ -4,7 +4,7 @@ import { CopilotGenerateBody } from './schema.js';
 import { handleCopilot } from './handlers.js';
 import { NodePayload, EdgePayload } from '@qwenweaver/types';
 
-export const copilotRoutes = new OpenAPIHono<{ Variables: Variables }>();
+
 
 const errorResponseSchema = z.object({
   error: z.string(),
@@ -41,4 +41,5 @@ export const copilotRoute = createRoute({
   },
 });
 
-copilotRoutes.openapi(copilotRoute, handleCopilot);
+export const copilotRoutes = new OpenAPIHono<{ Variables: Variables }>()
+  .openapi(copilotRoute, handleCopilot);
