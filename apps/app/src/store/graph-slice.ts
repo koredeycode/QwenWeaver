@@ -9,7 +9,7 @@ import {
 } from '@xyflow/react';
 import { StoreState, GraphSlice } from './types.js';
 import { toast } from 'sonner';
-import { MOCK_WORKFLOWS } from '../lib/mock-workflows.js';
+import { EXAMPLE_WORKFLOWS } from '../lib/example-workflows.js';
 import { WorkflowPayload, NodeData } from '@qwenweaver/types';
 
 // Initial template for the "Research Swarm"
@@ -157,7 +157,7 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
   },
 
   loadWorkflow: (workflowId) => {
-    const wf = MOCK_WORKFLOWS.find((w) => w.id === workflowId);
+    const wf = EXAMPLE_WORKFLOWS.find((w) => w.id === workflowId);
     if (wf) {
       set({ 
         nodes: wf.nodes as any, 

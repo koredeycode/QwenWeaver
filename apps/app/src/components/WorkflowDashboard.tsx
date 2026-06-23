@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
 import { apiFetch } from '../lib/api-client.js';
-import { MOCK_WORKFLOWS, MockWorkflow } from '../lib/mock-workflows.js';
+import { EXAMPLE_WORKFLOWS, ExampleWorkflow } from '../lib/example-workflows.js';
 import { CreateWorkflowDialog } from './CreateWorkflowDialog.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 
@@ -82,12 +82,12 @@ export const WorkflowDashboard = () => {
     } catch { /* ignore */ }
   };
 
-  const handleOpenExample = (wf: MockWorkflow) => {
+  const handleOpenExample = (wf: ExampleWorkflow) => {
     loadUnsavedWorkflow(wf.nodes as any, wf.edges as any, wf.name, wf.description);
     navigate('/workflows/unsaved');
   };
 
-  const getNodeCount = (workflow: MockWorkflow, type: string) => {
+  const getNodeCount = (workflow: ExampleWorkflow, type: string) => {
     return workflow.nodes.filter(n => {
       if (type === 'trigger') return n.type === 'trigger' || n.type === 'input_trigger';
       return n.type === type;
@@ -286,7 +286,7 @@ export const WorkflowDashboard = () => {
             )}
 
             {/* List Mock Workflows */}
-            {MOCK_WORKFLOWS.map((wf) => {
+            {EXAMPLE_WORKFLOWS.map((wf) => {
               const triggersCount = getNodeCount(wf, 'trigger');
               const agentsCount = getNodeCount(wf, 'agent');
               const supervisorsCount = getNodeCount(wf, 'supervisor');

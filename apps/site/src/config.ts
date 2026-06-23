@@ -7,8 +7,8 @@ export const SITE = {
 export const URLS = {
   app: 'https://app.qwenweaver.com',
   docs: '/docs',
-  github: 'https://github.com/your-org/qwenweaver',
-  githubIssues: 'https://github.com/your-org/qwenweaver/issues',
+  github: 'https://github.com/koredeycode/QwenWeaver',
+  githubIssues: 'https://github.com/koredeycode/QwenWeaver/issues',
   twitter: 'https://twitter.com/qwenweaver',
   discord: '', // coming soon
 } as const;

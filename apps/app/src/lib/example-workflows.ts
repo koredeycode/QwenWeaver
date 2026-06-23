@@ -1,4 +1,4 @@
-export interface MockNode {
+export interface ExampleNode {
   id: string;
   type: string;
   position: { x: number; y: number };
@@ -14,22 +14,22 @@ export interface MockNode {
   };
 }
 
-export interface MockEdge {
+export interface ExampleEdge {
   id: string;
   source: string;
   target: string;
   type?: string;
 }
 
-export interface MockWorkflow {
+export interface ExampleWorkflow {
   id: string;
   name: string;
   description: string;
-  nodes: MockNode[];
-  edges: MockEdge[];
+  nodes: ExampleNode[];
+  edges: ExampleEdge[];
 }
 
-export const MOCK_WORKFLOWS: MockWorkflow[] = [
+export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
   {
     id: 'research-swarm',
     name: 'Academic Research Swarm',

@@ -10,7 +10,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 import type { NodeType } from '@qwenweaver/types';
-import { MOCK_WORKFLOWS } from '../lib/mock-workflows.js';
+import { EXAMPLE_WORKFLOWS } from '../lib/example-workflows.js';
 import { apiFetch, isSelfHosted, getSaaSUrl } from '../lib/api-client.js';
 import { useStore } from '../store/index.js';
 import { toast } from 'sonner';
@@ -44,6 +44,7 @@ import { ExportWorkflowModal } from './ExportWorkflowModal.js';
 import { ImportWorkflowModal } from './ImportWorkflowModal.js';
 import { MaximizedNodeOverlay } from './MaximizedNodeOverlay.js';
 import { SaveWorkflowDialog } from './SaveWorkflowDialog.js';
+import { PublishTemplateDialog } from './PublishTemplateDialog.js';
 
 export const CanvasWorkspace = () => {
   const nodes = useStore((s) => s.nodes);
@@ -77,6 +78,7 @@ export const CanvasWorkspace = () => {
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -92,7 +94,7 @@ export const CanvasWorkspace = () => {
     if (id) {
       if (id === 'unsaved') return;
 
-      const isMock = MOCK_WORKFLOWS.some((w) => w.id === id);
+      const isMock = EXAMPLE_WORKFLOWS.some((w) => w.id === id);
       if (isMock) {
         loadWorkflow(id);
       } else {
@@ -388,7 +390,7 @@ export const CanvasWorkspace = () => {
                   if (isSelfHosted()) {
                     window.location.href = getSaaSUrl() + '/login?redirect=/templates/new';
                   } else {
-                    toast.info('Publish feature coming soon');
+                    setPublishDialogOpen(true);
                   }
                 }}
                 className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors cursor-pointer"
@@ -690,6 +692,53 @@ export const CanvasWorkspace = () => {
             toast.success('Workflow saved!');
           } catch {
             toast.error('Failed to save workflow');
+          }
+        }}
+      />
+
+      <PublishTemplateDialog
+        isOpen={publishDialogOpen}
+        initialName={workflowName}
+        initialDescription={workflowDescription}
+        onClose={() => setPublishDialogOpen(false)}
+        onConfirm={async ({ name, description, categoryId, tags }) => {
+          try {
+            const payload = {
+              name,
+              description,
+              categoryId,
+              tags,
+              workflowData: {
+                nodes: nodes.map((n) => ({
+                  id: n.id,
+                  type: n.type,
+                  position: n.position,
+                  data: n.data,
+                })),
+                edges: edges.map((e) => ({
+                  id: e.id,
+                  source: e.source,
+                  target: e.target,
+                  sourceHandle: e.sourceHandle,
+                  targetHandle: e.targetHandle,
+                  type: e.type,
+                })),
+              },
+            };
+            const res = await apiFetch('/api/templates', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+            if (!res.ok) {
+              const err = await res.json().catch(() => ({}));
+              throw new Error(err.error || 'Publish failed');
+            }
+            const data = await res.json();
+            setPublishDialogOpen(false);
+            toast.success('Template published!');
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : 'Failed to publish template');
           }
         }}
       />

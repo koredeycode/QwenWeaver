@@ -19,9 +19,11 @@ export interface CopilotMessage {
 
 export interface AuthSlice {
   token: string | null;
+  refreshToken: string | null;
   user: { id: string; email: string } | null;
   login: (email: string, password: string) => Promise<boolean>;
   register: (email: string, password: string) => Promise<boolean>;
+  refreshAccessToken: () => Promise<boolean>;
   logout: () => void;
 }
 
