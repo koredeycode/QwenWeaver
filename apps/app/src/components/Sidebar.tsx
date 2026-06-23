@@ -236,7 +236,7 @@ export const Sidebar = () => {
         <div className="mx-4 border-t border-[#cbd5e1] mb-2" />
 
         {/* Navigation Categories */}
-        <div className="px-2 space-y-1">
+        <div className="px-2 space-y-1" data-tour="palette">
           {/* Triggers */}
           <button
             onClick={() => handleCategoryClick('triggers')}
@@ -258,7 +258,7 @@ export const Sidebar = () => {
           </button>
 
           {activeCategory === 'triggers' && (
-            <div className="py-1 px-1 bg-white border border-[#e2e8f0] shadow-sm space-y-1 mt-0.5">
+            <div className="py-1 px-1 bg-white border border-[#e2e8f0] shadow-sm space-y-1 mt-0.5" data-tour="palette-triggers">
               {paletteItems.triggers.map((item, idx) => (
                 <div
                   key={idx}
@@ -295,7 +295,7 @@ export const Sidebar = () => {
           </button>
 
           {activeCategory === 'agents' && (
-            <div className="py-1 px-1 bg-white border border-[#e2e8f0] shadow-sm space-y-1 mt-0.5">
+            <div className="py-1 px-1 bg-white border border-[#e2e8f0] shadow-sm space-y-1 mt-0.5" data-tour="palette-agents">
               {paletteItems.agents.map((item, idx) => (
                 <div
                   key={idx}
@@ -334,7 +334,7 @@ export const Sidebar = () => {
           </button>
 
           {activeCategory === 'mcp' && (
-            <div className="py-1 px-1 bg-white border border-[#e2e8f0] shadow-sm space-y-1 mt-0.5">
+            <div className="py-1 px-1 bg-white border border-[#e2e8f0] shadow-sm space-y-1 mt-0.5" data-tour="palette-mcp">
               {paletteItems.mcp.map((item, idx) => (
                 <div
                   key={idx}

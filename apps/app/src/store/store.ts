@@ -5,6 +5,7 @@ import { createGraphSlice } from './graph-slice.js';
 import { createExecutionSlice } from './execution-slice.js';
 import { createCopilotSlice } from './copilot-slice.js';
 import { createTemplateSlice } from './templates-slice.js';
+import { createTourSlice } from './tour-slice.js';
 
 // Combine all slice creators into a single unified Zustand hook
 export const useStore = create<StoreState>((...a) => ({
@@ -13,5 +14,6 @@ export const useStore = create<StoreState>((...a) => ({
   ...createExecutionSlice(...a),
   ...createCopilotSlice(...a),
   ...createTemplateSlice(...a),
+  ...createTourSlice(...a),
 }));
 export type { StoreState };

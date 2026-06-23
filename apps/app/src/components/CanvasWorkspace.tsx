@@ -362,13 +362,14 @@ export const CanvasWorkspace = () => {
                 disabled={nodes.length === 0}
                 className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1.5 rounded-none hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                 title="More tools"
+                data-tour="more-tools"
               >
                 <Wrench className="w-3.5 h-3.5 text-slate-500" />
                 <span className="hidden md:inline">More</span>
               </button>
 
               {toolsOpen && (
-                <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-slate-200 shadow-lg z-50 flex flex-col">
+                <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-slate-200 shadow-lg z-50 flex flex-col" data-tour="more-tools-menu">
                   <button onClick={() => { rearrangeGraph(); setToolsOpen(false); }} className="flex items-center gap-3 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100" title="Auto-arrange nodes in clean columns">
                     <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
                     Smart Arrange
@@ -406,6 +407,7 @@ export const CanvasWorkspace = () => {
                 disabled={nodes.length === 0}
                 className="px-3.5 py-1.5 bg-[#9a3412] hover:bg-[#a73a00] text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                 title="Save this workflow"
+                data-tour="save-workflow"
               >
                 <Save className="w-3.5 h-3.5" />
                 <span className="hidden md:inline">Save</span>
@@ -426,6 +428,7 @@ export const CanvasWorkspace = () => {
                 onClick={runWorkflow}
                 disabled={nodes.length === 0}
                 className="px-4 py-1.5 bg-[#9a3412] hover:bg-[#a73a00] text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors disabled:opacity-30 cursor-pointer"
+                data-tour="run-workflow"
               >
                 <Play className="w-3.5 h-3.5 fill-white text-white" />
                 <span className="hidden md:inline">Run Workflow</span>

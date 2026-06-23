@@ -11,6 +11,7 @@ import type {
   ExecutionMetrics
 } from '@qwenweaver/types';
 import type { TemplateSummary, TemplateDetail, TemplateCategory, TemplateReview } from '../lib/templates-client.js';
+import type { TourStep } from '../tour/types.js';
 
 export interface CopilotMessage {
   role: 'user' | 'assistant';
@@ -86,5 +87,15 @@ export interface TemplateSlice {
   forkTemplate: (id: string) => Promise<boolean>;
 }
 
+export interface TourSlice {
+  isTourActive: boolean;
+  currentStepIndex: number;
+  steps: TourStep[];
+  startTour: () => void;
+  nextStep: () => void;
+  prevStep: () => void;
+  endTour: () => void;
+}
+
 // Combined Global Zustand State type
-export type StoreState = AuthSlice & GraphSlice & ExecutionSlice & CopilotSlice & TemplateSlice;
+export type StoreState = AuthSlice & GraphSlice & ExecutionSlice & CopilotSlice & TemplateSlice & TourSlice;

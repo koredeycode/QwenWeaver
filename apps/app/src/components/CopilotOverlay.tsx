@@ -169,6 +169,7 @@ export const CopilotOverlay = () => {
               : 'bg-white hover:bg-slate-50 text-slate-700'
           }`}
           title="Drag to reposition, Click to toggle Qwen Copilot chat"
+          data-tour="copilot"
         >
           <MessageSquareCode className={`w-4 h-4 ${isOpen ? 'text-white' : 'text-[#ea580c]'}`} />
           <span>Qwen Copilot</span>

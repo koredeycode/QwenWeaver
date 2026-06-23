@@ -122,7 +122,7 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
   };
 
   return (
-    <div className="w-80 h-full bg-white border-l border-[#cbd5e1] flex flex-col font-sans select-none text-slate-800">
+    <div className="w-80 h-full bg-white border-l border-[#cbd5e1] flex flex-col font-sans select-none text-slate-800" data-tour="inspector">
       {/* Title Header */}
       <div className="flex items-center justify-between border-b border-[#cbd5e1] bg-[#f8fafc] px-4 py-2.5">
         <div className="flex items-center gap-1.5 text-xs font-mono font-bold tracking-wider text-slate-900">
