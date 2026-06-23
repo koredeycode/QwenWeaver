@@ -25,18 +25,31 @@ export const TemplateCard = React.memo(({ template, onSelect, onFork }: Template
 
   return (
     <div
-      className="bg-white border-2 border-slate-200 hover:border-[#ea580c] p-6 flex flex-col justify-between shadow-sm hover:shadow-md transition-all rounded-none min-h-[240px] group cursor-pointer"
+      className="bg-white border-2 border-slate-200 hover:border-[#ea580c] flex flex-col shadow-sm hover:shadow-md transition-all rounded-none group cursor-pointer relative"
       onClick={() => onSelect(template.id)}
     >
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <FolderOpen className="w-5 h-5 text-slate-400 group-hover:text-[#ea580c] transition-colors" />
-          {template.featured && (
-            <span className="text-[9px] font-mono bg-orange-50 border border-orange-200 text-[#ea580c] px-1.5 py-0.5 font-bold">
-              FEATURED
-            </span>
-          )}
+      {template.thumbnail ? (
+        <div className="w-full h-36 overflow-hidden bg-slate-50 border-b border-slate-200">
+          <img
+            src={template.thumbnail}
+            alt={template.name}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
         </div>
+      ) : (
+        <div className="w-full h-24 flex items-center justify-center bg-slate-50 border-b border-slate-200">
+          <FolderOpen className="w-8 h-8 text-slate-300 group-hover:text-[#ea580c] transition-colors" />
+        </div>
+      )}
+      {template.featured && (
+        <div className="absolute top-3 right-3">
+          <span className="text-[9px] font-mono bg-orange-50 border border-orange-200 text-[#ea580c] px-1.5 py-0.5 font-bold">
+            FEATURED
+          </span>
+        </div>
+      )}
+      <div className="p-6 flex flex-col justify-between flex-1 min-h-0">
 
         <div>
           <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#ea580c] transition-colors">

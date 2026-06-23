@@ -8,6 +8,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toPng } from 'html-to-image';
 
 import type { NodeType } from '@qwenweaver/types';
 import { EXAMPLE_WORKFLOWS } from '../lib/example-workflows.js';
@@ -81,6 +82,7 @@ export const CanvasWorkspace = () => {
   const profileRef = useRef<HTMLDivElement>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const canvasRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -507,7 +509,7 @@ export const CanvasWorkspace = () => {
           {/* Main workspace container (Canvas + Gantt) */}
           <div className="flex-1 h-full flex flex-col min-w-0 relative">
             {/* React Flow Workspace Canvas */}
-            <div className="flex-1 w-full min-h-0 relative">
+            <div ref={canvasRef} className="flex-1 w-full min-h-0 relative">
               <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -735,11 +737,20 @@ export const CanvasWorkspace = () => {
         onClose={() => setPublishDialogOpen(false)}
         onConfirm={async ({ name, description, categoryId, tags }) => {
           try {
+            let thumbnail: string | undefined;
+            try {
+              if (canvasRef.current) {
+                thumbnail = await toPng(canvasRef.current, { quality: 0.7, pixelRatio: 2 });
+              }
+            } catch {
+              // non-blocking — thumbnail is optional
+            }
             const payload = {
               name,
               description,
               categoryId,
               tags,
+              thumbnail,
               workflowData: {
                 nodes: nodes.map((n) => ({
                   id: n.id,

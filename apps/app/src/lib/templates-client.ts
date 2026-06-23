@@ -17,6 +17,7 @@ export interface TemplateSummary {
   avgRating: number;
   ratingCount: number;
   featured: boolean;
+  thumbnail?: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -153,6 +153,15 @@ export const TemplateDetailPage = () => {
       <div className="flex-1 min-h-0 overflow-y-auto p-8 scrollbar">
         <div className="max-w-3xl mx-auto space-y-8">
           <div className="space-y-4">
+            {template.thumbnail && (
+              <div className="w-full max-h-64 overflow-hidden bg-slate-100 border border-slate-200">
+                <img
+                  src={template.thumbnail}
+                  alt={template.name}
+                  className="w-full h-full object-contain max-h-64"
+                />
+              </div>
+            )}
             <div className="flex items-start justify-between">
               <div className="space-y-1">
                 <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
