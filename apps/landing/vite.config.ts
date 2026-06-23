@@ -5,10 +5,6 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
-    allowedHosts: ['sad-religion.outray.app'],
-    port: 5173,
-    proxy: {
-      '/api': 'http://localhost:3001',
-    },
+    port: 5174,
   },
 });
