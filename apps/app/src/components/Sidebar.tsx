@@ -18,6 +18,7 @@ import { useStore } from '../store/index.js';
 import type { NodeType } from '@qwenweaver/types';
 import { CreateWorkflowDialog } from './CreateWorkflowDialog.js';
 import { isSelfHosted, getSaaSUrl } from '../lib/api-client.js';
+import { SystemHealth } from './SystemHealth.js';
 
 export const Sidebar = () => {
   const addNode = useStore((s) => s.addNode);
@@ -354,6 +355,11 @@ export const Sidebar = () => {
 
       {/* Footer Section */}
       <div className="p-3 border-t border-[#cbd5e1] space-y-2 bg-[#edf2f7] flex-shrink-0 mt-auto">
+        {/* System Health (self-host only) */}
+        {isSelfHosted() && <SystemHealth />}
+
+        <div className="pt-2 border-t border-[#cbd5e1]/40" />
+
         {/* Community templates */}
         <div className="flex flex-col gap-1">
           <a

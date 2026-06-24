@@ -14,11 +14,41 @@ export function SelfHosted() {
             </p>
           </div>
 
-          <div className="mt-16 grid gap-8 lg:grid-cols-2">
+          {/* One-command installer */}
+          <div className="mb-12 rounded-xl border border-primary/30 bg-primary/5 p-8 text-center">
+            <h2 className="text-xl font-bold">One-Command Install</h2>
+            <p className="mt-2 text-sm text-on-surface-variant">
+              Provision a server with a single command. Works on any fresh Ubuntu/Debian VPS.
+            </p>
+            <pre className="mt-6 inline-block overflow-x-auto rounded-lg bg-[#0f172a] px-6 py-4 text-sm text-[#e2e8f0]">
+              <code>{`curl -fsSL https://get.${SITE.name.toLowerCase()}.io | sh`}</code>
+            </pre>
+            <p className="mt-3 text-xs text-on-surface-variant">
+              Prompts for install mode (npm CLI, Docker, or Git). Or pre-select with
+              <code className="ml-1 rounded bg-surface-dim px-1.5 py-0.5 font-mono text-[10px]">QWENWEAVER_INSTALL_MODE=docker</code>.
+            </p>
+          </div>
+
+          <div className="grid gap-8 lg:grid-cols-3">
             <div className="rounded-xl border border-outline/40 bg-surface-bright p-8">
-              <h2 className="text-xl font-bold">Docker (Recommended)</h2>
+              <h2 className="text-xl font-bold">npm CLI <span className="rounded bg-primary/20 px-2 py-0.5 text-xs font-normal text-primary">Default</span></h2>
               <p className="mt-2 text-sm text-on-surface-variant">
-                One command to run the entire stack with SQLite persistence.
+                Run directly with Node.js via the global CLI.
+              </p>
+              <pre className="mt-6 overflow-x-auto rounded-lg bg-[#0f172a] p-4 text-sm text-[#e2e8f0]">
+                <code>{`npm install -g ${SITE.name.toLowerCase()}
+${SITE.name.toLowerCase()} init
+${SITE.name.toLowerCase()} start`}</code>
+              </pre>
+              <p className="mt-4 text-xs text-on-surface-variant">
+                Requires Node.js 20+. Managed via systemd. Uses SQLite by default.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-outline/40 bg-surface-bright p-8">
+              <h2 className="text-xl font-bold">Docker</h2>
+              <p className="mt-2 text-sm text-on-surface-variant">
+                Containerized deployment with docker-compose.
               </p>
               <pre className="mt-6 overflow-x-auto rounded-lg bg-[#0f172a] p-4 text-sm text-[#e2e8f0]">
                 <code>{`docker run -d \\
@@ -30,27 +60,27 @@ export function SelfHosted() {
   ghcr.io/${SITE.name.toLowerCase()}/${SITE.name.toLowerCase()}:latest`}</code>
               </pre>
               <p className="mt-4 text-xs text-on-surface-variant">
-                Or use docker-compose.yml from the repository.
+                Or use <code>docker-compose.yml</code> from the repository.
               </p>
             </div>
 
             <div className="rounded-xl border border-outline/40 bg-surface-bright p-8">
-              <h2 className="text-xl font-bold">npm / pnpm CLI</h2>
+              <h2 className="text-xl font-bold">Git + systemd</h2>
               <p className="mt-2 text-sm text-on-surface-variant">
-                No Docker? Run directly with Node.js via our CLI tool.
+                Clone, build from source, and run via systemd.
               </p>
               <pre className="mt-6 overflow-x-auto rounded-lg bg-[#0f172a] p-4 text-sm text-[#e2e8f0]">
-                <code>{`# Install globally
-npm install -g ${SITE.name.toLowerCase()}
+                <code>{`# Via installer:
+# Choose option 3 (Git)
 
-# Initialize config
-${SITE.name.toLowerCase()} init
-
-# Start the server
+# Or manually:
+git clone https://github.com/${SITE.name.toLowerCase()}/${SITE.name.toLowerCase()}.git
+cd ${SITE.name.toLowerCase()}
+pnpm install && pnpm build
 ${SITE.name.toLowerCase()} start`}</code>
               </pre>
               <p className="mt-4 text-xs text-on-surface-variant">
-                Requires Node.js 20+. Uses SQLite by default (zero config).
+                Best for developers who want to fork and modify.
               </p>
             </div>
           </div>

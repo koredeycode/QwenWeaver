@@ -1,0 +1,16 @@
+{
+  "name": "get-qwenweaver",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Tiny installer endpoint for curl -fsSL https://get.qwenweaver.io | sh.",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "posthog-node": "^5.35.6"
+  }
+}

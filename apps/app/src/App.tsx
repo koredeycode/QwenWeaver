@@ -5,6 +5,7 @@ import { ReactFlowProvider } from '@xyflow/react';
 import { HelpCircle } from 'lucide-react';
 import { useStore } from './store/index.js';
 import { AuthScreen } from './components/AuthScreen.js';
+import { SetupWizard } from './components/SetupWizard.js';
 import { WorkflowDashboard } from './components/WorkflowDashboard.js';
 import { CanvasWorkspace } from './components/CanvasWorkspace.js';
 import { TemplateGallery } from './components/TemplateGallery.js';
@@ -48,6 +49,7 @@ function App() {
           <Routes>
             <Route path="/login" element={<AuthScreen />} />
             <Route path="/register" element={<AuthScreen />} />
+            <Route path="/setup" element={<SetupWizard />} />
             <Route path="/" element={<ProtectedRoute><WorkflowDashboard /></ProtectedRoute>} />
             <Route path="/workflows/:id" element={<ProtectedRoute><CanvasWorkspace /></ProtectedRoute>} />
             <Route path="/templates" element={<Navigate to={saasUrl + '/templates'} replace />} />

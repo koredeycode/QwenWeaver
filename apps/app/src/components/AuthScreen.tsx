@@ -7,8 +7,10 @@ import {
   ArrowRight,
   Eye,
   EyeOff,
+  Loader2,
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
+import { apiFetch, isSelfHosted } from '../lib/api-client.js';
 
 export const AuthScreen = () => {
   const login = useStore((s) => s.login);
@@ -23,13 +25,41 @@ export const AuthScreen = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [checkingSetup, setCheckingSetup] = useState(true);
+
+  // Check if setup is complete; if not, redirect to /setup (self-host only)
+  useEffect(() => {
+    if (!isSelfHosted()) {
+      setCheckingSetup(false);
+      return;
+    }
+    apiFetch('/api/setup/status')
+      .then((res) => res.json())
+      .then((data: { complete: boolean }) => {
+        if (!data.complete) {
+          navigate('/setup', { replace: true });
+        }
+      })
+      .catch(() => {
+        // Server unreachable — stay on login page
+      })
+      .finally(() => setCheckingSetup(false));
+  }, [navigate]);
 
   // If already authenticated, redirect to dashboard automatically
   useEffect(() => {
-    if (token) {
+    if (token && !checkingSetup) {
       navigate('/');
     }
-  }, [token, navigate]);
+  }, [token, navigate, checkingSetup]);
+
+  if (checkingSetup) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-slate-50">
+        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

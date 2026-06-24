@@ -15,6 +15,8 @@ import { authRoutes } from './routes/auth/index.js';
 import { analyticsRoutes } from './routes/analytics/index.js';
 import { creditsRoutes } from './routes/credits/index.js';
 import { templateRoutes } from './routes/templates/index.js';
+import { setupRoutes } from './routes/setup/index.js';
+import { updateRoutes } from './routes/update/index.js';
 import { register } from './metrics.js';
 import { getQueryProvider } from '@qwenweaver/database';
 import { rateLimiter } from './middleware/rate-limiter.js';
@@ -74,6 +76,7 @@ app.use(
       path.startsWith('/api/docs') ||
       path.startsWith('/api/openapi.json') ||
       path.startsWith('/api/auth') ||
+      (path.startsWith('/api/setup') && !path.startsWith('/api/setup/reconfigure')) ||
       path.startsWith('/api/metrics')
     ) {
       return next();
@@ -96,7 +99,9 @@ const routes = app
   .route('/api/copilot', copilotRoutes)
   .route('/api/mcp', mcpRoutes)
   .route('/api/analytics', analyticsRoutes)
-  .route('/api/credits', creditsRoutes);
+  .route('/api/credits', creditsRoutes)
+  .route('/api/setup', setupRoutes)
+  .route('/api/system/update', updateRoutes);
 
 
 // Expose metrics endpoint only in development/test environments
