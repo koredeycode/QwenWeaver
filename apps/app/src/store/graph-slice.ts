@@ -64,13 +64,13 @@ const RESEARCH_SWARM_TEMPLATE = {
       },
     },
   ] as Node<NodeData>[],
-  edges: [
-    { id: 'e-t-a1', source: 'node-trigger', target: 'node-agent-1', type: 'animated' },
-    { id: 'e-t-a2', source: 'node-trigger', target: 'node-agent-2', type: 'animated' },
-    { id: 'e-a1-s', source: 'node-agent-1', target: 'node-supervisor', type: 'animated' },
-    { id: 'e-a2-s', source: 'node-agent-2', target: 'node-supervisor', type: 'animated' },
-    { id: 'e-s-m', source: 'node-supervisor', target: 'node-mcp-tool', type: 'animated' },
-  ] as Edge[],
+    edges: [
+      { id: 'e-t-a1', source: 'node-trigger', target: 'node-agent-1', sourceHandle: 'source', targetHandle: 'target-left', type: 'animated' },
+      { id: 'e-t-a2', source: 'node-trigger', target: 'node-agent-2', sourceHandle: 'source', targetHandle: 'target-left', type: 'animated' },
+      { id: 'e-a1-s', source: 'node-agent-1', target: 'node-supervisor', sourceHandle: 'source-right', targetHandle: 'target-left', type: 'animated' },
+      { id: 'e-a2-s', source: 'node-agent-2', target: 'node-supervisor', sourceHandle: 'source-right', targetHandle: 'target-left', type: 'animated' },
+      { id: 'e-s-m', source: 'node-supervisor', target: 'node-mcp-tool', sourceHandle: 'source-bottom', targetHandle: 'target', type: 'animated' },
+    ] as Edge[],
 };
 
 export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (set, get) => ({
@@ -90,13 +90,86 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
     set((state) => {
       const sourceNode = state.nodes.find((n) => n.id === connection.source);
       const targetNode = state.nodes.find((n) => n.id === connection.target);
-      if (sourceNode?.type === 'mcp_tool' && targetNode?.type === 'mcp_tool') {
+      if (!sourceNode || !targetNode) return {};
+
+      const isAgent = (t?: string) => t === 'agent' || t === 'supervisor';
+      const isTrigger = (t?: string) => t === 'trigger' || t === 'input_trigger';
+
+      // Tool→Tool blocked
+      if (sourceNode.type === 'mcp_tool' && targetNode.type === 'mcp_tool') {
         toast.error('Error: MCP Tools cannot be directly connected to each other.');
         return {};
       }
+
+      // Tool cannot connect to non-agent
+      if (sourceNode.type === 'mcp_tool' && !isAgent(targetNode.type)) {
+        toast.error('MCP Tools can only connect to Agent or Supervisor nodes.');
+        return {};
+      }
+
+      // Trigger nodes can only connect to agents/supervisors
+      if (isTrigger(sourceNode.type) && !isAgent(targetNode.type)) {
+        toast.error('Trigger nodes can only connect to Agent or Supervisor nodes.');
+        return {};
+      }
+
+      // Source to a tool must be agent or supervisor
+      if (targetNode.type === 'mcp_tool' && !isAgent(sourceNode.type)) {
+        toast.error('Error: MCP Tools can only receive connections from Agent or Supervisor nodes.');
+        return {};
+      }
+
+      // One tool per agent constraint: a tool can only have one incoming connection
+      if (targetNode.type === 'mcp_tool') {
+        const existingEdge = state.edges.find((e) => e.target === connection.target);
+        if (existingEdge) {
+          toast.error('This MCP Tool already has a connection from another agent. Duplicate the tool to attach it to a different agent.');
+          return {};
+        }
+      }
+
+      // Block duplicate connections in the same direction only
+      const hasEdge = state.edges.some(
+        (e) => e.source === connection.source && e.target === connection.target,
+      );
+      if (hasEdge) {
+        toast.error('A connection already exists between these nodes.');
+        return {};
+      }
+
+      // Agent→agent connections should use left/right handles
+      // Agent→tool connections should use top/bottom handles
+      // Auto-detect handles when missing, and validate/override wrong handles
+      let sourceHandle = connection.sourceHandle;
+      let targetHandle = connection.targetHandle;
+
+      if (isAgent(sourceNode.type) && isAgent(targetNode.type)) {
+        sourceHandle = 'source-right';
+        targetHandle = 'target-left';
+      } else if (isAgent(sourceNode.type) && targetNode.type === 'mcp_tool') {
+        sourceHandle = 'source-bottom';
+        targetHandle = 'target';
+      } else if (isTrigger(sourceNode.type) && isAgent(targetNode.type)) {
+        sourceHandle = 'source';
+        targetHandle = 'target-left';
+      } else if (sourceNode.type === 'mcp_tool' && isAgent(targetNode.type)) {
+        sourceHandle = 'target';
+        targetHandle = 'target-bottom';
+      } else if (isAgent(targetNode.type)) {
+        targetHandle = 'target-left';
+      } else if (targetNode.type === 'mcp_tool') {
+        targetHandle = 'target';
+      }
+
       return {
         edges: addEdge(
-          { ...connection, id: `e-${connection.source}-${connection.target}`, type: 'animated' },
+          {
+            ...connection,
+            sourceHandle,
+            targetHandle,
+            id: `e-${connection.source}-${connection.target}`,
+            type: 'animated',
+          },
           state.edges,
         ),
       };
@@ -131,6 +204,30 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
       edges: state.edges.filter((e) => e.source !== id && e.target !== id),
       selectedNodeId: state.selectedNodeId === id ? null : state.selectedNodeId,
     })),
+
+  duplicateNode: (id) =>
+    set((state) => {
+      const original = state.nodes.find((n) => n.id === id);
+      if (!original) return {};
+
+      const newId = `node-${original.type}-${Date.now().toString().slice(-4)}-${Math.random().toString(36).slice(-4)}`;
+
+      const duplicatedNode: Node<any> = {
+        ...original,
+        id: newId,
+        selected: false,
+        position: {
+          x: original.position.x + 80,
+          y: original.position.y + 80,
+        },
+        data: { ...original.data },
+      };
+
+      return {
+        nodes: [...state.nodes, duplicatedNode],
+        selectedNodeId: newId,
+      };
+    }),
 
   updateNodeData: (id, data) =>
     set((state) => ({
@@ -212,17 +309,13 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
       }
     }
 
-    // 2. Compute level of each node (handling cycle avoidance)
+    // 2. Compute level of each node
     const levelMap = new Map<string, number>();
     const visited = new Set<string>();
 
     const getLevel = (nodeId: string): number => {
-      if (levelMap.has(nodeId)) {
-        return levelMap.get(nodeId)!;
-      }
-      if (visited.has(nodeId)) {
-        return 0; // Prevent infinite loop in cycle
-      }
+      if (levelMap.has(nodeId)) return levelMap.get(nodeId)!;
+      if (visited.has(nodeId)) return 0;
       visited.add(nodeId);
       const parents = parentsMap.get(nodeId) || [];
       if (parents.length === 0) {
@@ -244,32 +337,100 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
       getLevel(node.id);
     }
 
-    // 3. Group node IDs by their level
-    const nodesByLevel = new Map<number, string[]>();
-    for (const node of nodes) {
-      const lvl = levelMap.get(node.id) || 0;
-      if (!nodesByLevel.has(lvl)) {
-        nodesByLevel.set(lvl, []);
+    // 3. Identify which tools belong to which parent agent/supervisor
+    const toolParentMap = new Map<string, string>();
+    for (const edge of edges) {
+      const sourceNode = nodes.find((n) => n.id === edge.source);
+      const targetNode = nodes.find((n) => n.id === edge.target);
+      if (
+        targetNode?.type === 'mcp_tool' &&
+        (sourceNode?.type === 'agent' || sourceNode?.type === 'supervisor')
+      ) {
+        if (!toolParentMap.has(edge.target)) {
+          toolParentMap.set(edge.target, edge.source);
+        }
+      } else if (
+        sourceNode?.type === 'mcp_tool' &&
+        (targetNode?.type === 'agent' || targetNode?.type === 'supervisor')
+      ) {
+        if (!toolParentMap.has(edge.source)) {
+          toolParentMap.set(edge.source, edge.target);
+        }
       }
-      nodesByLevel.get(lvl)!.push(node.id);
     }
 
-    // 4. Calculate layout positions
+    // 4. Split into main nodes and tool nodes
+    const mainNodes = nodes.filter((n) => n.type !== 'mcp_tool');
+    const toolNodes = nodes.filter((n) => n.type === 'mcp_tool');
+
+    // 5. Group main nodes by level
+    const mainNodesByLevel = new Map<number, string[]>();
+    for (const node of mainNodes) {
+      const lvl = levelMap.get(node.id) || 0;
+      if (!mainNodesByLevel.has(lvl)) {
+        mainNodesByLevel.set(lvl, []);
+      }
+      mainNodesByLevel.get(lvl)!.push(node.id);
+    }
+
+    // 7. Calculate positions
     const X_GAP = 360;
-    const Y_GAP = 280; // 280px gap gives enough space for console log outputs
+    const Y_GAP = 180;
+    const TOOL_WIDTH = 80;
+    const TOOL_GAP = 12;
+
+    const nodeWidth = (type?: string) => {
+      if (type === 'supervisor') return 320;
+      if (type === 'trigger') return 256;
+      return 288;
+    };
+
+    const positionMap = new Map<string, { x: number; y: number }>();
+
+    // Place main nodes left-to-right, leaving room below for tools
+    for (const node of mainNodes) {
+      const level = levelMap.get(node.id) || 0;
+      const levelNodes = mainNodesByLevel.get(level) || [];
+      const index = levelNodes.indexOf(node.id);
+      const totalHeight = (levelNodes.length - 1) * Y_GAP;
+      const y = 250 + index * Y_GAP - totalHeight / 2;
+      positionMap.set(node.id, { x: level * X_GAP + 80, y });
+    }
+
+    // Place tool nodes spread evenly below their parent node
+    for (const node of toolNodes) {
+      const parentId = toolParentMap.get(node.id);
+      if (parentId && positionMap.has(parentId)) {
+        const parentNode = nodes.find((n) => n.id === parentId);
+        const parentPos = positionMap.get(parentId)!;
+        const siblingTools = toolNodes.filter(
+          (t) => toolParentMap.get(t.id) === parentId,
+        );
+        const count = siblingTools.length;
+        const pw = nodeWidth(parentNode?.type);
+        const totalWidth = count * TOOL_WIDTH + (count - 1) * TOOL_GAP;
+        const startX = parentPos.x + (pw - totalWidth) / 2;
+        const siblingIndex = siblingTools.indexOf(node);
+        positionMap.set(node.id, {
+          x: startX + siblingIndex * (TOOL_WIDTH + TOOL_GAP),
+          y: parentPos.y + 280,
+        });
+      } else {
+        // Orphaned tool — place at far right
+        const maxLevel = Math.max(...Array.from(levelMap.values()), 0);
+        const index = toolNodes.indexOf(node);
+        positionMap.set(node.id, {
+          x: (maxLevel + 1) * X_GAP + 80,
+          y: 250 + index * Y_GAP,
+        });
+      }
+    }
 
     const rearrangedNodes = nodes.map((node) => {
-      const level = levelMap.get(node.id) || 0;
-      const levelNodes = nodesByLevel.get(level) || [];
-      const index = levelNodes.indexOf(node.id);
-
-      const x = level * X_GAP + 80;
-      const totalHeight = (levelNodes.length - 1) * Y_GAP;
-      const y = 200 + index * Y_GAP - totalHeight / 2;
-
+      const pos = positionMap.get(node.id);
       return {
         ...node,
-        position: { x, y },
+        position: pos || { x: 100, y: 100 },
       };
     });
 

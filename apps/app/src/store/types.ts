@@ -46,6 +46,7 @@ export interface GraphSlice {
     additionalData?: Record<string, unknown>,
   ) => void;
   deleteNode: (id: string) => void;
+  duplicateNode: (id: string) => void;
   updateNodeData: (id: string, data: Partial<NodeData>) => void;
   selectNode: (id: string | null) => void;
   setWorkflowMeta: (name: string, description: string) => void;

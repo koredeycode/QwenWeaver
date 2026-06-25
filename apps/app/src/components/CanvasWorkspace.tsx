@@ -51,6 +51,7 @@ export const CanvasWorkspace = () => {
   const onConnect = useStore((s) => s.onConnect);
   const selectNode = useStore((s) => s.selectNode);
   const addNode = useStore((s) => s.addNode);
+  const duplicateNode = useStore((s) => s.duplicateNode);
   const rearrangeGraph = useStore((s) => s.rearrangeGraph);
   const clearGraph = useStore((s) => s.clearGraph);
   const loadWorkflow = useStore((s) => s.loadWorkflow);
@@ -237,6 +238,7 @@ export const CanvasWorkspace = () => {
           setIsLocked((prev) => !prev);
         } else {
           rearrangeGraph();
+          setTimeout(() => reactFlowInstance.fitView({ duration: 200 }), 50);
         }
       }
 
@@ -267,6 +269,15 @@ export const CanvasWorkspace = () => {
           selectNode(null);
         }
       }
+
+      // 7. Duplicate selected node: Ctrl + D or Cmd + D
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') {
+        event.preventDefault();
+        const selectedId = useStore.getState().selectedNodeId;
+        if (selectedId) {
+          duplicateNode(selectedId);
+        }
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -280,12 +291,107 @@ export const CanvasWorkspace = () => {
     rearrangeGraph,
     clearGraph,
     selectNode,
+    duplicateNode,
     reactFlowInstance,
     maximizedNodeId,
     setMaximizedNodeId,
   ]);
 
   // Handle Drag-and-drop drop trigger
+  const connectionStartRef = useRef<{ source: string; sourceHandle: string | null } | null>(null);
+
+  const onConnectStart = useCallback((_: any, { nodeId, handleId }: any) => {
+    connectionStartRef.current = { source: nodeId, sourceHandle: handleId ?? null };
+  }, []);
+
+  const onConnectEnd = useCallback(
+    (event: MouseEvent | TouchEvent) => {
+      if (!connectionStartRef.current) return;
+
+      // If released on a handle, React Flow's built-in onConnect already handled it
+      const target = event.target as HTMLElement;
+      if (target.closest('.react-flow__handle')) return;
+
+      let nodeElement = target.closest('.react-flow__node');
+
+      // Proximity snap: if not directly on a node, find nearest within snap distance
+      if (!nodeElement) {
+        const snapPx = 40;
+        const clientX = 'touches' in event ? (event as TouchEvent).changedTouches[0]!.clientX : (event as MouseEvent).clientX;
+        const clientY = 'touches' in event ? (event as TouchEvent).changedTouches[0]!.clientY : (event as MouseEvent).clientY;
+        const sourceId = connectionStartRef.current.source;
+        const flowEl = document.querySelector('.react-flow');
+        if (flowEl) {
+          let bestDist = Infinity;
+          for (const node of nodes) {
+            if (node.id === sourceId) continue;
+            // Skip tools that already have an incoming edge (one tool per agent constraint)
+            if (node.type === 'mcp_tool' && edges.some((e) => e.target === node.id)) continue;
+            const el = flowEl.querySelector(`[data-id="${node.id}"]`) as HTMLElement | null;
+            if (!el) continue;
+            const r = el.getBoundingClientRect();
+            const cx = Math.max(r.left, Math.min(clientX, r.right));
+            const cy = Math.max(r.top, Math.min(clientY, r.bottom));
+            const d = Math.hypot(clientX - cx, clientY - cy);
+            if (d < bestDist) {
+              bestDist = d;
+              if (d < snapPx) nodeElement = el;
+            }
+          }
+        }
+      }
+
+      if (!nodeElement || !connectionStartRef.current) return;
+
+      const targetNodeId = nodeElement.getAttribute('data-id');
+      if (!targetNodeId || targetNodeId === connectionStartRef.current.source) return;
+
+      const targetNode = nodes.find((n) => n.id === targetNodeId);
+      if (!targetNode) return;
+
+      const sourceNode = nodes.find((n) => n.id === connectionStartRef.current!.source);
+      if (!sourceNode) return;
+
+      let sourceHandle = connectionStartRef.current.sourceHandle;
+
+      const isAgent = (t?: string) => t === 'agent' || t === 'supervisor';
+      const isTrigger = (t?: string) => t === 'trigger' || t === 'input_trigger';
+
+      if (sourceNode.type === 'mcp_tool' && isAgent(targetNode.type)) {
+        sourceHandle = 'target';
+      }
+
+      const targetHandle =
+        sourceNode.type === 'mcp_tool' && isAgent(targetNode.type)
+          ? 'target-bottom'
+          : isAgent(targetNode.type)
+            ? 'target-left'
+            : targetNode.type === 'mcp_tool'
+              ? 'target'
+              : undefined;
+
+      if (!targetHandle) return;
+
+      if (isAgent(sourceNode.type) && isAgent(targetNode.type)) {
+        sourceHandle = 'source-right';
+      } else if (isAgent(sourceNode.type) && targetNode.type === 'mcp_tool') {
+        sourceHandle = 'source-bottom';
+      } else if (isTrigger(sourceNode.type) && isAgent(targetNode.type)) {
+        sourceHandle = 'source';
+      }
+
+      onConnect({
+        source: connectionStartRef.current.source,
+        target: targetNodeId,
+        sourceHandle,
+        targetHandle,
+      });
+
+      connectionStartRef.current = null;
+    },
+    [nodes, edges, onConnect],
+  );
+
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
@@ -390,6 +496,7 @@ export const CanvasWorkspace = () => {
                   <button
                     onClick={() => {
                       rearrangeGraph();
+                      setTimeout(() => reactFlowInstance.fitView({ duration: 200 }), 50);
                       setToolsOpen(false);
                     }}
                     className="flex items-center gap-3 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100"
@@ -609,6 +716,8 @@ export const CanvasWorkspace = () => {
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
+                onConnectStart={onConnectStart}
+                onConnectEnd={onConnectEnd}
                 onDragOver={onDragOver}
                 onDrop={onDrop}
                 nodeTypes={nodeTypes as any}
@@ -623,6 +732,18 @@ export const CanvasWorkspace = () => {
                 elementsSelectable={!isLocked && status !== 'running'}
                 deleteKeyCode={isLocked || status === 'running' ? null : ['Backspace', 'Delete']}
                 proOptions={{ hideAttribution: true }}
+                isValidConnection={(connection) => {
+                  if (!connection.source || !connection.target) return false;
+                  const sn = nodes.find((n) => n.id === connection.source);
+                  const tn = nodes.find((n) => n.id === connection.target);
+                  if (!sn || !tn) return false;
+                  const isAgent = (t?: string) => t === 'agent' || t === 'supervisor';
+                  const isTrigger = (t?: string) => t === 'trigger' || t === 'input_trigger';
+                  if (sn.type === 'mcp_tool' && tn.type === 'mcp_tool') return false;
+                  if (sn.type === 'mcp_tool' && !isAgent(tn.type)) return false;
+                  if (isTrigger(sn.type) && !isAgent(tn.type)) return false;
+                  return true;
+                }}
               >
                 <Background color="#cbd5e1" gap={16} size={1} className="opacity-40" />
                 {nodes.length === 0 && (
@@ -699,6 +820,12 @@ export const CanvasWorkspace = () => {
                         <span>Delete Edge:</span>
                         <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
                           Click Edge + Backspace
+                        </kbd>
+                      </div>
+                      <div className="flex justify-between gap-6">
+                        <span>Duplicate Node:</span>
+                        <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
+                          Ctrl + D
                         </kbd>
                       </div>
                       <div className="flex justify-between gap-6">

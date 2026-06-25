@@ -167,6 +167,7 @@ export const TriggerNode = memo(({ id, data }: NodeProps<any>) => {
       <Handle
         type="source"
         position={Position.Right}
+        id="source"
         className="w-4 h-4 !bg-emerald-500 !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
       />
     </div>
@@ -188,7 +189,16 @@ export const AgentNode = memo(({ id, data }: NodeProps<any>) => {
       <Handle
         type="target"
         position={Position.Left}
+        id="target-left"
         className="w-4 h-4 !bg-[#ea580c] !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
+      />
+
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="source-bottom"
+        className="w-4 h-4 !bg-purple-500 !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
+        title="Connect to MCP Tool"
       />
 
       <div className="flex items-center justify-between border-b border-outline-variant pb-2 mb-2">
@@ -237,7 +247,15 @@ export const AgentNode = memo(({ id, data }: NodeProps<any>) => {
       <Handle
         type="source"
         position={Position.Right}
+        id="source-right"
         className="w-4 h-4 !bg-[#ea580c] !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
+      />
+      <Handle
+        type="target"
+        position={Position.Bottom}
+        id="target-bottom"
+        className="w-4 h-4 !bg-purple-500 !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
+        title="Receives from MCP Tool"
       />
     </div>
   );
@@ -258,7 +276,16 @@ export const SupervisorNode = memo(({ id, data }: NodeProps<any>) => {
       <Handle
         type="target"
         position={Position.Left}
+        id="target-left"
         className="w-4 h-4 !bg-[#2563eb] !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
+      />
+
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="source-bottom"
+        className="w-4 h-4 !bg-purple-500 !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
+        title="Connect to MCP Tool"
       />
 
       <div className="flex items-center justify-between border-b border-outline pb-2 mb-2">
@@ -307,7 +334,15 @@ export const SupervisorNode = memo(({ id, data }: NodeProps<any>) => {
       <Handle
         type="source"
         position={Position.Right}
+        id="source-right"
         className="w-4 h-4 !bg-[#2563eb] !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
+      />
+      <Handle
+        type="target"
+        position={Position.Bottom}
+        id="target-bottom"
+        className="w-4 h-4 !bg-purple-500 !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
+        title="Receives from MCP Tool"
       />
     </div>
   );
@@ -325,32 +360,50 @@ export const MCPToolNode = memo(({ id, data }: NodeProps<any>) => {
 
   return (
     <div
-      className={`w-36 bg-white border-2 ${
+      className={`w-20 h-20 bg-white border-2 ${
         isSelected
           ? 'border-purple-500 shadow-[0_2px_8px_rgba(168,85,247,0.2)]'
           : isUnconfigured
             ? 'border-amber-400'
             : 'border-purple-200'
-      } text-slate-800 p-2 relative font-sans shadow-sm group`}
+      } text-slate-800 relative font-sans shadow-sm flex flex-col`}
     >
       <Handle
         type="target"
-        position={Position.Left}
-        className="w-3 h-3 !bg-purple-500 !border-2 !border-white hover:scale-125 transition-all shadow-sm"
+        position={Position.Top}
+        id="target"
+        className="w-2.5 h-2.5 !bg-purple-500 !border-2 !border-white hover:scale-125 transition-all shadow-sm"
+        title="Receives from Agent/Supervisor"
       />
 
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setMaximizedNodeId(id);
-        }}
-        className="absolute top-1 right-1 p-0.5 hover:bg-purple-100 text-purple-400 hover:text-purple-700 transition-colors nodrag cursor-pointer"
-        title="Inspect MCP Tool"
-      >
-        <Maximize2 className="w-3 h-3" />
-      </button>
+      <div className="flex items-center justify-between px-1.5 py-1 border-b border-outline-variant">
+        <div className="flex items-center gap-1">
+          <Wrench className="w-2.5 h-2.5 text-purple-600" />
+          <span className="text-[6px] font-mono font-bold tracking-wider text-purple-600 uppercase">
+            MCP
+          </span>
+          {isUnconfigured && (
+            <span className="text-[6px] text-amber-600 font-bold" title="Not configured">
+              ⚠
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-0.5">
+          {getCompactStatusIndicator(status)}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setMaximizedNodeId(id);
+            }}
+            className="p-0.5 hover:bg-purple-100 text-purple-400 hover:text-purple-700 transition-colors nodrag cursor-pointer"
+            title="Inspect MCP Tool"
+          >
+            <Maximize2 className="w-2 h-2" />
+          </button>
+        </div>
+      </div>
 
-      <div className="flex flex-col items-center justify-center gap-1 min-h-[60px]">
+      <div className="flex items-center justify-center flex-1 min-h-0">
         {data.iconUrl && !imgError ? (
           <img
             src={data.iconUrl}
@@ -363,31 +416,7 @@ export const MCPToolNode = memo(({ id, data }: NodeProps<any>) => {
             <Wrench className="w-3.5 h-3.5 text-purple-600" />
           </div>
         )}
-        <div className="flex items-center gap-1">
-          <span className="text-[7px] font-mono font-bold tracking-wider text-purple-600 uppercase">
-            MCP
-          </span>
-          {isUnconfigured && (
-            <span className="text-[7px] text-amber-600 font-bold ml-0.5" title="Not configured">
-              ⚠
-            </span>
-          )}
-          {getCompactStatusIndicator(status)}
-        </div>
       </div>
-
-      <div
-        className="text-[10px] font-bold tracking-tight text-slate-900 truncate text-center mt-1"
-        title={data.label}
-      >
-        {data.label || 'Tool'}
-      </div>
-
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="w-3 h-3 !bg-purple-500 !border-2 !border-white hover:scale-125 transition-all shadow-sm"
-      />
     </div>
   );
 });
@@ -475,6 +504,7 @@ export const InputTriggerNode = memo(({ id, data }: NodeProps<any>) => {
       <Handle
         type="source"
         position={Position.Right}
+        id="source"
         className="w-4 h-4 !bg-emerald-500 !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
       />
     </div>

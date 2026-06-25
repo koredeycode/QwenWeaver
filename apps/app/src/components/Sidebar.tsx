@@ -464,7 +464,7 @@ export const Sidebar = () => {
                 }}
                 className="w-full p-2 text-xs font-mono font-bold text-slate-600 border border-dashed border-slate-300 hover:border-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
               >
-                Your servers
+                Your MCPs
               </button>
 
               {/* Explore other servers (opens registry) */}
@@ -476,7 +476,7 @@ export const Sidebar = () => {
                 className="w-full p-2 flex items-center justify-center gap-2 text-xs font-mono font-bold text-purple-700 bg-purple-50 border border-purple-200 hover:bg-purple-100 transition-colors cursor-pointer"
               >
                 <Store className="w-3.5 h-3.5" />
-                Explore servers
+                Explore MCPs
               </button>
 
               {/* Manual Add */}
