@@ -1,6 +1,6 @@
 import { StateCreator } from 'zustand';
 import { StoreState, TemplateSlice } from './types.js';
-import { apiFetch } from '../lib/api-client.js';
+import { client, authHeaders } from '../lib/api-client.js';
 import { toast } from 'sonner';
 
 export const createTemplateSlice: StateCreator<StoreState, [], [], TemplateSlice> = (set, get) => ({
@@ -21,9 +21,10 @@ export const createTemplateSlice: StateCreator<StoreState, [], [], TemplateSlice
       if (params?.search) qs.set('search', params.search);
       if (params?.limit) qs.set('limit', String(params.limit));
       if (params?.offset) qs.set('offset', String(params.offset));
-      const q = qs.toString();
-
-      const res = await apiFetch(`/api/templates${q ? `?${q}` : ''}`);
+      const res = await client.api.templates.$get(
+        { query: Object.fromEntries(qs.entries()) as Record<string, string> },
+        { headers: authHeaders() }
+      );
       const data = await res.json();
       set({ templates: data.templates, templatesTotal: data.total, templatesLoading: false });
     } catch {
@@ -34,8 +35,11 @@ export const createTemplateSlice: StateCreator<StoreState, [], [], TemplateSlice
 
   fetchTemplate: async (id) => {
     try {
-      const res = await apiFetch(`/api/templates/${id}`);
-      const data = await res.json();
+      const res = await client.api.templates[':id'].$get(
+        { param: { id } },
+        { headers: authHeaders() }
+      );
+      const data = await res.json() as any;
       set({ selectedTemplate: data.template });
     } catch {
       toast.error('Failed to load template');
@@ -44,8 +48,11 @@ export const createTemplateSlice: StateCreator<StoreState, [], [], TemplateSlice
 
   fetchReviews: async (id) => {
     try {
-      const res = await apiFetch(`/api/templates/${id}/reviews`);
-      const data = await res.json();
+      const res = await client.api.templates[':id'].reviews.$get(
+        { param: { id } },
+        { headers: authHeaders() }
+      );
+      const data = await res.json() as any;
       set({ selectedTemplateReviews: data.reviews });
     } catch {
       toast.error('Failed to load reviews');
@@ -55,8 +62,11 @@ export const createTemplateSlice: StateCreator<StoreState, [], [], TemplateSlice
   fetchCategories: async () => {
     set({ categoriesLoading: true });
     try {
-      const res = await apiFetch('/api/templates/categories');
-      const data = await res.json();
+      const res = await client.api.templates.categories.$get(
+        {},
+        { headers: authHeaders() }
+      );
+      const data = await res.json() as any;
       set({ categories: data.categories, categoriesLoading: false });
     } catch {
       set({ categoriesLoading: false });
@@ -70,9 +80,12 @@ export const createTemplateSlice: StateCreator<StoreState, [], [], TemplateSlice
       return false;
     }
     try {
-      const res = await apiFetch(`/api/templates/${id}`);
+      const res = await client.api.templates[':id'].$get(
+        { param: { id } },
+        { headers: authHeaders() }
+      );
       if (!res.ok) throw new Error('Failed to fetch template');
-      const data = await res.json();
+      const data = await res.json() as any;
       const template = data.template;
       if (!template?.workflowData?.nodes) {
         toast.error('Template has no workflow data');

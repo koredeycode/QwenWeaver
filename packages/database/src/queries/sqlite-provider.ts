@@ -1,9 +1,9 @@
 import { type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { eq, and, sql, desc, count, inArray } from 'drizzle-orm';
 import { getConnection, sqliteSchema } from '../index.js';
-import type { QueryProvider, WorkflowRow, WorkflowDetail, WorkflowNodeRow, WorkflowEdgeRow } from './provider.js';
+import type { QueryProvider, WorkflowRow, WorkflowDetail } from './provider.js';
 import type { SavedMCPServerInput, SavedMCPServer } from './mcp.js';
-import type { WorkflowPayload, ExecutionMetrics, AgentLogInput, AgentLogOutput } from '@qwenweaver/types';
+import type { WorkflowPayload, ExecutionMetrics, AgentLogInput, AgentLogOutput, MCPAuthConfig } from '@qwenweaver/types';
 
 const log = {
   info: (data: Record<string, unknown>, message: string) => {
@@ -50,6 +50,11 @@ export const sqliteProvider: QueryProvider = {
       url: input.url || null,
       command: input.command || null,
       args: input.args || null,
+      iconUrl: input.iconUrl || null,
+      authConfig: input.authConfig || null,
+      registryOrigin: input.registryOrigin || 'manual',
+      registryId: input.registryId || null,
+      registryMetadata: input.registryMetadata || null,
     };
     await sqliteDb.insert(sqliteSchema.sqliteMcpServers).values({
       ...baseValues,
@@ -64,6 +69,11 @@ export const sqliteProvider: QueryProvider = {
       url: input.url ?? undefined,
       command: input.command ?? undefined,
       args: input.args ?? undefined,
+      iconUrl: input.iconUrl ?? undefined,
+      authConfig: input.authConfig ?? undefined,
+      registryOrigin: input.registryOrigin ?? undefined,
+      registryId: input.registryId ?? undefined,
+      registryMetadata: input.registryMetadata ?? undefined,
       createdAt: new Date().toISOString(),
     };
   },
@@ -80,6 +90,11 @@ export const sqliteProvider: QueryProvider = {
       url: r.url ?? undefined,
       command: r.command ?? undefined,
       args: r.args ?? undefined,
+      iconUrl: r.iconUrl ?? undefined,
+      authConfig: r.authConfig ?? undefined,
+      registryOrigin: r.registryOrigin ?? undefined,
+      registryId: r.registryId ?? undefined,
+      registryMetadata: r.registryMetadata ?? undefined,
       createdAt: new Date(r.createdAt).toISOString(),
     }));
   },
@@ -102,6 +117,35 @@ export const sqliteProvider: QueryProvider = {
       .where(and(eq(sqliteSchema.sqliteMcpServers.id, id), eq(sqliteSchema.sqliteMcpServers.userId, userId)));
 
     return true;
+  },
+
+  async updateMcpServerAuth(id: string, userId: string, authConfig: MCPAuthConfig): Promise<SavedMCPServer> {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    await sqliteDb
+      .update(sqliteSchema.sqliteMcpServers)
+      .set({ authConfig })
+      .where(and(eq(sqliteSchema.sqliteMcpServers.id, id), eq(sqliteSchema.sqliteMcpServers.userId, userId)));
+    const updated = await sqliteDb
+      .select()
+      .from(sqliteSchema.sqliteMcpServers)
+      .where(eq(sqliteSchema.sqliteMcpServers.id, id))
+      .limit(1);
+    const r = updated[0];
+    return {
+      id: r.id, name: r.name,
+      description: r.description ?? undefined,
+      transport: r.transport,
+      url: r.url ?? undefined,
+      command: r.command ?? undefined,
+      args: r.args ?? undefined,
+      iconUrl: r.iconUrl ?? undefined,
+      authConfig: r.authConfig ?? undefined,
+      registryOrigin: r.registryOrigin ?? undefined,
+      registryId: r.registryId ?? undefined,
+      registryMetadata: r.registryMetadata ?? undefined,
+      createdAt: new Date(r.createdAt).toISOString(),
+    };
   },
 
   async saveWorkflow(userId: string, workflow: WorkflowPayload): Promise<string> {
@@ -487,7 +531,6 @@ export const sqliteProvider: QueryProvider = {
       .limit(1);
 
     if (existing.length > 0) {
-      const oldRating = existing[0].rating;
       await sqliteDb.update(sqliteSchema.sqliteTemplateReviews)
         .set({ rating, review: review ?? null, createdAt: Date.now() })
         .where(eq(sqliteSchema.sqliteTemplateReviews.id, existing[0].id));

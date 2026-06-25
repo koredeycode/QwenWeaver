@@ -83,6 +83,10 @@ export const mysqlMcpServers = mysqlTable('mcp_servers', {
   command: text('command'),
   args: json('args').$type<string[]>(),
   authConfig: json('auth_config').$type<MCPAuthConfig>(),
+  iconUrl: text('icon_url'),
+  registryOrigin: varchar('registry_origin', { length: 32 }).default('manual').notNull(),
+  registryId: varchar('registry_id', { length: 255 }),
+  registryMetadata: json('registry_metadata'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => [
   index('mcp_servers_user_id_idx').on(table.userId),

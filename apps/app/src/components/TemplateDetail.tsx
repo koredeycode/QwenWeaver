@@ -12,7 +12,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
-import { apiFetch } from '../lib/api-client.js';
+import { client, authHeaders } from '../lib/api-client.js';
 import { StarRating } from './StarRating.js';
 import type { TemplateDetail, TemplateReview } from '../lib/templates-client.js';
 
@@ -20,7 +20,6 @@ export const TemplateDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const forkTemplate = useStore((s) => s.forkTemplate);
-  const importWorkflow = useStore((s) => s.importWorkflow);
 
   const [template, setTemplate] = useState<TemplateDetail | null>(null);
   const [reviews, setReviews] = useState<TemplateReview[]>([]);
@@ -33,8 +32,8 @@ export const TemplateDetailPage = () => {
     if (!id) return;
     setLoading(true);
     Promise.all([
-      apiFetch(`/api/templates/${id}`).then(r => r.json()).then(d => d.template),
-      apiFetch(`/api/templates/${id}/reviews`).then(r => r.json()).then(d => d.reviews),
+      client.api.templates[':id'].$get({ param: { id } }, { headers: authHeaders() }).then(async r => (await r.json()) as any).then(d => d.template),
+      client.api.templates[':id'].reviews.$get({ param: { id } }, { headers: authHeaders() }).then(async r => (await r.json()) as any).then(d => d.reviews),
     ])
       .then(([tpl, revs]) => {
         setTemplate(tpl);
@@ -74,21 +73,6 @@ export const TemplateDetailPage = () => {
     a.click();
     URL.revokeObjectURL(url);
   }, [template]);
-
-  const handlePasteToCanvas = useCallback(async () => {
-    if (!template) return;
-    try {
-      const text = await navigator.clipboard.readText();
-      const data = JSON.parse(text);
-      if (data.nodes && data.edges) {
-        importWorkflow(data, false);
-        navigate('/');
-      }
-    } catch {
-      // If clipboard read fails, just navigate to a new canvas
-      navigate('/');
-    }
-  }, [template, importWorkflow, navigate]);
 
   if (loading) {
     return (

@@ -23,7 +23,6 @@ export const TemplateGallery = () => {
 
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('');
-  const [forking, setForking] = useState(false);
 
   useEffect(() => {
     fetchCategories();
@@ -43,9 +42,7 @@ export const TemplateGallery = () => {
   }, [navigate]);
 
   const handleFork = useCallback(async (id: string) => {
-    setForking(true);
     const ok = await forkTemplate(id);
-    setForking(false);
     if (ok) {
       navigate('/workflows/unsaved');
     }

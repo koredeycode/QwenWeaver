@@ -6,12 +6,20 @@ import { http_request_duration_ms } from './metrics.js';
 
 export const requestContext = new AsyncLocalStorage<{ requestId: string }>();
 
+const stdout = pino.destination(1);
+const fileLog = pino.destination({ dest: './qwenweaver.log', mkdir: true, sync: false });
+
+const level = process.env.LOG_LEVEL || 'info';
+
 export const logger = pino(
   {
-    level: process.env.LOG_LEVEL || 'info',
+    level,
     formatters: {
       bindings() {
         return { service: 'qwenweaver-api' };
+      },
+      level(label) {
+        return { level: label };
       },
     },
     mixin() {
@@ -23,20 +31,10 @@ export const logger = pino(
       res: pino.stdSerializers.res,
     },
   },
-  pino.transport({
-    targets: [
-      {
-        target: 'pino/file',
-        options: { destination: 1 },
-        level: process.env.LOG_LEVEL || 'info',
-      },
-      {
-        target: 'pino/file',
-        options: { destination: './qwenweaver.log', mkdir: true },
-        level: process.env.LOG_LEVEL || 'info',
-      },
-    ],
-  })
+  pino.multistream([
+    { stream: stdout, level },
+    { stream: fileLog, level },
+  ])
 );
 
 export function createModuleLogger(module: string): pino.Logger {

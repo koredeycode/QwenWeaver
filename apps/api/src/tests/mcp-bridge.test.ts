@@ -22,7 +22,7 @@ describe('mcp-bridge', () => {
     vi.clearAllMocks();
   });
 
-  it('returns empty array when node has no mcpServerUrl', async () => {
+  it('throws when node has no mcpServerUrl', async () => {
     const node = {
       id: 'n1',
       type: 'mcp_tool' as const,
@@ -30,8 +30,7 @@ describe('mcp-bridge', () => {
       data: {},
     };
 
-    const tools = await discoverMCPTools(node);
-    expect(tools).toEqual([]);
+    await expect(discoverMCPTools(node)).rejects.toThrow('No MCP server URL configured on node');
   });
 
   it('discovers tools from an MCP server', async () => {
@@ -56,7 +55,7 @@ describe('mcp-bridge', () => {
     expect(tools[1].name).toBe('write_file');
   });
 
-  it('returns empty array on discovery failure', async () => {
+  it('throws on discovery failure', async () => {
     vi.mocked(createMCPClient).mockRejectedValue(new Error('Connection refused'));
 
     const node = {
@@ -66,8 +65,7 @@ describe('mcp-bridge', () => {
       data: { mcpServerUrl: 'http://unreachable:8080' },
     };
 
-    const tools = await discoverMCPTools(node);
-    expect(tools).toEqual([]);
+    await expect(discoverMCPTools(node)).rejects.toThrow('Connection refused');
   });
 
   it('calls an MCP tool successfully', async () => {

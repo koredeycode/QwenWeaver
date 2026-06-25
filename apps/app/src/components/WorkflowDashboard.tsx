@@ -11,7 +11,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
-import { apiFetch } from '../lib/api-client.js';
+import { client, authHeaders, withRefresh } from '../lib/api-client.js';
 import { EXAMPLE_WORKFLOWS, ExampleWorkflow } from '../lib/example-workflows.js';
 import { CreateWorkflowDialog } from './CreateWorkflowDialog.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
@@ -56,7 +56,7 @@ export const WorkflowDashboard = () => {
 
   const fetchWorkflows = () => {
     setWorkflowsLoading(true);
-    apiFetch('/api/workflow')
+    withRefresh(() => client.api.workflow.$get({}, { headers: authHeaders() }))
       .then(r => r.json())
       .then(data => setUserWorkflows(data.workflows || []))
       .catch(() => {})
@@ -81,7 +81,12 @@ export const WorkflowDashboard = () => {
 
   const handleDelete = async (wf: UserWorkflow) => {
     try {
-      const res = await apiFetch(`/api/workflow/detail/${wf.id}`, { method: 'DELETE' });
+      const res = await withRefresh(() =>
+        client.api.workflow.detail[':workflowId'].$delete(
+          { param: { workflowId: wf.id } },
+          { headers: authHeaders() }
+        )
+      );
       if (res.ok) {
         setUserWorkflows(prev => prev.filter(w => w.id !== wf.id));
       }

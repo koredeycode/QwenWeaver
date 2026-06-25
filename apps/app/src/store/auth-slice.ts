@@ -1,9 +1,9 @@
 import { StateCreator } from 'zustand';
 import { StoreState, AuthSlice } from './types.js';
-import { client, setAccessToken, setRefreshToken, clearAuth, apiFetch } from '../lib/api-client.js';
+import { client, client2, setAccessToken, setRefreshToken, clearAuth, authHeaders } from '../lib/api-client.js';
 import { toast } from 'sonner';
 
-export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set, get) => {
+export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set, _get) => {
   if (typeof window !== 'undefined') {
     window.addEventListener('auth:expired', () => {
       clearAuth();
@@ -13,9 +13,9 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
 
   const fetchCredits = async () => {
     try {
-      const res = await apiFetch('/api/credits');
+      const res = await client2.api.credits.$get({}, { headers: authHeaders() });
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json() as any;
         set({ credits: data });
         if (data.lowBalance && data.balance > 0) {
           toast.warning(`Low credits: ${data.balance}. Some executions may be blocked.`);

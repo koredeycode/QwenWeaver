@@ -1,12 +1,11 @@
 import { getQueryProvider } from '@qwenweaver/database';
 import { createModuleLogger } from '../../logger.js';
 import type { Variables } from '../../index.js';
-import type { RouteHandler } from '@hono/zod-openapi';
-import type { getAnalyticsSummaryRoute } from './index.js';
+import type { Context } from 'hono';
 
 const log = createModuleLogger('routes/analytics.handlers');
 
-export const handleGetAnalyticsSummary: RouteHandler<typeof getAnalyticsSummaryRoute, { Variables: Variables }> = async (c) => {
+export const handleGetAnalyticsSummary = async (c: Context<{ Variables: Variables }>) => {
   const userId = c.get('jwtPayload').sub;
   const provider = getQueryProvider();
 

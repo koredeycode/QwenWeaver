@@ -83,6 +83,10 @@ export const sqliteMcpServers = sqliteTable('mcp_servers', {
   command: text('command'),
   args: text('args', { mode: 'json' }).$type<string[]>(),
   authConfig: text('auth_config', { mode: 'json' }).$type<MCPAuthConfig>(),
+  iconUrl: text('icon_url'),
+  registryOrigin: text('registry_origin').default('manual').notNull(),
+  registryId: text('registry_id'),
+  registryMetadata: text('registry_metadata', { mode: 'json' }),
   createdAt: integer('created_at').notNull(),
 }, (table) => [
   index('mcp_servers_user_id_idx').on(table.userId),

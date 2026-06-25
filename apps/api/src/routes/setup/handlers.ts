@@ -1,9 +1,8 @@
 import { existsSync, writeFileSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import bcrypt from 'bcryptjs';
-import type { RouteHandler } from '@hono/zod-openapi';
+import type { Context } from 'hono';
 import type { Variables } from '../../index.js';
-import type { getSetupStatusRoute, setupRoute, reconfigureRoute } from './index.js';
 import { getQueryProvider } from '@qwenweaver/database';
 import { createModuleLogger } from '../../logger.js';
 
@@ -47,7 +46,7 @@ async function checkOwnerExists(): Promise<boolean> {
   }
 }
 
-export const handleGetSetupStatus: RouteHandler<typeof getSetupStatusRoute, { Variables: Variables }> = async (c) => {
+export const handleGetSetupStatus = async (c: Context<{ Variables: Variables }>) => {
   const stored = readSetupStatus();
   const ownerExists = await checkOwnerExists();
 
@@ -66,7 +65,7 @@ export const handleGetSetupStatus: RouteHandler<typeof getSetupStatusRoute, { Va
   }, 200);
 };
 
-export const handleSetup: RouteHandler<typeof setupRoute, { Variables: Variables }> = async (c) => {
+export const handleSetup = async (c: Context<{ Variables: Variables }>) => {
   const raw = await c.req.json();
   const parsed = (await import('./schema.js')).SetupPayloadSchema.safeParse(raw);
 
@@ -147,7 +146,7 @@ export const handleSetup: RouteHandler<typeof setupRoute, { Variables: Variables
   }, 200);
 };
 
-export const handleReconfigure: RouteHandler<typeof reconfigureRoute, { Variables: Variables }> = async (c) => {
+export const handleReconfigure = async (c: Context<{ Variables: Variables }>) => {
   const raw = await c.req.json();
   const parsed = (await import('./schema.js')).ReconfigurePayloadSchema.safeParse(raw);
 

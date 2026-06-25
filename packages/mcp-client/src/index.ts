@@ -7,6 +7,7 @@ export interface MCPClientOptions {
   name?: string;
   version?: string;
   commandArgs?: string[];
+  headers?: Record<string, string>;
 }
 
 /**
@@ -27,7 +28,11 @@ export async function createMCPClient(
     const { StreamableHTTPClientTransport } = await import(
       '@modelcontextprotocol/sdk/client/streamableHttp.js'
     );
-    const transport = new StreamableHTTPClientTransport(new URL(urlOrCommand));
+    const transportOpts: Record<string, unknown> = {};
+    if (options.headers) {
+      transportOpts.requestInit = { headers: options.headers };
+    }
+    const transport = new StreamableHTTPClientTransport(new URL(urlOrCommand), transportOpts);
     await client.connect(transport);
   } else {
     const { StdioClientTransport } = await import(

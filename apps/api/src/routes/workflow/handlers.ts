@@ -7,8 +7,7 @@ import { executeWorkflow } from '../../engine/executor.js';
 import { createModuleLogger } from '../../logger.js';
 import { active_sse_connections } from '../../metrics.js';
 import type { Variables } from '../../index.js';
-import type { RouteHandler } from '@hono/zod-openapi';
-import type { executeRoute, streamRoute, getStatusRoute, listWorkflowsRoute, getWorkflowRoute, deleteWorkflowRoute, saveWorkflowRoute } from './index.js';
+import type { Context } from 'hono';
 import {
   NODE_BASE_COST,
   FIXED_COST,
@@ -69,16 +68,19 @@ class SSEQueue {
 
 // ─── Route Handlers ─────────────────────────────────────────────────────────
 
-export const handleListWorkflows: RouteHandler<typeof listWorkflowsRoute, { Variables: Variables }> = async (c) => {
+export const handleListWorkflows = async (c: Context<{ Variables: Variables }>) => {
   const jwtPayload = c.get('jwtPayload');
   const provider = getQueryProvider();
   const workflows = await provider.listUserWorkflows(jwtPayload.sub);
   return c.json({ workflows }, 200);
 };
 
-export const handleGetWorkflow: RouteHandler<typeof getWorkflowRoute, { Variables: Variables }> = async (c) => {
+export const handleGetWorkflow = async (c: Context<{ Variables: Variables }>) => {
   const jwtPayload = c.get('jwtPayload');
-  const { workflowId } = c.req.valid('param');
+  const workflowId = c.req.param('workflowId');
+  if (!workflowId) {
+    return c.json({ error: 'Missing workflowId parameter' }, 400);
+  }
   const provider = getQueryProvider();
   const workflow = await provider.getWorkflow(workflowId, jwtPayload.sub);
   if (!workflow) {
@@ -87,9 +89,12 @@ export const handleGetWorkflow: RouteHandler<typeof getWorkflowRoute, { Variable
   return c.json(workflow, 200);
 };
 
-export const handleDeleteWorkflow: RouteHandler<typeof deleteWorkflowRoute, { Variables: Variables }> = async (c) => {
+export const handleDeleteWorkflow = async (c: Context<{ Variables: Variables }>) => {
   const jwtPayload = c.get('jwtPayload');
-  const { workflowId } = c.req.valid('param');
+  const workflowId = c.req.param('workflowId');
+  if (!workflowId) {
+    return c.json({ error: 'Missing workflowId parameter' }, 400);
+  }
   const provider = getQueryProvider();
   const deleted = await provider.deleteWorkflow(workflowId, jwtPayload.sub);
   if (!deleted) {
@@ -98,7 +103,7 @@ export const handleDeleteWorkflow: RouteHandler<typeof deleteWorkflowRoute, { Va
   return c.json({ success: true }, 200);
 };
 
-export const handleSaveWorkflow: RouteHandler<typeof saveWorkflowRoute, { Variables: Variables }> = async (c) => {
+export const handleSaveWorkflow = async (c: Context<{ Variables: Variables }>) => {
   const jwtPayload = c.get('jwtPayload');
   const raw = await c.req.json();
   const parsed = WorkflowPayload.safeParse(raw);
@@ -116,7 +121,7 @@ export const handleSaveWorkflow: RouteHandler<typeof saveWorkflowRoute, { Variab
   return c.json({ workflowId }, 201);
 };
 
-export const handleExecute: RouteHandler<typeof executeRoute, { Variables: Variables }> = async (c) => {
+export const handleExecute = async (c: Context<{ Variables: Variables }>) => {
   // Validate body through Zod instead of blind cast
   const raw = await c.req.json();
   const parsed = WorkflowPayload.safeParse(raw);
@@ -175,8 +180,11 @@ export const handleExecute: RouteHandler<typeof executeRoute, { Variables: Varia
   return c.json({ executionId, status: 'pending' }, 201);
 }
 
-export const handleStream: RouteHandler<typeof streamRoute, { Variables: Variables }> = async (c) => {
-  const executionId = c.req.param('executionId')!;
+export const handleStream = async (c: Context<{ Variables: Variables }>) => {
+  const executionId = c.req.param('executionId');
+  if (!executionId) {
+    return c.json({ error: 'Missing executionId parameter' }, 400);
+  }
   const userId = c.get('jwtPayload').sub;
   const provider = getQueryProvider();
   
@@ -274,8 +282,11 @@ export const handleStream: RouteHandler<typeof streamRoute, { Variables: Variabl
   });
 }
 
-export const handleGetStatus: RouteHandler<typeof getStatusRoute, { Variables: Variables }> = async (c) => {
-  const executionId = c.req.param('executionId')!;
+export const handleGetStatus = async (c: Context<{ Variables: Variables }>) => {
+  const executionId = c.req.param('executionId');
+  if (!executionId) {
+    return c.json({ error: 'Missing executionId parameter' }, 400);
+  }
   const userId = c.get('jwtPayload').sub;
   const provider = getQueryProvider();
 

@@ -40,7 +40,7 @@ export interface GraphSlice {
   onNodesChange: OnNodesChange;
   onEdgesChange: OnEdgesChange;
   onConnect: OnConnect;
-  addNode: (type: NodeType, position?: { x: number; y: number }) => void;
+  addNode: (type: NodeType, position?: { x: number; y: number }, additionalData?: Record<string, unknown>) => void;
   deleteNode: (id: string) => void;
   updateNodeData: (id: string, data: Partial<NodeData>) => void;
   selectNode: (id: string | null) => void;

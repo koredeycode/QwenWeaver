@@ -137,14 +137,11 @@ describe('route-level integration tests', () => {
     });
   });
 
-  // ─── OpenAPI ──────────────────────────────────────────────────────────
+  // ─── OpenAPI (removed — now returns 404) ──────────────────────────────
   describe('GET /api/openapi.json', () => {
-    it('returns valid OpenAPI spec', async () => {
+    it('returns 404 — OpenAPI spec endpoint removed', async () => {
       const res = await app.request('/api/openapi.json');
-      expect(res.status).toBe(200);
-      const body = await res.json() as any;
-      expect(body.openapi).toBe('3.1.0');
-      expect(body.info.title).toBe('QwenWeaver API');
+      expect(res.status).toBe(404);
     });
   });
 

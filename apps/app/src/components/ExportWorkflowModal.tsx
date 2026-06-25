@@ -37,7 +37,7 @@ export const ExportWorkflowModal = ({
       setHasCopied(true);
       toast.success("Workflow config copied to clipboard!");
       setTimeout(() => setHasCopied(false), 2000);
-    } catch (err) {
+    } catch {
       toast.error("Failed to copy workflow to clipboard.");
     }
   };
@@ -54,7 +54,7 @@ export const ExportWorkflowModal = ({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       toast.success("Workflow file download started.");
-    } catch (err) {
+    } catch {
       toast.error("Failed to download workflow file.");
     }
   };

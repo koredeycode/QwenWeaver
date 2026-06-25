@@ -3,7 +3,7 @@ import { Cpu, ArrowLeft, Check, Loader2 } from 'lucide-react';
 import { SetupOwner } from './SetupOwner.js';
 import { SetupRuntime } from './SetupRuntime.js';
 import { SetupComplete } from './SetupComplete.js';
-import { apiFetch } from '../lib/api-client.js';
+import { client2, authHeaders } from '../lib/api-client.js';
 
 const STEPS = [
   { key: 'owner', label: 'Admin', description: 'Create the admin account' },
@@ -27,8 +27,8 @@ export function SetupWizard() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    apiFetch('/api/setup/status')
-      .then((res) => res.json())
+    client2.api.setup.status.$get({}, { headers: authHeaders() })
+      .then((res: Response) => res.json())
       .then((data: SetupStatus) => {
         setStatus(data);
         if (data.ownerExists) {
@@ -53,18 +53,15 @@ export function SetupWizard() {
       };
     }
 
-    apiFetch('/api/setup', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    })
-      .then(async (res) => {
+    client2.api.setup.$post({ json: payload }, { headers: authHeaders() })
+      .then(async (res: Response) => {
         if (!res.ok) {
           const body = await res.json();
           throw new Error(body.error || 'Setup failed');
         }
         setStep(1);
       })
-      .catch((err) => setError(err.message))
+      .catch((err: Error) => setError(err.message))
       .finally(() => setSubmitting(false));
   };
 
@@ -74,18 +71,15 @@ export function SetupWizard() {
 
     const payload = { runtime: data };
 
-    apiFetch('/api/setup', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    })
-      .then(async (res) => {
+    client2.api.setup.$post({ json: payload }, { headers: authHeaders() })
+      .then(async (res: Response) => {
         if (!res.ok) {
           const body = await res.json();
           throw new Error(body.error || 'Setup failed');
         }
         setStep(2);
       })
-      .catch((err) => setError(err.message))
+      .catch((err: Error) => setError(err.message))
       .finally(() => setSubmitting(false));
   };
 

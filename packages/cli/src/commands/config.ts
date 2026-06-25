@@ -2,7 +2,6 @@ import {
   loadConfig,
   saveConfig,
   configExists,
-  promptForConfig,
 } from '../config-store.js';
 import type { QwenWeaverConfig } from '../config-store.js';
 

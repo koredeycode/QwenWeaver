@@ -7,9 +7,12 @@ import {
   Bot,
   Brain,
   Wrench,
-  Play
+  Play,
+  Puzzle,
+  ChevronDown
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
+import { client, authHeaders } from '../lib/api-client.js';
 import type { OutputFormat } from '@qwenweaver/types';
 
 export const Inspector = ({ onClose }: { onClose: () => void }) => {
@@ -23,19 +26,55 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
   const [webBrowsing, setWebBrowsing] = useState(true);
   const [fileAccess, setFileAccess] = useState(false);
 
-  const [mcpStatus, setMcpStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  const [mcpStatus, setMcpStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
   const [discoveredTools, setDiscoveredTools] = useState<any[]>([]);
+  const [mcpError, setMcpError] = useState('');
+  // MCP credential secrets stored in local state only (never persisted to graph)
+  const [mcpSecrets, setMcpSecrets] = useState<Record<string, string>>({});
+
+  const fetchDiscoveredTools = async (serverId: string, serverUrl?: string) => {
+    try {
+      setMcpStatus('connecting');
+      const body: Record<string, unknown> = { serverId };
+      if (serverUrl) body.serverUrl = serverUrl;
+      const authType = selectedNode?.data.mcpAuthConfig?.type;
+      if (authType && authType !== 'none') {
+        body.auth = { type: authType, ...mcpSecrets };
+      }
+      const res = await client.api.mcp.tools.discover.$post({ json: body as any }, { headers: authHeaders() });
+      const data: any = await res.json();
+      if (!res.ok) {
+        setMcpStatus('error');
+        setMcpError(data.error || 'Failed to discover tools');
+        return;
+      }
+      setDiscoveredTools(data.tools || []);
+      setMcpStatus('connected');
+      // Auto-save credentials to the server if we have a user server ID
+      const userServerId = (selectedNode?.data as any).mcpUserServerId;
+      if (authType && authType !== 'none' && userServerId) {
+        (client.api.mcp.servers[':id'] as any).auth.$post(
+          { param: { id: userServerId }, json: { authConfig: { type: authType, ...mcpSecrets } } },
+          { headers: authHeaders() },
+        ).catch(() => {});
+      }
+    } catch {
+      setMcpStatus('error');
+      setMcpError('Connection failed');
+    }
+  };
 
   useEffect(() => {
     if (selectedNode && selectedNode.type === 'mcp_tool') {
       if (selectedNode.data.mcpServerId) {
-        setMcpStatus('connected');
-        setDiscoveredTools([
-          { name: 'search_repositories', desc: 'Search for GitHub repositories by query.', params: 'query: string' },
-          { name: 'create_issue', desc: 'Create a new issue in a repository.', params: 'title: string, body?: string' },
-          { name: 'get_pull_request', desc: 'Retrieve PR details.', params: 'owner: string, repo: string, number: number' },
-          { name: 'push_code', desc: 'Push code code to repository.', params: 'owner: string, repo: string, files: array' }
-        ]);
+        // If auth is required but no secrets have been entered yet, show a hint instead of failing
+        const authType = selectedNode.data.mcpAuthConfig?.type;
+        if (authType && authType !== 'none' && !mcpSecrets.token && !mcpSecrets.apiKey && !mcpSecrets.username) {
+          setMcpStatus('disconnected');
+          setMcpError('Enter credentials and click Connect');
+        } else {
+          fetchDiscoveredTools(selectedNode.data.mcpServerId, selectedNode.data.mcpServerUrl);
+        }
       } else {
         setMcpStatus('disconnected');
         setDiscoveredTools([]);
@@ -44,21 +83,12 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
   }, [selectedNodeId]);
 
   const handleConnectMcp = async () => {
-    setMcpStatus('connecting');
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    setMcpStatus('connected');
-    setDiscoveredTools([
-      { name: 'search_repositories', desc: 'Search for GitHub repositories by query.', params: 'query: string' },
-      { name: 'create_issue', desc: 'Create a new issue in a repository.', params: 'title: string, body?: string' },
-      { name: 'get_pull_request', desc: 'Retrieve PR details.', params: 'owner: string, repo: string, number: number' },
-      { name: 'push_code', desc: 'Push code code to repository.', params: 'owner: string, repo: string, files: array' }
-    ]);
-    if (selectedNodeId) {
-      updateNodeData(selectedNodeId, { 
-        mcpServerId: selectedNode?.data.mcpServerId || 'github-server',
-        mcpServerUrl: selectedNode?.data.mcpServerUrl || 'http://localhost:8000'
-      });
+    if (!selectedNodeId || !selectedNode?.data.mcpServerId) {
+      setMcpStatus('error');
+      setMcpError('Save the server ID first');
+      return;
     }
+    await fetchDiscoveredTools(selectedNode.data.mcpServerId, selectedNode.data.mcpServerUrl);
   };
 
   const handleLabelChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -145,9 +175,15 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
             {/* Header Info */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-2">
               <div className="flex items-center gap-2.5">
-                <div className={`w-8 h-8 ${getNodeIconColor(selectedNode.type)} flex items-center justify-center rounded-lg shadow-sm`}>
-                  {getNodeIcon(selectedNode.type)}
-                </div>
+                {selectedNode.type === 'mcp_tool' && selectedNode.data.iconUrl ? (
+                  <div className="w-8 h-8 flex items-center justify-center rounded-lg shadow-sm bg-white border border-slate-200">
+                    <img src={selectedNode.data.iconUrl} alt="" className="w-5 h-5 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  </div>
+                ) : (
+                  <div className={`w-8 h-8 ${getNodeIconColor(selectedNode.type)} flex items-center justify-center rounded-lg shadow-sm`}>
+                    {getNodeIcon(selectedNode.type)}
+                  </div>
+                )}
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">{selectedNode.data.label || 'Research Agent'}</h3>
                   <p className="text-[10px] text-slate-400 font-mono">Node Configuration</p>
@@ -216,6 +252,66 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                   />
                 </div>
 
+                {/* MCP Auth Configuration */}
+                <div className="border-t border-slate-100 pt-3">
+                  <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-2">
+                    Authentication
+                  </label>
+                  {selectedNode.data.mcpAuthConfig?.type && selectedNode.data.mcpAuthConfig.type !== 'none' && !mcpSecrets.token && !mcpSecrets.apiKey && !mcpSecrets.username && (
+                    <p className="text-[9px] text-amber-600 font-mono mb-2">
+                      Enter credentials below, then click Connect.
+                    </p>
+                  )}
+                  <AuthTypeSelect
+                    value={selectedNode.data.mcpAuthConfig?.type || 'none'}
+                    supportedTypes={(selectedNode.data as any).mcpSupportedAuthTypes as string[] | undefined}
+                    onChange={(type) => {
+                      if (selectedNodeId) updateNodeData(selectedNodeId, {
+                        mcpAuthConfig: { ...selectedNode.data.mcpAuthConfig, type: type as 'none' | 'api_key' | 'bearer' | 'basic' },
+                      });
+                    }}
+                  />
+
+                  {(selectedNode.data.mcpAuthConfig?.type === 'bearer') && (
+                    <input
+                      type="password"
+                      value={mcpSecrets.token || ''}
+                      onChange={(e) => setMcpSecrets((s) => ({ ...s, token: e.target.value }))}
+                      className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
+                      placeholder="Bearer token..."
+                    />
+                  )}
+
+                  {(selectedNode.data.mcpAuthConfig?.type === 'api_key') && (
+                    <input
+                      type="password"
+                      value={mcpSecrets.apiKey || ''}
+                      onChange={(e) => setMcpSecrets((s) => ({ ...s, apiKey: e.target.value }))}
+                      className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
+                      placeholder="API key..."
+                    />
+                  )}
+
+                  {(selectedNode.data.mcpAuthConfig?.type === 'basic') && (
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        value={mcpSecrets.username || ''}
+                        onChange={(e) => setMcpSecrets((s) => ({ ...s, username: e.target.value }))}
+                        className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
+                        placeholder="Username..."
+                      />
+                      <input
+                        type="password"
+                        value={mcpSecrets.password || ''}
+                        onChange={(e) => setMcpSecrets((s) => ({ ...s, password: e.target.value }))}
+                        className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
+                        placeholder="Password..."
+                      />
+                    </div>
+                  )}
+                </div>
+
                 {/* MCP Action Connect button */}
                 <div className="pt-2">
                   <button
@@ -224,12 +320,15 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                     className={`w-full py-2 font-mono text-[10px] font-bold border transition-all rounded-none ${
                       mcpStatus === 'connected'
                         ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                        : mcpStatus === 'error'
+                        ? 'bg-rose-50 border-rose-300 text-rose-700'
                         : 'bg-white hover:bg-slate-50 border-[#cbd5e1] text-slate-700'
                     }`}
                   >
                     {mcpStatus === 'disconnected' && 'Connect & Discover Tools'}
                     {mcpStatus === 'connecting' && 'Connecting to MCP Server...'}
-                    {mcpStatus === 'connected' && 'Connected (4 Tools Discovered)'}
+                    {mcpStatus === 'connected' && `Connected (${discoveredTools.length} Tools Discovered)`}
+                    {mcpStatus === 'error' && `Failed: ${mcpError}`}
                   </button>
                 </div>
 
@@ -241,10 +340,24 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                     </span>
                     <div className="bg-slate-50 border border-slate-200 p-2.5 font-mono text-[9px] text-slate-600 space-y-2 select-text max-h-48 overflow-y-auto">
                       {discoveredTools.map((tool, idx) => (
-                        <div key={idx} className="border-b border-slate-200/60 pb-1.5 last:border-b-0 last:pb-0">
-                          <div className="font-bold text-[#2563eb]">{tool.name}</div>
-                          <div className="text-slate-500 mt-0.5">{tool.desc}</div>
-                          <div className="text-[8px] text-purple-600 mt-0.5">args: ({tool.params})</div>
+                        <div key={idx} className="border-b border-slate-200/60 pb-1.5 last:border-b-0 last:pb-0 flex items-start gap-2">
+                          {selectedNode?.data.iconUrl ? (
+                            <img
+                              src={selectedNode.data.iconUrl}
+                              alt=""
+                              className="w-3.5 h-3.5 rounded object-contain mt-0.5 shrink-0"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                            />
+                          ) : (
+                            <Puzzle className="w-3.5 h-3.5 text-purple-500 mt-0.5 shrink-0" />
+                          )}
+                          <div className="min-w-0">
+                            <div className="font-bold text-[#2563eb] truncate">{tool.name}</div>
+                            <div className="text-slate-500 mt-0.5 line-clamp-2">{tool.description}</div>
+                            <div className="text-[8px] text-purple-600 mt-0.5">
+                              input: {tool.inputSchema ? JSON.stringify(tool.inputSchema).slice(0, 60) + '...' : 'none'}
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -403,3 +516,73 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
     </div>
   );
 };
+
+const AUTH_LABELS: Record<string, string> = {
+  none: 'No Auth',
+  bearer: 'Bearer Token',
+  api_key: 'API Key',
+  basic: 'Basic Auth',
+};
+
+const AUTH_COLORS: Record<string, string> = {
+  none: 'text-slate-500',
+  bearer: 'text-amber-700',
+  api_key: 'text-blue-700',
+  basic: 'text-slate-700',
+};
+
+function AuthTypeSelect({
+  value,
+  supportedTypes,
+  onChange,
+}: {
+  value: string;
+  supportedTypes?: string[];
+  onChange: (type: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  const types = supportedTypes?.length
+    ? ['none', ...supportedTypes]
+    : ['none', 'bearer', 'api_key', 'basic'];
+
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative mb-2" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between text-xs border border-[#cbd5e1] px-2 py-1.5 font-mono bg-white focus:outline-none focus:border-purple-500"
+      >
+        <span className={AUTH_COLORS[value] || 'text-slate-500'}>{AUTH_LABELS[value] || value}</span>
+        <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute z-10 top-full left-0 right-0 mt-0.5 border border-[#cbd5e1] bg-white shadow-md">
+          {types.map((type) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => { onChange(type); setOpen(false); }}
+              className={`w-full text-left px-2 py-1.5 text-xs font-mono hover:bg-slate-50 transition-colors ${
+                value === type ? 'bg-slate-100 font-bold' : ''
+              } ${AUTH_COLORS[type] || 'text-slate-500'}`}
+            >
+              {AUTH_LABELS[type] || type}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

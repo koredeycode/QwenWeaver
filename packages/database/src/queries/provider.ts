@@ -1,4 +1,5 @@
 import type { SavedMCPServerInput, SavedMCPServer } from './mcp.js';
+import type { MCPAuthConfig } from '@qwenweaver/types';
 import type { TemplateRow, TemplateReviewRow, TemplateCategoryRow } from './templates.js';
 import type { WorkflowPayload, ExecutionMetrics, AgentLogInput, AgentLogOutput, CreditTransaction } from '@qwenweaver/types';
 import { getConnection } from '../index.js';
@@ -48,6 +49,8 @@ export interface QueryProvider {
   saveMcpServer(id: string, userId: string, input: SavedMCPServerInput): Promise<SavedMCPServer>;
   getMcpServers(userId: string): Promise<SavedMCPServer[]>;
   deleteMcpServer(id: string, userId: string): Promise<boolean>;
+  /** Update auth config for a user-owned server */
+  updateMcpServerAuth(id: string, userId: string, authConfig: MCPAuthConfig): Promise<SavedMCPServer>;
 
   saveWorkflow(userId: string, workflow: WorkflowPayload): Promise<string>;
   listUserWorkflows(userId: string): Promise<WorkflowRow[]>;

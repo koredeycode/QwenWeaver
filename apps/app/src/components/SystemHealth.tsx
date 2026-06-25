@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Activity, Circle } from 'lucide-react';
-import { apiFetch } from '../lib/api-client.js';
+import { client2, authHeaders } from '../lib/api-client.js';
 
 interface HealthData {
   node: string;
@@ -39,7 +39,7 @@ export const SystemHealth = () => {
     let cancelled = false;
     const fetchHealth = async () => {
       try {
-        const res = await apiFetch('/api/system/update/health');
+        const res = await client2.api.system.update.health.$get({}, { headers: authHeaders() });
         if (!res.ok) {
           if (!cancelled) setError(`HTTP ${res.status}`);
           return;

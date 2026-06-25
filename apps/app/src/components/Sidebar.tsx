@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   History,
@@ -12,13 +12,16 @@ import {
   Plus,
   BookOpen,
   HelpCircle,
-  Users
+  Users,
+  Store,
+  Loader2
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
 import type { NodeType } from '@qwenweaver/types';
 import { CreateWorkflowDialog } from './CreateWorkflowDialog.js';
-import { isSelfHosted, getSaaSUrl } from '../lib/api-client.js';
+import { client, authHeaders, isSelfHosted, getSaaSUrl } from '../lib/api-client.js';
 import { SystemHealth } from './SystemHealth.js';
+import { MCPMarketplace } from './MCPMarketplace.js';
 
 export const Sidebar = () => {
   const addNode = useStore((s) => s.addNode);
@@ -48,6 +51,22 @@ export const Sidebar = () => {
     event.dataTransfer.effectAllowed = 'move';
   };
 
+  const [marketplaceOpen, setMarketplaceOpen] = useState(false);
+  const [marketplaceTab, setMarketplaceTab] = useState<'registry' | 'myservers'>('registry');
+  const [savedMcpServers, setSavedMcpServers] = useState<any[]>([]);
+  const [mcpLoading, setMcpLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeCategory === 'mcp') {
+      setMcpLoading(true);
+      client.api.mcp.servers.$get({}, { headers: authHeaders() })
+        .then((r) => r.json() as any)
+        .then((data) => setSavedMcpServers(data.servers || []))
+        .catch(() => {})
+        .finally(() => setMcpLoading(false));
+    }
+  }, [activeCategory]);
+
   const paletteItems = {
     triggers: [
       { type: 'trigger', label: 'Manual Trigger', icon: Play, detail: 'Trigger workflow manually or on a schedule.' },
@@ -57,11 +76,6 @@ export const Sidebar = () => {
       { type: 'agent', label: 'Normal Agent', icon: Bot, detail: 'General worker for parsing subtasks.' },
       { type: 'supervisor', label: 'Supervisor Agent', icon: Brain, detail: 'Supervisor node to coordinate and negotiate conflicts.' }
     ],
-    mcp: [
-      { type: 'mcp_tool', label: 'Local Filesystem', icon: Wrench, detail: 'Access local workspaces, files, and commands.' },
-      { type: 'mcp_tool', label: 'Web Scraper', icon: Wrench, detail: 'Execute HTTP scraper commands.' },
-      { type: 'mcp_tool', label: 'GitHub Writer', icon: Wrench, detail: 'Write consensus reports to repositories.' }
-    ]
   };
 
   if (collapsed) {
@@ -336,20 +350,76 @@ export const Sidebar = () => {
 
           {activeCategory === 'mcp' && (
             <div className="py-1 px-1 bg-white border border-[#e2e8f0] shadow-sm space-y-1 mt-0.5" data-tour="palette-mcp">
-              {paletteItems.mcp.map((item, idx) => (
-                <div
-                  key={idx}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, item.type as NodeType)}
-                  onClick={() => addNode(item.type as NodeType)}
-                  className="p-2 hover:bg-[#eff6ff] hover:text-[#2563eb] cursor-grab active:cursor-grabbing text-xs text-slate-700 font-semibold border-b border-slate-100 last:border-0 transition-colors"
-                >
-                  <span className="font-mono text-[9px] bg-slate-100 text-slate-500 px-1 mr-1.5 uppercase rounded-none">MCP</span>
-                  {item.label}
+              {/* Saved MCP Servers (top 5) */}
+              {mcpLoading ? (
+                <div className="flex items-center justify-center py-2 text-slate-400">
+                  <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                  <span className="text-[10px] font-mono">Loading...</span>
                 </div>
-              ))}
+              ) : savedMcpServers.length > 0 ? (
+                <div>
+                  <span className="block text-[8px] font-mono font-bold text-slate-400 uppercase tracking-wider px-2 py-1">Saved Servers</span>
+                  {savedMcpServers.slice(0, 5).map((svr: any) => (
+                    <div
+                      key={svr.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, 'mcp_tool' as NodeType)}
+                      onClick={() => addNode('mcp_tool' as NodeType, undefined, {
+                        label: svr.name,
+                        mcpServerUrl: svr.url,
+                        mcpServerId: svr.id,
+                        iconUrl: svr.iconUrl,
+                      })}
+                      className="p-2 hover:bg-[#eff6ff] hover:text-[#2563eb] cursor-grab active:cursor-grabbing text-xs text-slate-700 font-semibold border-b border-slate-100 last:border-0 transition-colors flex items-center gap-1.5"
+                    >
+                      {svr.iconUrl ? (
+                        <img src={svr.iconUrl} alt="" className="w-3.5 h-3.5 rounded object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                      ) : (
+                        <Wrench className="w-3 h-3 text-purple-500 flex-shrink-0" />
+                      )}
+                      <span className="truncate">{svr.name}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-[10px] text-slate-400 font-mono px-2 py-2 text-center">
+                  No saved servers yet.
+                </div>
+              )}
+
+              {/* Check more of your servers */}
+              <button
+                onClick={() => { setMarketplaceTab('myservers'); setMarketplaceOpen(true); }}
+                className="w-full p-2 text-xs font-mono font-bold text-slate-600 border border-dashed border-slate-300 hover:border-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Check more of your servers
+              </button>
+
+              {/* Explore other servers (opens registry) */}
+              <button
+                onClick={() => { setMarketplaceTab('registry'); setMarketplaceOpen(true); }}
+                className="w-full p-2 flex items-center justify-center gap-2 text-xs font-mono font-bold text-purple-700 bg-purple-50 border border-purple-200 hover:bg-purple-100 transition-colors cursor-pointer"
+              >
+                <Store className="w-3.5 h-3.5" />
+                Explore other servers
+              </button>
+
+              {/* Manual Add */}
+              <div
+                draggable
+                onDragStart={(e) => handleDragStart(e, 'mcp_tool' as NodeType)}
+                onClick={() => {
+                  addNode('mcp_tool' as NodeType, undefined, { label: 'Custom MCP', mcpServerUrl: '' });
+                }}
+                className="p-2 hover:bg-[#eff6ff] hover:text-[#2563eb] cursor-grab active:cursor-grabbing text-xs text-slate-500 font-semibold border-t border-slate-100 transition-colors flex items-center gap-1.5"
+              >
+                <Plus className="w-3 h-3" />
+                Add Custom Server
+              </div>
             </div>
           )}
+
+          {marketplaceOpen && <MCPMarketplace onClose={() => setMarketplaceOpen(false)} initialTab={marketplaceTab} />}
         </div>
       </div>
 

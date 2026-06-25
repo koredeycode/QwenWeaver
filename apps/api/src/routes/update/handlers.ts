@@ -2,21 +2,20 @@ import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { streamSSE } from 'hono/streaming';
-import type { RouteHandler } from '@hono/zod-openapi';
+import type { Context } from 'hono';
 import type { Variables } from '../../index.js';
-import type { getUpdateInfoRoute, triggerUpdateRoute, systemHealthRoute, updateStreamRoute } from './index.js';
 import { checkForUpdate, startUpdate, updateEvents, getUpdateInfo } from '../../updater.js';
 import { getQueryProvider } from '@qwenweaver/database';
 import { createModuleLogger } from '../../logger.js';
 
 const log = createModuleLogger('routes/update.handlers');
 
-export const handleGetUpdateInfo: RouteHandler<typeof getUpdateInfoRoute, { Variables: Variables }> = async (c) => {
+export const handleGetUpdateInfo = async (c: Context<{ Variables: Variables }>) => {
   const info = await checkForUpdate();
   return c.json(info, 200);
 };
 
-export const handleTriggerUpdate: RouteHandler<typeof triggerUpdateRoute, { Variables: Variables }> = async (c) => {
+export const handleTriggerUpdate = async (c: Context<{ Variables: Variables }>) => {
   const result = startUpdate();
   if (result.status === 'already_running') {
     return c.json({ error: 'Update already in progress', logs: result.logs }, 409);
@@ -58,7 +57,7 @@ async function readDbStatus(): Promise<{ type: string; reachable: boolean }> {
   }
 }
 
-export const handleSystemHealth: RouteHandler<typeof systemHealthRoute, { Variables: Variables }> = async (c) => {
+export const handleSystemHealth = async (c: Context<{ Variables: Variables }>) => {
   const [dockerVersion, db] = await Promise.all([
     checkDockerVersion(),
     readDbStatus(),
@@ -73,7 +72,7 @@ export const handleSystemHealth: RouteHandler<typeof systemHealthRoute, { Variab
   }, 200);
 };
 
-export const handleUpdateStream: RouteHandler<typeof updateStreamRoute, { Variables: Variables }> = async (c) => {
+export const handleUpdateStream = async (c: Context<{ Variables: Variables }>) => {
   const info = getUpdateInfo();
   let eventId = 0;
 

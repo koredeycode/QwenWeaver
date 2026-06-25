@@ -3,11 +3,6 @@ import {
   configExists,
   promptForConfig,
 } from '../config-store.js';
-import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = resolve(__dirname, '..', '..', '..', '..');
 
 export async function initCommand(): Promise<void> {
   console.log('=== QwenWeaver Init ===\n');

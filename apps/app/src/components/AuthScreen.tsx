@@ -10,7 +10,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
-import { apiFetch, isSelfHosted } from '../lib/api-client.js';
+import { client2, authHeaders, isSelfHosted } from '../lib/api-client.js';
 
 export const AuthScreen = () => {
   const login = useStore((s) => s.login);
@@ -33,8 +33,8 @@ export const AuthScreen = () => {
       setCheckingSetup(false);
       return;
     }
-    apiFetch('/api/setup/status')
-      .then((res) => res.json())
+    client2.api.setup.status.$get({}, { headers: authHeaders() })
+      .then((res: Response) => res.json())
       .then((data: { complete: boolean }) => {
         if (!data.complete) {
           navigate('/setup', { replace: true });
@@ -80,7 +80,7 @@ export const AuthScreen = () => {
       } else {
         setError(isLogin ? 'Invalid email or password.' : 'Registration failed.');
       }
-    } catch (err) {
+    } catch {
       setError('Could not connect to the server. Please try again.');
     } finally {
       setIsLoading(false);

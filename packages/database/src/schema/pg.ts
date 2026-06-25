@@ -83,6 +83,10 @@ export const pgMcpServers = pgTable('mcp_servers', {
   command: text('command'),
   args: jsonb('args').$type<string[]>(),
   authConfig: jsonb('auth_config').$type<MCPAuthConfig>(),
+  iconUrl: text('icon_url'),
+  registryOrigin: text('registry_origin').default('manual').notNull(),
+  registryId: text('registry_id'),
+  registryMetadata: jsonb('registry_metadata'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => [
   index('mcp_servers_user_id_idx').on(table.userId),

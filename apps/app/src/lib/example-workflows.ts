@@ -10,6 +10,7 @@ export interface ExampleNode {
     thinkingBudget?: number;
     mcpServerId?: string;
     mcpServerUrl?: string;
+    iconUrl?: string;
     outputFormat?: string;
   };
 }
@@ -81,10 +82,11 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         type: 'mcp_tool',
         position: { x: 900, y: 200 },
         data: { 
-          label: 'GitHub Writer Tool', 
-          mcpServerId: 'github-server',
-          mcpServerUrl: 'http://localhost:8000',
-          systemPrompt: 'Pushes the Synthesized consensus report to repository: qwen-weaver/research-reports',
+          label: 'AlphaCreek SEC Filings', 
+          mcpServerId: 'ai.alphacreek/alphacreek-mcp',
+          mcpServerUrl: 'https://mcp.alphacreek.ai/mcp',
+          iconUrl: 'https://www.alphacreek.ai/assets/images/logo/logo400x400.png',
+          systemPrompt: 'Retrieve the latest SEC filings for companies referenced in the research report.',
           outputFormat: 'text'
         }
       }
@@ -137,10 +139,10 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         type: 'mcp_tool',
         position: { x: 950, y: 200 },
         data: { 
-          label: 'Filesystem Writer Tool', 
-          mcpServerId: 'file-server',
-          mcpServerUrl: 'http://localhost:8080',
-          systemPrompt: 'Saves the translated content to /public/locales/zh-CN.json.',
+          label: 'Tandem Docs MCP', 
+          mcpServerId: 'ac.tandem/docs-mcp',
+          mcpServerUrl: 'https://tandem.ac/mcp',
+          systemPrompt: 'Search and retrieve relevant documentation to verify translation accuracy.',
           outputFormat: 'text'
         }
       }
@@ -202,10 +204,10 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         type: 'mcp_tool',
         position: { x: 900, y: 200 },
         data: { 
-          label: 'Jira Reporter Tool', 
-          mcpServerId: 'jira-server',
-          mcpServerUrl: 'http://localhost:8090',
-          systemPrompt: 'Creates severity tickets based on consolidated security audit reports.',
+          label: 'AgentBerg MCP', 
+          mcpServerId: 'ai.agentberg/agentberg',
+          mcpServerUrl: 'https://agentberg.ai/mcp',
+          systemPrompt: 'Publish security audit findings and query the agent network for known vulnerability patterns.',
           outputFormat: 'text'
         }
       }
@@ -293,10 +295,11 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         type: 'mcp_tool',
         position: { x: 1050, y: 150 },
         data: { 
-          label: 'CRM Database Tool', 
-          mcpServerId: 'db-server',
-          mcpServerUrl: 'http://localhost:8080',
-          systemPrompt: 'Saves customer service log summary to /crm/logs/ticket-escalations.json.',
+          label: 'AlphaCreek MCP', 
+          mcpServerId: 'ai.alphacreek/alphacreek-mcp',
+          mcpServerUrl: 'https://mcp.alphacreek.ai/mcp',
+          iconUrl: 'https://www.alphacreek.ai/assets/images/logo/logo400x400.png',
+          systemPrompt: 'Logs ticket resolution as a published finding in the agent network.',
           outputFormat: 'text'
         }
       },
@@ -305,10 +308,10 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         type: 'mcp_tool',
         position: { x: 1050, y: 350 },
         data: { 
-          label: 'Slack Publisher Tool', 
-          mcpServerId: 'slack-server',
-          mcpServerUrl: 'http://localhost:8000',
-          systemPrompt: 'Broadcasts resolved ticket confirmation payload to the #support-alerts Slack channel.',
+          label: 'AgentBerg', 
+          mcpServerId: 'ai.agentberg/agentberg',
+          mcpServerUrl: 'https://agentberg.ai/mcp',
+          systemPrompt: 'Query the agent network for similar support ticket patterns and resolutions.',
           outputFormat: 'text'
         }
       }

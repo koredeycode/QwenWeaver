@@ -98,7 +98,7 @@ export async function handleForkTemplate(c: C) {
     name: template.name,
     description: template.description || undefined,
   });
-  const enriched = await enrichTemplate(template, provider);
+  await enrichTemplate(template, provider);
 
   return c.json({ workflowId, workflowData: template.workflowData, name: template.name }, 201);
 }

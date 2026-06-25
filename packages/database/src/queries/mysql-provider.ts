@@ -3,7 +3,7 @@ import { eq, and, sql, desc, count, inArray } from 'drizzle-orm';
 import { getConnection, mysqlSchema } from '../index.js';
 import type { QueryProvider, WorkflowRow, WorkflowDetail } from './provider.js';
 import type { SavedMCPServerInput, SavedMCPServer } from './mcp.js';
-import type { WorkflowPayload, ExecutionMetrics, AgentLogInput, AgentLogOutput } from '@qwenweaver/types';
+import type { WorkflowPayload, ExecutionMetrics, AgentLogInput, AgentLogOutput, MCPAuthConfig } from '@qwenweaver/types';
 
 const log = {
   info: (data: Record<string, unknown>, message: string) => {
@@ -50,6 +50,10 @@ export const mysqlProvider: QueryProvider = {
       url: input.url || null,
       command: input.command || null,
       args: input.args || null,
+      iconUrl: input.iconUrl || null,
+      registryOrigin: input.registryOrigin || 'manual',
+      registryId: input.registryId || null,
+      registryMetadata: input.registryMetadata || null,
     };
     await mysqlDb.insert(mysqlSchema.mysqlMcpServers).values({
       ...baseValues,
@@ -64,6 +68,10 @@ export const mysqlProvider: QueryProvider = {
       url: input.url ?? undefined,
       command: input.command ?? undefined,
       args: input.args ?? undefined,
+      iconUrl: input.iconUrl ?? undefined,
+      registryOrigin: input.registryOrigin ?? undefined,
+      registryId: input.registryId ?? undefined,
+      registryMetadata: input.registryMetadata ?? undefined,
       createdAt: new Date().toISOString(),
     };
   },
@@ -80,6 +88,10 @@ export const mysqlProvider: QueryProvider = {
       url: r.url ?? undefined,
       command: r.command ?? undefined,
       args: r.args ?? undefined,
+      iconUrl: r.iconUrl ?? undefined,
+      registryOrigin: r.registryOrigin ?? undefined,
+      registryId: r.registryId ?? undefined,
+      registryMetadata: r.registryMetadata ?? undefined,
       createdAt: r.createdAt.toISOString(),
     }));
   },
@@ -102,6 +114,34 @@ export const mysqlProvider: QueryProvider = {
       .where(and(eq(mysqlSchema.mysqlMcpServers.id, id), eq(mysqlSchema.mysqlMcpServers.userId, userId)));
 
     return true;
+  },
+
+  async updateMcpServerAuth(id: string, userId: string, authConfig: MCPAuthConfig): Promise<SavedMCPServer> {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    await mysqlDb
+      .update(mysqlSchema.mysqlMcpServers)
+      .set({ authConfig })
+      .where(and(eq(mysqlSchema.mysqlMcpServers.id, id), eq(mysqlSchema.mysqlMcpServers.userId, userId)));
+    const [r] = await mysqlDb
+      .select()
+      .from(mysqlSchema.mysqlMcpServers)
+      .where(eq(mysqlSchema.mysqlMcpServers.id, id))
+      .limit(1);
+    return {
+      id: r.id, name: r.name,
+      description: r.description ?? undefined,
+      transport: r.transport,
+      url: r.url ?? undefined,
+      command: r.command ?? undefined,
+      args: r.args ?? undefined,
+      iconUrl: r.iconUrl ?? undefined,
+      authConfig: r.authConfig ?? undefined,
+      registryOrigin: r.registryOrigin ?? undefined,
+      registryId: r.registryId ?? undefined,
+      registryMetadata: r.registryMetadata ?? undefined,
+      createdAt: r.createdAt.toISOString(),
+    };
   },
 
   async saveWorkflow(userId: string, workflow: WorkflowPayload): Promise<string> {

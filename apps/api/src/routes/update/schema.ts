@@ -1,4 +1,4 @@
-import { z } from '@hono/zod-openapi';
+import { z } from 'zod';
 
 export const UpdateInfoSchema = z.object({
   installMode: z.enum(['npm', 'docker', 'git', 'image']),

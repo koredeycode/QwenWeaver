@@ -103,7 +103,7 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
     };
   }),
 
-  addNode: (type, position) => {
+  addNode: (type, position, additionalData) => {
     const id = `node-${type}-${Date.now().toString().slice(-4)}`;
     const label = type === 'input_trigger' 
       ? 'Initial workflow instruction' 
@@ -116,7 +116,8 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
         label,
         model: type === 'supervisor' ? 'qwen3-max' : type === 'agent' ? 'qwen-plus' : undefined,
         systemPrompt: type === 'agent' || type === 'supervisor' ? 'You are a helpful assistant.' : undefined,
-        outputFormat: 'text'
+        outputFormat: 'text',
+        ...additionalData,
       }
     };
     set((state) => ({

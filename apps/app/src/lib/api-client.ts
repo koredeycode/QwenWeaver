@@ -1,10 +1,29 @@
 import { hc } from 'hono/client';
-import type { AppType } from '@qwenweaver/api';
+import type { AppType, AppType2 } from '@qwenweaver/api';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const TEMPLATE_API_URL = import.meta.env.VITE_TEMPLATE_API_URL || '';
 
-export const client = hc<AppType>(API_URL);
+// Custom fetch that auto-retries on 401 by refreshing the token.
+// This wraps every hc client call so individual calls don't need `withRefresh()`.
+const authedFetch: typeof window.fetch = async (input, init) => {
+  let res = await window.fetch(input, init);
+  if (res.status === 401 && getRefreshToken()) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      const headers = new Headers(init?.headers);
+      headers.set('Authorization', `Bearer ${newToken}`);
+      res = await window.fetch(input, { ...init, headers });
+    }
+  }
+  return res;
+};
+
+// Two clients because hc<T> can't intersect Hono types from separate chains.
+// client1: templates, auth, workflow, execution, copilot, mcp
+// client2: mcp/registry, analytics, credits, setup, system/update
+export const client = hc<AppType>(API_URL, { fetch: authedFetch });
+export const client2 = hc<AppType2>(API_URL, { fetch: authedFetch });
 export type { AppType };
 
 let refreshPromise: Promise<string | null> | null = null;
@@ -80,25 +99,53 @@ export async function refreshAccessToken(): Promise<string | null> {
   return refreshPromise;
 }
 
-export async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
+/**
+ * Wraps a hc typed-client call with automatic 401 → token refresh → retry.
+ * Use this for write operations or reads that must not fail silently on expiry.
+ *
+ * @example
+ *   const res = await withRefresh(() => client.api.workflow.$get({}, { headers: authHeaders() }));
+ */
+export async function withRefresh(call: () => Promise<Response>): Promise<Response> {
+  let res = await call();
+  if (res.status === 401 && getRefreshToken()) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      res = await call();
+    } else {
+      clearAuth();
+      notifyAuthExpired();
+    }
+  }
+  return res;
+}
+
+/** Returns Authorization headers for the current user, or empty if not logged in */
+export function authHeaders(): Record<string, string> {
+  const token = getAccessToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+/**
+ * Wraps fetch with automatic 401 → token refresh → retry.
+ * Use this for critical authenticated API calls so that expired tokens
+ * are refreshed transparently instead of returning a 401 to the caller.
+ */
+export async function fetchApi(path: string, options: RequestInit = {}): Promise<Response> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
+    ...authHeaders(),
   };
-
-  const token = getAccessToken();
-  if (token) headers['Authorization'] = `Bearer ${token}`;
 
   let res = await fetch(`${API_URL}${path}`, { ...options, headers });
 
-  if (res.status === 401) {
-    if (getRefreshToken()) {
-      const newToken = await refreshAccessToken();
-      if (newToken) {
-        headers['Authorization'] = `Bearer ${newToken}`;
-        res = await fetch(`${API_URL}${path}`, { ...options, headers });
-        return res;
-      }
+  if (res.status === 401 && getRefreshToken()) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      headers['Authorization'] = `Bearer ${newToken}`;
+      res = await fetch(`${API_URL}${path}`, { ...options, headers });
+      return res;
     }
     clearAuth();
     notifyAuthExpired();

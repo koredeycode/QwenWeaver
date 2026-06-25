@@ -1,16 +1,15 @@
-import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
+import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { jwt } from 'hono/jwt';
 import { bodyLimit } from 'hono/body-limit';
 import { serve } from '@hono/node-server';
 import { HTTPException } from 'hono/http-exception';
-import { swaggerUI } from '@hono/swagger-ui';
 import { logger, requestLogger } from './logger.js';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { workflowRoutes } from './routes/workflow/index.js';
 import { executionRoutes } from './routes/execution/index.js';
 import { copilotRoutes } from './routes/copilot/index.js';
-import { mcpRoutes } from './routes/mcp/index.js';
+import { mcpRoutes, registryRoutes } from './routes/mcp/index.js';
 import { authRoutes } from './routes/auth/index.js';
 import { analyticsRoutes } from './routes/analytics/index.js';
 import { creditsRoutes } from './routes/credits/index.js';
@@ -20,7 +19,7 @@ import { updateRoutes } from './routes/update/index.js';
 import { register } from './metrics.js';
 import { getQueryProvider } from '@qwenweaver/database';
 import { rateLimiter } from './middleware/rate-limiter.js';
-import { JWT_SECRET, CORS_ORIGINS, METRICS_TOKEN, RATE_LIMIT } from './config.js';
+import { JWT_SECRET, CORS_ORIGINS, RATE_LIMIT, METRICS_TOKEN } from './config.js';
 
 export type Variables = {
   requestId: string;
@@ -31,7 +30,7 @@ export type Variables = {
   };
 };
 
-const app = new OpenAPIHono<{ Variables: Variables }>();
+const app = new Hono<{ Variables: Variables }>();
 
 // Lock down CORS to configured origins instead of wildcard
 app.use('/api/*', cors({
@@ -76,6 +75,7 @@ app.use(
       path.startsWith('/api/docs') ||
       path.startsWith('/api/openapi.json') ||
       path.startsWith('/api/auth') ||
+      path === '/api/mcp/registry/search' ||
       (path.startsWith('/api/setup') && !path.startsWith('/api/setup/reconfigure')) ||
       path.startsWith('/api/metrics')
     ) {
@@ -85,11 +85,15 @@ app.use(
       secret: JWT_SECRET,
       alg: 'HS256',
     });
-    return jwtMiddleware(c, next);
+    return jwtMiddleware(c, async () => {
+      await next();
+    });
   }
 );
 
-// ─── Mount route modules (all in one chain for proper AppType) ───────────
+// ─── Mount route modules ───
+// Split into two chains to avoid TS depth limit with 11 MergeSchemaPath entries.
+// Both chains are plain Hono, so types preserve properly in each.
 
 const routes = app
   .route('/api/templates', templateRoutes)
@@ -97,22 +101,40 @@ const routes = app
   .route('/api/workflow', workflowRoutes)
   .route('/api/execution', executionRoutes)
   .route('/api/copilot', copilotRoutes)
-  .route('/api/mcp', mcpRoutes)
+  .route('/api/mcp', mcpRoutes);
+
+// Also mount remaining routes on app for runtime
+app
+  .route('/api/mcp/registry', registryRoutes)
   .route('/api/analytics', analyticsRoutes)
   .route('/api/credits', creditsRoutes)
   .route('/api/setup', setupRoutes)
   .route('/api/system/update', updateRoutes);
 
+// Separate chain for type export — plain Hono preserves route types
+const altRoutes = new Hono<{ Variables: Variables }>()
+  .route('/api/mcp/registry', registryRoutes)
+  .route('/api/analytics', analyticsRoutes)
+  .route('/api/credits', creditsRoutes)
+  .route('/api/setup', setupRoutes)
+  .route('/api/system/update', updateRoutes);
 
-// Expose metrics endpoint only in development/test environments
+export type AppType = typeof routes;
+export type AppType2 = typeof altRoutes;
+
+// Expose metrics endpoint only in development/test environments, authenticated via METRICS_TOKEN
 if (process.env.NODE_ENV !== 'production') {
   app.get('/api/metrics', async (c) => {
+    const token = c.req.query('token') || c.req.header('Authorization')?.replace('Bearer ', '');
+    if (METRICS_TOKEN && token !== METRICS_TOKEN) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
     c.header('content-type', register.contentType);
     return c.text(await register.metrics());
   });
 }
 
-// ─── OpenAPI spec ───────────────────────────────────────────────────────────
+// ─── Error handling ─────────────────────────────────────────────────────────
 app.onError((err, c) => {
   if (err instanceof HTTPException) {
     logger.warn({ err }, 'HTTP exception');
@@ -122,73 +144,10 @@ app.onError((err, c) => {
   return c.json({ error: 'Internal Server Error', details: err.message }, 500);
 });
 
-app.doc('/api/openapi.json', {
-  openapi: '3.1.0',
-  info: {
-    title: 'QwenWeaver API',
-    version: '0.1.0',
-    description: 'Visual multi-agent orchestration platform — backend API',
-  },
-  servers: [{ url: 'http://localhost:3001' }],
-});
-
-app.openAPIRegistry.registerComponent('securitySchemes', 'bearerAuth', {
-  type: 'http',
-  scheme: 'bearer',
-  bearerFormat: 'JWT',
-});
-
-app.get('/api/docs', swaggerUI({ url: '/api/openapi.json' }));
-
 // ─── Root routes ────────────────────────────────────────────────────────────
+app.get('/', (c) => c.text('QwenWeaver API', 200));
 
-const rootRoute = createRoute({
-  method: 'get',
-  path: '/',
-  tags: ['System'],
-  summary: 'Root',
-  responses: {
-    200: { content: { 'text/plain': { schema: z.string() } }, description: 'OK' }
-  }
-});
-
-app.openapi(rootRoute, (c) => c.text('QwenWeaver API', 200));
-
-// Use QueryProvider.healthCheck() instead of unsafe (db as any) casts
-const healthRoute = createRoute({
-  method: 'get',
-  path: '/api/health',
-  tags: ['System'],
-  summary: 'Health check',
-  responses: {
-    200: {
-      content: {
-        'application/json': {
-          schema: z.object({
-            status: z.string(),
-            service: z.string(),
-            database: z.string()
-          })
-        }
-      },
-      description: 'OK'
-    },
-    503: {
-      content: {
-        'application/json': {
-          schema: z.object({
-            status: z.string(),
-            service: z.string(),
-            database: z.string()
-          })
-        }
-      },
-      description: 'Service Unavailable'
-    }
-  }
-});
-
-app.openapi(healthRoute, async (c) => {
+app.get('/api/health', async (c) => {
   try {
     const provider = getQueryProvider();
     await provider.healthCheck();
@@ -204,8 +163,10 @@ app.openapi(healthRoute, async (c) => {
 if (process.env.NODE_ENV !== 'test') {
   const port = Number(process.env.PORT) || 3001;
 
-  const server = serve({ fetch: app.fetch, port }, (info) => {
+  const server = serve({ fetch: app.fetch, port }, async (info) => {
     logger.info({ port: info.port }, 'API started');
+
+
   });
 
   const gracefulShutdown = () => {
@@ -227,4 +188,3 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 export default app;
-export type AppType = typeof routes;

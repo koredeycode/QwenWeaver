@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { 
   Play, 
@@ -274,56 +274,69 @@ export const SupervisorNode = memo(({ id, data }: NodeProps<any>) => {
 });
 SupervisorNode.displayName = 'SupervisorNode';
 
-// --- 4. MCP Tool Node Component ---
+// --- 4. MCP Tool Node Component (Compact + Icon Support) ---
 export const MCPToolNode = memo(({ id, data }: NodeProps<any>) => {
   const status = useStore((s) => s.nodeStatuses[id] || 'pending');
-  const output = useStore((s) => s.nodeOutputs[id] || '');
   const isSelected = useStore((s) => s.selectedNodeId === id);
   const setMaximizedNodeId = useStore((s) => s.setMaximizedNodeId);
+  const [imgError, setImgError] = useState(false);
+
+  const isUnconfigured = !data.mcpServerUrl;
 
   return (
-    <div className={`w-52 bg-slate-900 border border-purple-550 ${isSelected ? 'shadow-[0_0_12px_rgba(168,85,247,0.4)] border-purple-400 ring-2 ring-purple-500/20' : 'border-slate-750'} text-slate-100 p-2.5 relative font-sans shadow-md rounded-none`}>
+    <div
+      className={`w-36 bg-white border-2 ${
+        isSelected
+          ? 'border-purple-500 shadow-[0_2px_8px_rgba(168,85,247,0.2)]'
+          : isUnconfigured
+            ? 'border-amber-400'
+            : 'border-purple-200'
+      } text-slate-800 p-2 relative font-sans shadow-sm group`}
+    >
       <Handle
         type="target"
         position={Position.Left}
-        className="w-3.5 h-3.5 !bg-purple-500 !border-2 !border-slate-800 hover:scale-125 transition-all shadow-sm"
+        className="w-3 h-3 !bg-purple-500 !border-2 !border-white hover:scale-125 transition-all shadow-sm"
       />
 
-      <div className="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-1.5">
-        <div className="flex items-center gap-1.5">
-          <Wrench className="w-3.5 h-3.5 text-purple-400" />
-          <span className="text-[9px] font-mono font-bold tracking-wider text-purple-400">MCP TOOL</span>
-        </div>
-        <div className="flex items-center gap-1.5">
+      <button
+        onClick={(e) => { e.stopPropagation(); setMaximizedNodeId(id); }}
+        className="absolute top-1 right-1 p-0.5 hover:bg-purple-100 text-purple-400 hover:text-purple-700 transition-colors nodrag cursor-pointer"
+        title="Inspect MCP Tool"
+      >
+        <Maximize2 className="w-3 h-3" />
+      </button>
+
+      <div className="flex flex-col items-center justify-center gap-1 min-h-[60px]">
+        {data.iconUrl && !imgError ? (
+          <img
+            src={data.iconUrl}
+            alt=""
+            className="w-7 h-7 rounded object-contain"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div className="w-7 h-7 rounded bg-purple-100 flex items-center justify-center">
+            <Wrench className="w-3.5 h-3.5 text-purple-600" />
+          </div>
+        )}
+        <div className="flex items-center gap-1">
+          <span className="text-[7px] font-mono font-bold tracking-wider text-purple-600 uppercase">MCP</span>
+          {isUnconfigured && (
+            <span className="text-[7px] text-amber-600 font-bold ml-0.5" title="Not configured">⚠</span>
+          )}
           {getCompactStatusIndicator(status)}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setMaximizedNodeId(id);
-            }}
-            className="p-0.5 hover:bg-slate-800 text-slate-500 hover:text-slate-350 transition-colors nodrag cursor-pointer"
-            title="Maximize Output Terminal"
-          >
-            <Maximize2 className="w-3 h-3" />
-          </button>
         </div>
       </div>
 
-      <div className="text-xs font-bold tracking-tight text-white truncate" title={data.label}>{data.label || 'MCP Server'}</div>
-      <div className="text-[8px] text-slate-400 mt-1 font-mono select-all bg-slate-950 p-1 border border-slate-800 overflow-x-auto truncate">
-        {data.mcpServerUrl || 'http://localhost:8080'}
+      <div className="text-[10px] font-bold tracking-tight text-slate-900 truncate text-center mt-1" title={data.label}>
+        {data.label || 'Tool'}
       </div>
-
-      {output && (
-        <div className="mt-1.5 bg-slate-950 border border-slate-800 p-1 font-mono text-[9px] max-h-16 overflow-y-auto leading-relaxed scrollbar">
-          <span className="text-emerald-400">{output}</span>
-        </div>
-      )}
 
       <Handle
         type="source"
         position={Position.Right}
-        className="w-3.5 h-3.5 !bg-purple-500 !border-2 !border-slate-800 hover:scale-125 transition-all shadow-sm"
+        className="w-3 h-3 !bg-purple-500 !border-2 !border-white hover:scale-125 transition-all shadow-sm"
       />
     </div>
   );

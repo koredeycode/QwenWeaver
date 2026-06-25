@@ -1,12 +1,19 @@
 import { getQueryProvider } from './provider.js';
 
+import type { MCPAuthConfig } from '@qwenweaver/types';
+
 export interface SavedMCPServerInput {
   name: string;
   description?: string | null;
-  transport: 'http' | 'stdio';
+  transport: 'http' | 'stdio' | 'sse';
   url?: string | null;
   command?: string | null;
   args?: string[] | null;
+  iconUrl?: string | null;
+  authConfig?: MCPAuthConfig | null;
+  registryOrigin?: string | null;
+  registryId?: string | null;
+  registryMetadata?: unknown | null;
 }
 
 export interface SavedMCPServer {
@@ -17,6 +24,11 @@ export interface SavedMCPServer {
   url?: string;
   command?: string;
   args?: string[];
+  iconUrl?: string;
+  authConfig?: MCPAuthConfig;
+  registryOrigin?: string;
+  registryId?: string;
+  registryMetadata?: unknown;
   createdAt: string;
 }
 

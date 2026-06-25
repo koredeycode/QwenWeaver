@@ -35,6 +35,14 @@ export const NodeData = z.object({
   thinkingBudget: z.number().optional(),
   mcpServerUrl: z.string().optional(),
   mcpServerId: z.string().optional(),
+  iconUrl: z.string().optional(),
+  mcpAuthConfig: z.object({
+    type: z.enum(['none', 'api_key', 'bearer', 'basic']).optional(),
+    apiKey: z.string().optional(),
+    token: z.string().optional(),
+    username: z.string().optional(),
+    password: z.string().optional(),
+  }).optional(),
   enableThinking: z.boolean().optional(),
   outputFormat: OutputFormat.optional(),
 });

@@ -26,7 +26,7 @@ const SEED_WORKFLOWS = [
         { id: 'node-agent-1', type: 'agent', position: { x: 300, y: 100 }, data: { label: 'Academic Searcher', model: 'qwen-plus', systemPrompt: 'Scrapes Google Scholar for the latest papers on multi-agent consensus.', outputFormat: 'markdown' } },
         { id: 'node-agent-2', type: 'agent', position: { x: 300, y: 300 }, data: { label: 'Patent Scanner', model: 'qwen-plus', systemPrompt: 'Queries global patent databases for visual node orchestration systems.', outputFormat: 'markdown' } },
         { id: 'node-supervisor', type: 'supervisor', position: { x: 600, y: 200 }, data: { label: 'Consensus Supervisor', model: 'qwen3-max', systemPrompt: 'Review the outputs of both Searcher and Scanner. Synthesize findings. If they contradict, ask them to re-verify.', enableThinking: true, thinkingBudget: 1024, outputFormat: 'json' } },
-        { id: 'node-mcp-tool', type: 'mcp_tool', position: { x: 900, y: 200 }, data: { label: 'GitHub Writer Tool', mcpServerId: 'github-server', mcpServerUrl: 'http://localhost:8000', systemPrompt: 'Pushes the Synthesized consensus report to repository: qwen-weaver/research-reports', outputFormat: 'text' } },
+        { id: 'node-mcp-tool', type: 'mcp_tool', position: { x: 900, y: 200 }, data: { label: 'AlphaCreek SEC Filings', mcpServerId: 'ai.alphacreek/alphacreek-mcp', mcpServerUrl: 'https://mcp.alphacreek.ai/mcp', iconUrl: 'https://www.alphacreek.ai/assets/images/logo/logo400x400.png', systemPrompt: 'Retrieve the latest SEC filings for companies referenced in the research report.', outputFormat: 'text' } },
       ],
       edges: [
         { id: 'e-t-a1', source: 'node-trigger', target: 'node-agent-1', type: 'animated' },
@@ -51,7 +51,7 @@ const SEED_WORKFLOWS = [
         { id: 'node-trigger-input', type: 'input_trigger', position: { x: 50, y: 200 }, data: { label: 'Translate QwenWeaver marketing landing page into simplified Chinese.', outputFormat: 'text' } },
         { id: 'node-translator', type: 'agent', position: { x: 350, y: 200 }, data: { label: 'Linguistic Translator', model: 'qwen-plus', systemPrompt: 'Translate the upstream text context into natural-sounding Simplified Chinese. Retain technical jargon.', outputFormat: 'markdown' } },
         { id: 'node-reviewer', type: 'supervisor', position: { x: 650, y: 200 }, data: { label: 'Linguistic Peer Reviewer', model: 'qwen3-max', systemPrompt: 'Compare the translation with the original english prompt. Ensure tone, accuracy, and format. If anything is wrong, reject and feedback.', enableThinking: true, thinkingBudget: 1024, outputFormat: 'markdown' } },
-        { id: 'node-mcp-saver', type: 'mcp_tool', position: { x: 950, y: 200 }, data: { label: 'Filesystem Writer Tool', mcpServerId: 'file-server', mcpServerUrl: 'http://localhost:8080', systemPrompt: 'Saves the translated content to /public/locales/zh-CN.json.', outputFormat: 'text' } },
+        { id: 'node-mcp-saver', type: 'mcp_tool', position: { x: 950, y: 200 }, data: { label: 'Tandem Docs MCP', mcpServerId: 'ac.tandem/docs-mcp', mcpServerUrl: 'https://tandem.ac/mcp', systemPrompt: 'Search and retrieve relevant documentation to verify translation accuracy.', outputFormat: 'text' } },
       ],
       edges: [
         { id: 'e-ti-tr', source: 'node-trigger-input', target: 'node-translator', type: 'animated' },
@@ -75,7 +75,7 @@ const SEED_WORKFLOWS = [
         { id: 'node-static-analyzer', type: 'agent', position: { x: 300, y: 100 }, data: { label: 'SQL Static Analyzer', model: 'qwen-plus', systemPrompt: 'Audit code for SQL injection, raw queries without parameterization, or schema vulnerabilities.', outputFormat: 'markdown' } },
         { id: 'node-secret-scanner', type: 'agent', position: { x: 300, y: 300 }, data: { label: 'Secret Scanner', model: 'qwen-plus', systemPrompt: 'Scan files for hardcoded database credentials, API keys, JWT secrets, or tokens.', outputFormat: 'markdown' } },
         { id: 'node-sec-supervisor', type: 'supervisor', position: { x: 600, y: 200 }, data: { label: 'Security Lead Auditor', model: 'qwen3-max', systemPrompt: 'Consolidate warnings from sql static analyzer and secret scanner. Filter out duplicates, grade the severity.', enableThinking: true, thinkingBudget: 2048, outputFormat: 'json' } },
-        { id: 'node-jira-reporter', type: 'mcp_tool', position: { x: 900, y: 200 }, data: { label: 'Jira Reporter Tool', mcpServerId: 'jira-server', mcpServerUrl: 'http://localhost:8090', systemPrompt: 'Creates severity tickets based on consolidated security audit reports.', outputFormat: 'text' } },
+        { id: 'node-jira-reporter', type: 'mcp_tool', position: { x: 900, y: 200 }, data: { label: 'AgentBerg MCP', mcpServerId: 'ai.agentberg/agentberg', mcpServerUrl: 'https://agentberg.ai/mcp', systemPrompt: 'Publish security audit findings and query the agent network for known vulnerability patterns.', outputFormat: 'text' } },
       ],
       edges: [
         { id: 'e-ta-sa', source: 'node-trigger-audit', target: 'node-static-analyzer', type: 'animated' },
@@ -103,8 +103,8 @@ const SEED_WORKFLOWS = [
         { id: 'node-devops-agent', type: 'agent', position: { x: 550, y: 250 }, data: { label: 'DevOps Specialist', model: 'qwen-plus', systemPrompt: 'Examine server health metrics, container logs, database query locks, and API gateway response times.', outputFormat: 'markdown' } },
         { id: 'node-feedback-agent', type: 'agent', position: { x: 550, y: 400 }, data: { label: 'Support Agent', model: 'qwen-plus', systemPrompt: 'Draft polite holding statement apologizing for the delay in service.', outputFormat: 'markdown' } },
         { id: 'node-resolution-reviewer', type: 'supervisor', position: { x: 800, y: 250 }, data: { label: 'Resolution Supervisor', model: 'qwen3-max', systemPrompt: 'Review the billing diagnosis and devops status details. Formulate the final professional resolution message outlining actions taken (e.g. refund status, server fix updates).', enableThinking: true, thinkingBudget: 1024, outputFormat: 'markdown' } },
-        { id: 'node-db-writer', type: 'mcp_tool', position: { x: 1050, y: 150 }, data: { label: 'CRM Database Tool', mcpServerId: 'db-server', mcpServerUrl: 'http://localhost:8080', systemPrompt: 'Saves customer service log summary to /crm/logs/ticket-escalations.json.', outputFormat: 'text' } },
-        { id: 'node-slack-publisher', type: 'mcp_tool', position: { x: 1050, y: 350 }, data: { label: 'Slack Publisher Tool', mcpServerId: 'slack-server', mcpServerUrl: 'http://localhost:8000', systemPrompt: 'Broadcasts resolved ticket confirmation payload to the #support-alerts Slack channel.', outputFormat: 'text' } },
+        { id: 'node-db-writer', type: 'mcp_tool', position: { x: 1050, y: 150 }, data: { label: 'AlphaCreek MCP', mcpServerId: 'ai.alphacreek/alphacreek-mcp', mcpServerUrl: 'https://mcp.alphacreek.ai/mcp', iconUrl: 'https://www.alphacreek.ai/assets/images/logo/logo400x400.png', systemPrompt: 'Logs ticket resolution as a published finding in the agent network.', outputFormat: 'text' } },
+        { id: 'node-slack-publisher', type: 'mcp_tool', position: { x: 1050, y: 350 }, data: { label: 'AgentBerg', mcpServerId: 'ai.agentberg/agentberg', mcpServerUrl: 'https://agentberg.ai/mcp', systemPrompt: 'Query the agent network for similar support ticket patterns and resolutions.', outputFormat: 'text' } },
       ],
       edges: [
         { id: 'e-t-st', source: 'node-trigger-support', target: 'node-support-triage', type: 'animated' },
@@ -133,7 +133,7 @@ const SEED_WORKFLOWS = [
         { id: 'node-trigger-soc', type: 'input_trigger', position: { x: 50, y: 200 }, data: { label: 'Topic: New product launch Q3. Tone: professional but exciting.', outputFormat: 'text' } },
         { id: 'node-copywriter', type: 'agent', position: { x: 300, y: 200 }, data: { label: 'Copywriter', model: 'qwen-plus', systemPrompt: 'Draft 3 social media posts (LinkedIn, Twitter, Instagram) based on the brief provided.', outputFormat: 'markdown' } },
         { id: 'node-brand-reviewer', type: 'supervisor', position: { x: 600, y: 200 }, data: { label: 'Brand Supervisor', model: 'qwen3-max', systemPrompt: 'Ensure all posts align with brand voice and guidelines. Flag anything off-tone.', enableThinking: true, thinkingBudget: 512, outputFormat: 'json' } },
-        { id: 'node-mcp-scheduler', type: 'mcp_tool', position: { x: 900, y: 200 }, data: { label: 'Scheduler Tool', mcpServerId: 'scheduler-server', mcpServerUrl: 'http://localhost:8080', systemPrompt: 'Schedule the approved posts in the social media queue.', outputFormat: 'text' } },
+        { id: 'node-mcp-scheduler', type: 'mcp_tool', position: { x: 900, y: 200 }, data: { label: 'Tandem Docs MCP', mcpServerId: 'ac.tandem/docs-mcp', mcpServerUrl: 'https://tandem.ac/mcp', systemPrompt: 'Search documentation for best practices on scheduling and publishing content.', outputFormat: 'text' } },
       ],
       edges: [
         { id: 'e-ts-cw', source: 'node-trigger-soc', target: 'node-copywriter', type: 'animated' },
@@ -157,7 +157,7 @@ const SEED_WORKFLOWS = [
         { id: 'node-linter', type: 'agent', position: { x: 300, y: 100 }, data: { label: 'Code Linter', model: 'qwen-plus', systemPrompt: 'Review code for style guide violations, formatting issues, and anti-patterns.', outputFormat: 'markdown' } },
         { id: 'node-vulnerability', type: 'agent', position: { x: 300, y: 300 }, data: { label: 'Vulnerability Scanner', model: 'qwen-plus', systemPrompt: 'Scan dependencies and code for known CVEs and security vulnerabilities.', outputFormat: 'markdown' } },
         { id: 'node-cr-supervisor', type: 'supervisor', position: { x: 600, y: 200 }, data: { label: 'Review Supervisor', model: 'qwen3-max', systemPrompt: 'Combine lint and vulnerability reports. Approve or request changes on the PR.', enableThinking: true, thinkingBudget: 1024, outputFormat: 'json' } },
-        { id: 'node-github-writer', type: 'mcp_tool', position: { x: 900, y: 200 }, data: { label: 'GitHub PR Commenter', mcpServerId: 'github-server', mcpServerUrl: 'http://localhost:8000', systemPrompt: 'Post the review summary as a comment on the pull request.', outputFormat: 'text' } },
+        { id: 'node-github-writer', type: 'mcp_tool', position: { x: 900, y: 200 }, data: { label: 'AlphaCreek MCP', mcpServerId: 'ai.alphacreek/alphacreek-mcp', mcpServerUrl: 'https://mcp.alphacreek.ai/mcp', iconUrl: 'https://www.alphacreek.ai/assets/images/logo/logo400x400.png', systemPrompt: 'Publish the code review summary as a finding in the agent network for peer validation.', outputFormat: 'text' } },
       ],
       edges: [
         { id: 'e-tcr-la', source: 'node-trigger-cr', target: 'node-linter', type: 'animated' },
@@ -183,7 +183,7 @@ const SEED_WORKFLOWS = [
         { id: 'node-extractor', type: 'agent', position: { x: 300, y: 200 }, data: { label: 'API Extractor', model: 'qwen-plus', systemPrompt: 'Fetch latest data from the external API endpoint and format as structured JSON.', outputFormat: 'json' } },
         { id: 'node-transformer', type: 'agent', position: { x: 550, y: 200 }, data: { label: 'Data Transformer', model: 'qwen-plus', systemPrompt: 'Clean, normalize, and transform the extracted data to match the target schema.', outputFormat: 'json' } },
         { id: 'node-quality-gate', type: 'supervisor', position: { x: 800, y: 200 }, data: { label: 'Quality Gate', model: 'qwen3-max', systemPrompt: 'Validate data quality: check for nulls, outliers, type mismatches. If quality fails, reject the batch.', enableThinking: true, thinkingBudget: 512, outputFormat: 'json' } },
-        { id: 'node-loader', type: 'mcp_tool', position: { x: 1050, y: 200 }, data: { label: 'DB Loader Tool', mcpServerId: 'db-server', mcpServerUrl: 'http://localhost:8080', systemPrompt: 'Insert validated records into the target database table.', outputFormat: 'text' } },
+        { id: 'node-loader', type: 'mcp_tool', position: { x: 1050, y: 200 }, data: { label: 'AgentBerg MCP', mcpServerId: 'ai.agentberg/agentberg', mcpServerUrl: 'https://agentberg.ai/mcp', systemPrompt: 'Publish validated data records as findings in the agent network.', outputFormat: 'text' } },
       ],
       edges: [
         { id: 'e-tdp-ex', source: 'node-trigger-dp', target: 'node-extractor', type: 'animated' },

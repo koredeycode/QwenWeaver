@@ -80,6 +80,7 @@ packages/mcp-client/  Model Context Protocol connection logic
 - **Centralized state.** Never use local component state for graph elements. Use the Zustand store for all graph state.
 - **Granular selectors.** Never access the full `nodes` array if you only need one value. Use `useStore((s) => s.selectedNodeIds)` to prevent re-renders.
 - **shadcn/ui only.** Do not install Material-UI, Chakra, or any other UI library.
+- **API calls.** Always use the Hono RPC client from `apps/app/src/lib/api-client.ts`. Import `client`, `client2`, and `authHeaders()`. For most routes use `client.api.<path>.<method>({...}, { headers: authHeaders() })`. For `mcp/registry`, `analytics`, `credits`, `setup`, and `system/update` routes use `client2`. Use `authHeaders()` wrapper for all protected routes (returns `{}` for public routes). Never use raw `fetch()`. Use `as any` on JSON responses when discriminated unions from `hc` don't narrow correctly.
 
 ### Backend (Hono.js)
 
@@ -88,7 +89,6 @@ packages/mcp-client/  Model Context Protocol connection logic
 - **SSE streaming.** Use Hono's `streamSSE` helper. Always emit both `event` type and `data` payload. Custom events: `token`, `status_update`, `edge_active`, `complete`.
 - **Parallel execution.** Group zero-in-degree nodes and fire with `Promise.all`.
 - **Logging.** Use `pino` via `apps/api/src/logger.ts`. For file-scoped loggers, use `createModuleLogger('path/to/file')` to get a child logger with a `"module"` field in every JSON log line. Request logging is automatic via the `requestLogger()` middleware (includes method, path, status, duration, requestId).
-- **API docs.** Swagger UI at `GET /api/docs`, OpenAPI spec at `GET /api/openapi.json`. Update the spec when adding new endpoints.
 
 ### Database (Drizzle ORM)
 

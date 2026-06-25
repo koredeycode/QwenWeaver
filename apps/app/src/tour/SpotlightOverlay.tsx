@@ -8,7 +8,7 @@ import React, {
 import { X } from 'lucide-react';
 import { useStore } from '../store/index.js';
 import { getCanvasNodeScreenCoords } from './getCanvasNodeScreenCoords.js';
-import type { TourStep, TourTarget, SpotlightBox, SpotlightRects } from './types.js';
+import type { TourStep, TourTarget, SpotlightBox } from './types.js';
 
 /* ------------------------------------------------------------------ */
 /*  Coordinate calculation                                             */

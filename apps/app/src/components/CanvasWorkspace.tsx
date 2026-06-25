@@ -12,7 +12,7 @@ import { toPng } from 'html-to-image';
 
 import type { NodeType } from '@qwenweaver/types';
 import { EXAMPLE_WORKFLOWS } from '../lib/example-workflows.js';
-import { apiFetch, isSelfHosted, getSaaSUrl } from '../lib/api-client.js';
+import { client, authHeaders, isSelfHosted, getSaaSUrl, withRefresh } from '../lib/api-client.js';
 import { useStore } from '../store/index.js';
 import { toast } from 'sonner';
 import { edgeTypes } from './AnimatedEdge.js';
@@ -137,9 +137,9 @@ export const CanvasWorkspace = () => {
         }
 
         // Try to load from API (saved workflow from the server)
-        apiFetch(`/api/workflow/detail/${id}`)
-          .then(r => r.ok ? r.json() : null)
-          .then(wf => {
+        client.api.workflow.detail[':workflowId'].$get({ param: { workflowId: id } }, { headers: authHeaders() })
+          .then((r: Response) => r.ok ? r.json() : null)
+          .then((wf: any) => {
             if (!wf || !wf.nodes || !wf.edges) {
               clearGraph();
               const pendingRaw = sessionStorage.getItem(`pending_wf_${id}`);
@@ -531,6 +531,19 @@ export const CanvasWorkspace = () => {
                   size={1} 
                   className="opacity-40"
                 />
+                {nodes.length === 0 && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="flex flex-col items-center text-center select-none">
+                      <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                        <Wrench className="w-6 h-6 text-slate-300" />
+                      </div>
+                      <p className="text-sm font-bold text-slate-400 font-mono mb-1">Empty Canvas</p>
+                      <p className="text-[10px] text-slate-300 font-mono max-w-[240px] leading-relaxed">
+                        Drag nodes from the sidebar or use the MCP Marketplace to add tools.
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <div data-export-hide="true">
                   <CustomZoomControls isLocked={isLocked} onToggleLock={() => setIsLocked(!isLocked)} />
                 </div>
@@ -713,14 +726,15 @@ export const CanvasWorkspace = () => {
                 type: e.type,
               })),
             };
-            const res = await apiFetch('/api/workflow', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload),
-            });
+            const res = await withRefresh(() =>
+              client.api.workflow.$post(
+                { json: payload as any },
+                { headers: authHeaders() }
+              )
+            );
             if (res.status === 403) {
-              const errBody = await res.json().catch(() => ({}));
-              toast.error(errBody.error || 'Workflow limit reached. Delete an existing workflow first.');
+              const errBody: Record<string, unknown> = await res.json().catch(() => ({}));
+              toast.error(String(errBody.error || 'Workflow limit reached. Delete an existing workflow first.'));
               return;
             }
             if (!res.ok) throw new Error('Save failed');
@@ -773,16 +787,16 @@ export const CanvasWorkspace = () => {
                 })),
               },
             };
-            const res = await apiFetch('/api/templates', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload),
-            });
+            const res = await withRefresh(() =>
+              client.api.templates.$post(
+                { json: payload as any },
+                { headers: authHeaders() }
+              )
+            );
             if (!res.ok) {
-              const err = await res.json().catch(() => ({}));
-              throw new Error(err.error || 'Publish failed');
+              const err: Record<string, unknown> = await res.json().catch(() => ({}));
+              throw new Error(String(err.error || 'Publish failed'));
             }
-            const data = await res.json();
             setPublishDialogOpen(false);
             toast.success('Template published!');
           } catch (e) {

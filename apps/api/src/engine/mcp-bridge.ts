@@ -14,12 +14,17 @@ export interface DiscoveredTool {
 
 // ─── Connection Pooling with Liveness Checks ─────────────────────────
 
-const clientPool = new Map<string, { client: Client; lastUsed: number }>();
+interface PoolEntry {
+  client: Client;
+  lastUsed: number;
+}
 
-async function getClient(mcpUrl: string): Promise<Client> {
-  const pooled = clientPool.get(mcpUrl);
+const clientPool = new Map<string, PoolEntry>();
+
+async function getClient(mcpUrl: string, headers?: Record<string, string>): Promise<Client> {
+  const poolKey = headers ? `${mcpUrl}|${JSON.stringify(headers)}` : mcpUrl;
+  const pooled = clientPool.get(poolKey);
   if (pooled) {
-    // Validate liveness before returning cached client
     try {
       await Promise.race([
         pooled.client.listTools(),
@@ -35,12 +40,12 @@ async function getClient(mcpUrl: string): Promise<Client> {
         'Pooled MCP connection is stale, reconnecting',
       );
       pooled.client.close().catch(() => {});
-      clientPool.delete(mcpUrl);
+      clientPool.delete(poolKey);
     }
   }
 
-  const client = await createMCPClient(mcpUrl, { name: 'qwenweaver-engine' });
-  clientPool.set(mcpUrl, { client, lastUsed: Date.now() });
+  const client = await createMCPClient(mcpUrl, { name: 'qwenweaver-engine', headers });
+  clientPool.set(poolKey, { client, lastUsed: Date.now() });
   mcp_pool_connections.set(clientPool.size);
   
   return client;
@@ -59,57 +64,68 @@ setInterval(() => {
   mcp_pool_connections.set(clientPool.size);
 }, 60 * 1000).unref();
 
+// ─── Helpers ─────────────────────────────────────────────────────────────
+
+function buildHeadersFromAuthConfig(authConfig: unknown): Record<string, string> | undefined {
+  if (!authConfig) return undefined;
+  const cfg = authConfig as Record<string, string>;
+  if (cfg.type === 'bearer' && cfg.token) {
+    return { Authorization: `Bearer ${cfg.token}` };
+  }
+  if (cfg.type === 'api_key' && cfg.apiKey) {
+    return { Authorization: `Bearer ${cfg.apiKey}` };
+  }
+  if (cfg.type === 'basic' && cfg.username && cfg.password) {
+    const encoded = Buffer.from(`${cfg.username}:${cfg.password}`).toString('base64');
+    return { Authorization: `Basic ${encoded}` };
+  }
+  return undefined;
+}
+
 // ─── Bridge Functions ───────────────────────────────────────────────────────
 
-export async function discoverMCPTools(node: NodePayload): Promise<DiscoveredTool[]> {
+export async function discoverMCPTools(
+  node: NodePayload,
+  headers?: Record<string, string>,
+): Promise<DiscoveredTool[]> {
   const mcpUrl = node.data.mcpServerUrl;
 
   if (!mcpUrl) {
-    log.warn({ nodeId: node.id }, 'No MCP server URL configured on node, skipping tool discovery');
-    return [];
+    throw new Error('No MCP server URL configured on node');
   }
 
-  try {
-    const client = await getClient(mcpUrl);
+  const client = await getClient(mcpUrl, headers);
 
-    log.info({ nodeId: node.id, mcpUrl }, 'Connected to MCP server (from pool)');
+  log.info({ nodeId: node.id, mcpUrl }, 'Connected to MCP server (from pool)');
 
-    // Discover available tools with a 60s timeout
-    const { tools } = await Promise.race([
-      client.listTools(),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('MCP listTools timed out')), 60000))
-    ]);
+  const { tools } = await Promise.race([
+    client.listTools(),
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error('MCP listTools timed out')), 60000))
+  ]);
 
-    const discoveredTools: DiscoveredTool[] = tools.map((tool: { name: string; description?: string; inputSchema?: unknown }) => ({
-      name: tool.name,
-      description: tool.description ?? '',
-      inputSchema: (tool.inputSchema as Record<string, unknown>) ?? {},
-    }));
+  const discoveredTools: DiscoveredTool[] = tools.map((tool: { name: string; description?: string; inputSchema?: unknown }) => ({
+    name: tool.name,
+    description: tool.description ?? '',
+    inputSchema: (tool.inputSchema as Record<string, unknown>) ?? {},
+  }));
 
-    log.info(
-      { nodeId: node.id, toolCount: discoveredTools.length },
-      'MCP tools discovered',
-    );
+  log.info(
+    { nodeId: node.id, toolCount: discoveredTools.length },
+    'MCP tools discovered',
+  );
 
-    return discoveredTools;
-  } catch (error) {
-    log.error(
-      { nodeId: node.id, mcpUrl, error: (error as Error).message },
-      'Failed to discover MCP tools',
-    );
-    return [];
-  }
+  return discoveredTools;
 }
 
 export async function callMCPTool(
   mcpUrl: string,
   toolName: string,
   args: Record<string, unknown>,
+  headers?: Record<string, string>,
 ): Promise<unknown> {
   try {
-    const client = await getClient(mcpUrl);
+    const client = await getClient(mcpUrl, headers);
 
-    // Call tool with a 60s timeout
     const result = await Promise.race([
       client.callTool({ name: toolName, arguments: args }),
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error('MCP callTool timed out')), 60000))
@@ -126,3 +142,5 @@ export async function callMCPTool(
     throw error;
   }
 }
+
+export { buildHeadersFromAuthConfig };

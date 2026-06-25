@@ -11,12 +11,11 @@ import {
   SIGNUP_CREDITS,
   IS_SELF_HOSTED,
 } from '../../config.js';
-import type { RouteHandler } from '@hono/zod-openapi';
-import type { registerRoute, loginRoute, refreshRoute } from './index.js';
+import type { Context } from 'hono';
 
 const log = createModuleLogger('routes/auth.handlers');
 
-export const handleRegister: RouteHandler<typeof registerRoute, { Variables: Variables }> = async (c) => {
+export const handleRegister = async (c: Context<{ Variables: Variables }>) => {
   try {
     const body = await c.req.json();
     const result = authSchema.safeParse(body);
@@ -61,7 +60,7 @@ export const handleRegister: RouteHandler<typeof registerRoute, { Variables: Var
   }
 };
 
-export const handleLogin: RouteHandler<typeof loginRoute, { Variables: Variables }> = async (c) => {
+export const handleLogin = async (c: Context<{ Variables: Variables }>) => {
   try {
     const body = await c.req.json();
     const result = authSchema.safeParse(body);
@@ -104,7 +103,7 @@ export const handleLogin: RouteHandler<typeof loginRoute, { Variables: Variables
 };
 
 // Refresh token endpoint
-export const handleRefreshToken: RouteHandler<typeof refreshRoute, { Variables: Variables }> = async (c) => {
+export const handleRefreshToken = async (c: Context<{ Variables: Variables }>) => {
   try {
     const body = await c.req.json();
     const { refreshToken } = body as { refreshToken?: string };

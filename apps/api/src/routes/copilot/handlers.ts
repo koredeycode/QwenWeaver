@@ -10,13 +10,12 @@ import {
 import { createModuleLogger } from '../../logger.js';
 import { getProvider } from '../../engine/model-router.js'; // Reuse singleton
 import type { Variables } from '../../index.js';
-import type { RouteHandler } from '@hono/zod-openapi';
-import type { copilotRoute } from './index.js';
+import type { Context } from 'hono';
 
 const log = createModuleLogger('routes/copilot.handlers');
 
 
-export const handleCopilot: RouteHandler<typeof copilotRoute, { Variables: Variables }> = async (c) => {
+export const handleCopilot = async (c: Context<{ Variables: Variables }>) => {
   // Validate body through Zod instead of blind cast
   const raw = await c.req.json();
   const parsed = CopilotGenerateBody.safeParse(raw);
