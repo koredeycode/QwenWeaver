@@ -8,6 +8,7 @@ import type { NodeType } from '@qwenweaver/types';
 import { EXAMPLE_WORKFLOWS } from '../lib/example-workflows.js';
 import { client, authHeaders, isSelfHosted, getSaaSUrl, withRefresh } from '../lib/api-client.js';
 import { useStore } from '../store/index.js';
+import { saveDraft, loadDraft, clearDraft, hasDraft } from '../store/auto-save.js';
 import { toast } from 'sonner';
 import { edgeTypes } from './AnimatedEdge.js';
 import { CopilotOverlay } from './CopilotOverlay.js';
@@ -62,6 +63,9 @@ export const CanvasWorkspace = () => {
   const setWorkflowMeta = useStore((s) => s.setWorkflowMeta);
   const maximizedNodeId = useStore((s) => s.maximizedNodeId);
   const setMaximizedNodeId = useStore((s) => s.setMaximizedNodeId);
+
+  const isDirty = useStore((s) => s.isDirty);
+  const pushHistory = useStore((s) => s.pushHistory);
 
   const status = useStore((s) => s.executionStatus);
   const runWorkflow = useStore((s) => s.runWorkflow);
@@ -278,6 +282,21 @@ export const CanvasWorkspace = () => {
           duplicateNode(selectedId);
         }
       }
+
+      // 8. Undo: Ctrl + Z (not when input is focused — handled by isInput check above)
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && !event.shiftKey) {
+        event.preventDefault();
+        useStore.getState().undo();
+      }
+
+      // 9. Redo: Ctrl + Shift + Z or Ctrl + Y
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        (event.key.toLowerCase() === 'y' || (event.key.toLowerCase() === 'z' && event.shiftKey))
+      ) {
+        event.preventDefault();
+        useStore.getState().redo();
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -297,12 +316,72 @@ export const CanvasWorkspace = () => {
     setMaximizedNodeId,
   ]);
 
+  // Auto-save: debounced 2s after any graph change
+  useEffect(() => {
+    if (status === 'running') return;
+    const timer = setTimeout(() => {
+      const state = useStore.getState();
+      saveDraft({
+        nodes: state.nodes,
+        edges: state.edges,
+        workflowName: state.workflowName,
+        workflowDescription: state.workflowDescription,
+        timestamp: Date.now(),
+      });
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [nodes, edges, workflowName, workflowDescription, status]);
+
+  // Restore draft on mount
+  useEffect(() => {
+    const draft = loadDraft();
+    if (draft) {
+      const timer = setTimeout(() => {
+        toast('Unsaved draft found. Restore?', {
+          duration: Infinity,
+          action: {
+            label: 'Restore',
+            onClick: () => {
+              useStore.getState().loadUnsavedWorkflow(
+                draft.nodes,
+                draft.edges,
+                draft.workflowName,
+                draft.workflowDescription,
+              );
+              toast.success('Draft restored.');
+            },
+          },
+          cancel: {
+            label: 'Dismiss',
+            onClick: () => clearDraft(),
+          },
+        });
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  // Warn before closing with unsaved changes
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
+
   // Handle Drag-and-drop drop trigger
   const connectionStartRef = useRef<{ source: string; sourceHandle: string | null } | null>(null);
 
   const onConnectStart = useCallback((_: any, { nodeId, handleId }: any) => {
     connectionStartRef.current = { source: nodeId, sourceHandle: handleId ?? null };
   }, []);
+
+  const onNodeDragStart = useCallback(() => {
+    pushHistory();
+  }, [pushHistory]);
 
   const onConnectEnd = useCallback(
     (event: MouseEvent | TouchEvent) => {
@@ -453,6 +532,7 @@ export const CanvasWorkspace = () => {
             {workflowName && (
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold text-slate-900">{workflowName}</span>
+                {isDirty && <span className="w-2 h-2 rounded-full bg-orange-500 inline-block flex-shrink-0" title="Unsaved changes" />}
                 {workflowDescription && (
                   <div className="relative" ref={descRef}>
                     <button
@@ -718,6 +798,7 @@ export const CanvasWorkspace = () => {
                 onConnect={onConnect}
                 onConnectStart={onConnectStart}
                 onConnectEnd={onConnectEnd}
+                onNodeDragStart={onNodeDragStart}
                 onDragOver={onDragOver}
                 onDrop={onDrop}
                 nodeTypes={nodeTypes as any}

@@ -73,6 +73,8 @@ const RESEARCH_SWARM_TEMPLATE = {
     ] as Edge[],
 };
 
+let _updateNodeDataTimer: ReturnType<typeof setTimeout> | undefined;
+
 export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (set, get) => ({
   nodes: RESEARCH_SWARM_TEMPLATE.nodes,
   edges: RESEARCH_SWARM_TEMPLATE.edges,
@@ -80,13 +82,30 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
   workflowId: null,
   workflowName: '',
   workflowDescription: '',
+  isDirty: false,
+  markClean: () => set({ isDirty: false }),
   maximizedNodeId: null,
   setMaximizedNodeId: (id) => set({ maximizedNodeId: id }),
 
-  onNodesChange: (changes) => set((state) => ({ nodes: applyNodeChanges(changes, state.nodes) })),
-  onEdgesChange: (changes) => set((state) => ({ edges: applyEdgeChanges(changes, state.edges) })),
+  onNodesChange: (changes) => {
+    const hasRemove = changes.some((c: any) => c.type === 'remove');
+    if (hasRemove) get().pushHistory();
+    set((state) => {
+      const newNodes = applyNodeChanges(changes, state.nodes);
+      return { nodes: newNodes, isDirty: true };
+    });
+  },
+  onEdgesChange: (changes) => {
+    const hasRemove = changes.some((c: any) => c.type === 'remove');
+    if (hasRemove) get().pushHistory();
+    set((state) => {
+      const newEdges = applyEdgeChanges(changes, state.edges);
+      return { edges: newEdges, isDirty: true };
+    });
+  },
 
-  onConnect: (connection: Connection) =>
+  onConnect: (connection: Connection) => {
+    get().pushHistory();
     set((state) => {
       const sourceNode = state.nodes.find((n) => n.id === connection.source);
       const targetNode = state.nodes.find((n) => n.id === connection.target);
@@ -172,10 +191,13 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
           },
           state.edges,
         ),
+        isDirty: true,
       };
-    }),
+    });
+  },
 
   addNode: (type, position, additionalData) => {
+    get().pushHistory();
     const id = `node-${type}-${Date.now().toString().slice(-4)}`;
     const label =
       type === 'input_trigger' ? 'Initial workflow instruction' : `${type.toUpperCase()} Node`;
@@ -195,17 +217,22 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
     set((state) => ({
       nodes: [...state.nodes, newNode],
       selectedNodeId: id,
+      isDirty: true,
     }));
   },
 
-  deleteNode: (id) =>
+  deleteNode: (id) => {
+    get().pushHistory();
     set((state) => ({
       nodes: state.nodes.filter((n) => n.id !== id),
       edges: state.edges.filter((e) => e.source !== id && e.target !== id),
       selectedNodeId: state.selectedNodeId === id ? null : state.selectedNodeId,
-    })),
+      isDirty: true,
+    }));
+  },
 
-  duplicateNode: (id) =>
+  duplicateNode: (id) => {
+    get().pushHistory();
     set((state) => {
       const original = state.nodes.find((n) => n.id === id);
       if (!original) return {};
@@ -226,10 +253,15 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
       return {
         nodes: [...state.nodes, duplicatedNode],
         selectedNodeId: newId,
+        isDirty: true,
       };
-    }),
+    });
+  },
 
-  updateNodeData: (id, data) =>
+  updateNodeData: (id, data) => {
+    if (!_updateNodeDataTimer) get().pushHistory();
+    clearTimeout(_updateNodeDataTimer);
+    _updateNodeDataTimer = setTimeout(() => { _updateNodeDataTimer = undefined; }, 800);
     set((state) => ({
       nodes: state.nodes.map((node) => {
         if (node.id === id) {
@@ -237,14 +269,17 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
         }
         return node;
       }),
-    })),
+      isDirty: true,
+    }));
+  },
 
   selectNode: (id) => set({ selectedNodeId: id }),
 
   setWorkflowMeta: (name, description) =>
-    set({ workflowName: name, workflowDescription: description }),
+    set({ workflowName: name, workflowDescription: description, isDirty: true }),
 
-  clearGraph: () =>
+  clearGraph: () => {
+    get().pushHistory();
     set({
       nodes: [],
       edges: [],
@@ -252,14 +287,18 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
       workflowId: null,
       workflowName: '',
       workflowDescription: '',
-    }),
+      isDirty: false,
+    });
+  },
 
   loadTemplate: (templateName) => {
     if (templateName === 'research') {
+      get().pushHistory();
       set({
         nodes: RESEARCH_SWARM_TEMPLATE.nodes,
         edges: RESEARCH_SWARM_TEMPLATE.edges,
         selectedNodeId: null,
+        isDirty: false,
       });
     }
   },
@@ -267,6 +306,7 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
   loadWorkflow: (workflowId) => {
     const wf = EXAMPLE_WORKFLOWS.find((w) => w.id === workflowId);
     if (wf) {
+      get().pushHistory();
       set({
         nodes: wf.nodes as any,
         edges: wf.edges as any,
@@ -274,6 +314,7 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
         workflowId: null,
         workflowName: wf.name,
         workflowDescription: wf.description,
+        isDirty: false,
       });
       get().rearrangeGraph();
       toast.success(`Loaded workflow: ${wf.name}`);
@@ -283,6 +324,7 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
   },
 
   loadUnsavedWorkflow: (nodes, edges, name, description = '') => {
+    get().pushHistory();
     set({
       nodes: nodes as any,
       edges: edges as any,
@@ -290,6 +332,7 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
       workflowId: null,
       workflowName: name,
       workflowDescription: description,
+      isDirty: false,
     });
     get().rearrangeGraph();
   },
@@ -438,6 +481,7 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
   },
 
   importWorkflow: (workflowData, merge) => {
+    get().pushHistory();
     try {
       const validatedData = {
         name: (workflowData as any).name || 'Imported Workflow',

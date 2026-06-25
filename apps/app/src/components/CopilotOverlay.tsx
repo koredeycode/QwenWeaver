@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquareCode, Send, Loader2, X, Sparkles } from 'lucide-react';
 import { useStore } from '../store/index.js';
 
@@ -10,40 +10,6 @@ export const CopilotOverlay = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
 
-  // Track button position on the screen
-  const [pos, setPos] = useState(() => {
-    // Default position: near bottom right corner
-    const saved = localStorage.getItem('qwenweaver_copilot_pos');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
-          // Verify it's within viewport bounds
-          const x = Math.max(10, Math.min(window.innerWidth - 80, parsed.x));
-          const y = Math.max(10, Math.min(window.innerHeight - 80, parsed.y));
-          return { x, y };
-        }
-      } catch {
-        // Fallback
-      }
-    }
-    return { x: window.innerWidth - 180, y: window.innerHeight - 150 };
-  });
-
-  const dragRef = useRef<{
-    isDragging: boolean;
-    startX: number;
-    startY: number;
-    posX: number;
-    posY: number;
-  }>({
-    isDragging: false,
-    startX: 0,
-    startY: 0,
-    posX: 0,
-    posY: 0,
-  });
-
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll chat to bottom
@@ -52,93 +18,6 @@ export const CopilotOverlay = () => {
       chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, isOpen]);
-
-  // Keep position bounded when window resizes
-  useEffect(() => {
-    const handleResize = () => {
-      setPos((prev) => {
-        const x = Math.max(10, Math.min(window.innerWidth - 80, prev.x));
-        const y = Math.max(10, Math.min(window.innerHeight - 80, prev.y));
-        return { x, y };
-      });
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  const startDrag = useCallback(
-    (clientX: number, clientY: number) => {
-      dragRef.current = {
-        isDragging: false,
-        startX: clientX,
-        startY: clientY,
-        posX: pos.x,
-        posY: pos.y,
-      };
-
-      const handleMove = (moveClientX: number, moveClientY: number) => {
-        const deltaX = moveClientX - dragRef.current.startX;
-        const deltaY = moveClientY - dragRef.current.startY;
-
-        if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
-          dragRef.current.isDragging = true;
-        }
-
-        const newX = Math.max(10, Math.min(window.innerWidth - 80, dragRef.current.posX + deltaX));
-        const newY = Math.max(10, Math.min(window.innerHeight - 80, dragRef.current.posY + deltaY));
-
-        setPos({ x: newX, y: newY });
-        localStorage.setItem('qwenweaver_copilot_pos', JSON.stringify({ x: newX, y: newY }));
-      };
-
-      const handleMouseMove = (moveEvent: MouseEvent) => {
-        handleMove(moveEvent.clientX, moveEvent.clientY);
-      };
-
-      const handleTouchMove = (moveEvent: TouchEvent) => {
-        const touch = moveEvent.touches[0];
-        if (touch) {
-          handleMove(touch.clientX, touch.clientY);
-        }
-      };
-
-      const handleEnd = () => {
-        window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('mouseup', handleEnd);
-        window.removeEventListener('touchmove', handleTouchMove);
-        window.removeEventListener('touchend', handleEnd);
-      };
-
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleEnd);
-      window.addEventListener('touchmove', handleTouchMove, { passive: false });
-      window.addEventListener('touchend', handleEnd);
-    },
-    [pos],
-  );
-
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.button !== 0) return;
-      startDrag(e.clientX, e.clientY);
-    },
-    [startDrag],
-  );
-
-  const handleTouchStart = useCallback(
-    (e: React.TouchEvent) => {
-      const touch = e.touches[0];
-      if (touch) {
-        startDrag(touch.clientX, touch.clientY);
-      }
-    },
-    [startDrag],
-  );
-
-  const handleButtonClick = () => {
-    if (dragRef.current.isDragging) return;
-    setIsOpen((prev) => !prev);
-  };
 
   const handleSend = () => {
     if (!input.trim()) return;
@@ -153,50 +32,12 @@ export const CopilotOverlay = () => {
     }
   };
 
-  // Calculate overlay position (anchored to the button, but clamped within viewport)
-  const overlayWidth = 340;
-  const overlayHeight = 440;
-
-  // Place overlay right above or next to the button
-  const overlayLeft = Math.max(20, Math.min(window.innerWidth - overlayWidth - 20, pos.x - 280));
-  const overlayTop = Math.max(
-    20,
-    Math.min(window.innerHeight - overlayHeight - 80, pos.y - overlayHeight - 15),
-  );
-
   return (
-    <>
-      {/* Draggable Copilot Button */}
-      <div
-        style={{ left: pos.x, top: pos.y }}
-        className="fixed z-50 select-none cursor-grab active:cursor-grabbing touch-none"
-        onMouseDown={handleMouseDown}
-        onTouchStart={handleTouchStart}
-      >
-        <button
-          onClick={handleButtonClick}
-          className={`flex items-center gap-2 px-4 py-2.5 shadow-lg border border-[#cbd5e1] font-mono text-xs font-bold transition-all rounded-none ${
-            isOpen
-              ? 'bg-[#ea580c] border-[#ea580c] text-white'
-              : 'bg-white hover:bg-slate-50 text-slate-700'
-          }`}
-          title="Drag to reposition, Click to toggle Qwen Copilot chat"
-          data-tour="copilot"
-        >
-          <MessageSquareCode className={`w-4 h-4 ${isOpen ? 'text-white' : 'text-[#ea580c]'}`} />
-          <span>Qwen Copilot</span>
-          <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
-        </button>
-      </div>
-
-      {/* Floating Chat Overlay */}
+    <div className="fixed bottom-14 left-3 z-50 flex flex-col items-start gap-2 pointer-events-none">
       {isOpen && (
-        <div
-          style={{ left: overlayLeft, top: overlayTop, width: overlayWidth, height: overlayHeight }}
-          className="fixed z-50 bg-white border border-[#cbd5e1] shadow-2xl flex flex-col font-sans text-slate-800 select-none rounded-none overflow-hidden animate-in fade-in zoom-in-95 duration-150"
-        >
+        <div className="pointer-events-auto bg-white border border-[#cbd5e1] shadow-2xl flex flex-col font-sans text-slate-800 select-none rounded-none overflow-hidden animate-in fade-in zoom-in-95 duration-150 w-[340px] h-[440px] mb-1">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-[#cbd5e1] bg-[#f8fafc] px-4 py-2.5">
+          <div className="flex items-center justify-between border-b border-[#cbd5e1] bg-[#f8fafc] px-4 py-2.5 flex-shrink-0">
             <div className="flex items-center gap-1.5 text-xs font-mono font-bold tracking-wider text-slate-900">
               <MessageSquareCode className="w-3.5 h-3.5 text-[#ea580c]" />
               QwenWeaver Copilot Assistant
@@ -249,7 +90,7 @@ export const CopilotOverlay = () => {
           </div>
 
           {/* Chat Input */}
-          <div className="p-3 border-t border-[#cbd5e1] bg-white flex items-center gap-1.5">
+          <div className="p-3 border-t border-[#cbd5e1] bg-white flex items-center gap-1.5 flex-shrink-0">
             <textarea
               rows={1}
               value={input}
@@ -269,6 +110,21 @@ export const CopilotOverlay = () => {
           </div>
         </div>
       )}
-    </>
+
+      {/* Copilot Button — fixed at bottom-left above shortcuts */}
+      <button
+        onClick={() => setIsOpen((prev) => !prev)}
+        className={`pointer-events-auto flex items-center gap-2 px-4 py-2.5 shadow-lg border border-[#cbd5e1] font-mono text-xs font-bold transition-all rounded-none ${
+          isOpen
+            ? 'bg-[#ea580c] border-[#ea580c] text-white'
+            : 'bg-white hover:bg-slate-50 text-slate-700'
+        }`}
+        data-tour="copilot"
+      >
+        <MessageSquareCode className={`w-4 h-4 ${isOpen ? 'text-white' : 'text-[#ea580c]'}`} />
+        <span>Qwen Copilot</span>
+        <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
+      </button>
+    </div>
   );
 };

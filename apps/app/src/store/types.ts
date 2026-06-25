@@ -13,6 +13,14 @@ export interface CopilotMessage {
   text: string;
 }
 
+export interface CanvasSnapshot {
+  nodes: Node<NodeData>[];
+  edges: Edge[];
+  workflowName: string;
+  workflowDescription: string;
+  timestamp: number;
+}
+
 export interface AuthSlice {
   token: string | null;
   refreshToken: string | null;
@@ -37,6 +45,8 @@ export interface GraphSlice {
   workflowId: string | null;
   workflowName: string;
   workflowDescription: string;
+  isDirty: boolean;
+  markClean: () => void;
   onNodesChange: OnNodesChange;
   onEdgesChange: OnEdgesChange;
   onConnect: OnConnect;
@@ -116,10 +126,22 @@ export interface TourSlice {
   endTour: () => void;
 }
 
+export interface HistorySlice {
+  past: CanvasSnapshot[];
+  future: CanvasSnapshot[];
+  canUndo: boolean;
+  canRedo: boolean;
+  pushHistory: () => void;
+  undo: () => void;
+  redo: () => void;
+  clearHistory: () => void;
+}
+
 // Combined Global Zustand State type
 export type StoreState = AuthSlice &
   GraphSlice &
   ExecutionSlice &
   CopilotSlice &
   TemplateSlice &
-  TourSlice;
+  TourSlice &
+  HistorySlice;
