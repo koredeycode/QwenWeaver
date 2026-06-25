@@ -3,7 +3,9 @@ import { Wrench, Search, X, Loader2, CheckCircle2, ChevronDown, Key, Shield } fr
 import { useStore } from '../store/index.js';
 import { client, client2, authHeaders } from '../lib/api-client.js';
 
+const REGISTRY_URL = 'https://registry.modelcontextprotocol.io/v0/servers';
 const PAGE_SIZE = 20;
+const MAX_FETCH_PAGES = 10;
 
 const AUTH_LABELS: Record<string, string> = {
   bearer: 'Bearer',
@@ -17,6 +19,29 @@ const AUTH_COLORS: Record<string, string> = {
   basic: 'text-slate-700 bg-slate-50 border-slate-200',
 };
 
+interface RawRegistryEntry {
+  server?: {
+    name?: string;
+    title?: string;
+    description?: string;
+    remotes?: Array<{
+      type?: string;
+      url?: string;
+      headers?: Array<{ name?: string; isRequired?: boolean; description?: string }>;
+    }>;
+    packages?: Array<{
+      transport?: { type?: string };
+      environmentVariables?: Array<{ name?: string; isRequired?: boolean }>;
+    }>;
+    icons?: Array<{ src?: string }>;
+  };
+}
+
+interface RegistryPage {
+  servers?: RawRegistryEntry[];
+  metadata?: { nextCursor?: string };
+}
+
 interface MarketplaceServer {
   registryId: string;
   name: string;
@@ -28,6 +53,78 @@ interface MarketplaceServer {
   supportedAuthTypes?: string[];
   authRequired?: boolean;
   homepage?: string;
+}
+
+function normalizeEntry(entry: RawRegistryEntry): MarketplaceServer {
+  const server = entry.server || (entry as any);
+  const remotes = server.remotes || [];
+  const packages = server.packages || [];
+  const transports = [
+    ...remotes.map((r: any) => (r.type === 'streamable-http' ? 'http' : r.type)),
+    ...packages.map((p: any) => (p.transport?.type === 'stdio' ? 'stdio' : p.transport?.type)),
+  ].filter(Boolean);
+  const firstRemote = remotes[0] || {};
+  return {
+    registryId: server.name || '',
+    name: server.title || server.name || '',
+    description: server.description || '',
+    transport: transports[0] || 'http',
+    url: firstRemote.url || null,
+    iconUrl: server.icons?.[0]?.src || null,
+  };
+}
+
+function deriveAuthTypes(entry: RawRegistryEntry): string[] {
+  const server = entry.server;
+  if (!server) return [];
+  const types = new Set<string>();
+  const remotes = server.remotes || [];
+  for (const remote of remotes) {
+    const headers = remote.headers || [];
+    for (const h of headers) {
+      if (h.isRequired && typeof h.name === 'string') {
+        const name = h.name.toLowerCase();
+        if (name === 'authorization') {
+          const desc = (h.description || '').toLowerCase();
+          types.add(desc.includes('basic') ? 'basic' : 'bearer');
+        } else if (name.includes('api') && name.includes('key')) {
+          types.add('api_key');
+        }
+      }
+    }
+  }
+  const packages = server.packages || [];
+  for (const pkg of packages) {
+    const envVars = pkg.environmentVariables || [];
+    let hasUser = false,
+      hasPass = false;
+    for (const env of envVars) {
+      if (!env.isRequired || typeof env.name !== 'string') continue;
+      const name = env.name.toLowerCase();
+      if (name.includes('api_key') || name.includes('apikey') || name.includes('api-key')) {
+        types.add('api_key');
+      } else if (name.includes('token')) {
+        types.add('bearer');
+      } else if (name.includes('username') || name.includes('user')) {
+        hasUser = true;
+      } else if (name.includes('password') || name.includes('pass')) {
+        hasPass = true;
+      }
+    }
+    if (hasUser && hasPass) types.add('basic');
+  }
+  return Array.from(types);
+}
+
+async function fetchRegistryPage(cursor?: string): Promise<RegistryPage> {
+  const params = new URLSearchParams({ limit: '100', version: 'latest' });
+  if (cursor) params.set('cursor', cursor);
+  const res = await fetch(`${REGISTRY_URL}?${params}`, {
+    headers: { Accept: 'application/json' },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) throw new Error(`Registry API returned ${res.status}`);
+  return res.json();
 }
 
 export const MCPMarketplace = ({
@@ -60,24 +157,65 @@ export const MCPMarketplace = ({
         } else {
           setLoading(true);
         }
-        const qs: Record<string, string> = { limit: String(PAGE_SIZE) };
-        if (q) qs['q'] = q;
-        if (transport) qs['transport'] = transport;
-        if (c) qs['cursor'] = c;
-        const [regRes, userRes] = await Promise.all([
-          client2.api.mcp.registry.search.$get({ query: qs }, { headers: authHeaders() }),
-          client.api.mcp.servers.$get({}, { headers: authHeaders() }),
-        ]);
-        if (regRes.ok) {
-          const data = (await regRes.json()) as any;
-          if (append) {
-            setProvidedServers((prev) => [...prev, ...(data.servers || [])]);
-          } else {
-            setProvidedServers(data.servers || []);
+
+        // Fetch user's saved servers from our backend
+        const userPromise = client.api.mcp.servers.$get({}, { headers: authHeaders() });
+
+        // Fetch registry directly (no backend proxy)
+        const searchLower = q.toLowerCase();
+        let regCursor: string | undefined = c || undefined;
+        const matches: MarketplaceServer[] = [];
+        let nextCursor: string | undefined;
+        let pageCount = 0;
+
+        while (matches.length < PAGE_SIZE && pageCount < MAX_FETCH_PAGES) {
+          const data = await fetchRegistryPage(regCursor);
+          if (!data.servers?.length) break;
+          nextCursor = data.metadata?.nextCursor;
+          pageCount++;
+
+          for (const entry of data.servers) {
+            const s = entry.server || {};
+            const name = s.name;
+            if (!name) continue;
+
+            if (searchLower) {
+              const haystack = (
+                (s.title || '') +
+                ' ' +
+                name +
+                ' ' +
+                (s.description || '')
+              ).toLowerCase();
+              if (!haystack.includes(searchLower)) continue;
+            }
+
+            const normalized = normalizeEntry(entry);
+            if (transport && normalized.transport !== transport) continue;
+
+            const supportedAuthTypes = deriveAuthTypes(entry);
+            matches.push({
+              ...normalized,
+              id: normalized.registryId,
+              supportedAuthTypes,
+              authRequired: supportedAuthTypes.length > 0,
+            });
+            if (matches.length >= PAGE_SIZE) break;
           }
-          setCursor(data.cursor ?? null);
-          setHasMore(!!data.hasMore);
+
+          regCursor = nextCursor;
+          if (!regCursor) break;
         }
+
+        if (append) {
+          setProvidedServers((prev) => [...prev, ...matches]);
+        } else {
+          setProvidedServers(matches);
+        }
+        setCursor(nextCursor || null);
+        setHasMore(!!nextCursor && matches.length >= PAGE_SIZE);
+
+        const userRes = await userPromise;
         if (userRes.ok) {
           const data = (await userRes.json()) as any;
           setUserServers(data.servers || []);

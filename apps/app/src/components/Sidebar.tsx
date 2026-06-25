@@ -480,20 +480,18 @@ export const Sidebar = () => {
               </button>
 
               {/* Manual Add */}
-              <div
-                draggable
-                onDragStart={(e) => handleDragStart(e, 'mcp_tool' as NodeType)}
+              <button
                 onClick={() => {
                   addNode('mcp_tool' as NodeType, undefined, {
                     label: 'Custom MCP',
                     mcpServerUrl: '',
                   });
                 }}
-                className="p-2 hover:bg-[#eff6ff] hover:text-[#2563eb] cursor-grab active:cursor-grabbing text-xs text-slate-500 font-semibold border-t border-slate-100 transition-colors flex items-center gap-1.5"
+                className="w-full p-2 flex items-center justify-center gap-2 text-xs font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors cursor-pointer"
               >
-                <Plus className="w-3 h-3" />
-                Add Custom Server
-              </div>
+                <Plus className="w-3.5 h-3.5" />
+                Add Custom MCPs
+              </button>
             </div>
           )}
 

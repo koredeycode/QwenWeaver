@@ -63,7 +63,7 @@ describe('graph schemas', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.errors[0].message).toContain(
-        'MCP tools cannot be connected directly to each other',
+        'tools must connect to/from agents/supervisors only',
       );
     }
   });
