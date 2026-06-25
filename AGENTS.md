@@ -10,15 +10,17 @@ Before writing code or running commands, follow the rules and conventions below.
 
 Use exact flags. Never `npm` or `yarn`.
 
-| Action | Command |
-|---|---|
-| Install all dependencies | `pnpm install` |
-| Start dev servers (all) | `pnpm dev` |
-| Run tests (all) | `pnpm test` |
-| Lint all packages | `pnpm lint` |
-| Type-check workspace | `pnpm typecheck` (runs `build` in every workspace) |
-| Execute one workspace | `pnpm --filter <name> <cmd>` |
-| DB migrations (SQLite dev) | `pnpm db:push` |
+| Action                     | Command                                            |
+| -------------------------- | -------------------------------------------------- |
+| Install all dependencies   | `pnpm install`                                     |
+| Start dev servers (all)    | `pnpm dev`                                         |
+| Run tests (all)            | `pnpm test`                                        |
+| Lint all packages          | `pnpm lint`                                        |
+| Format all files           | `pnpm format`                                      |
+| Check formatting           | `pnpm format:check`                                |
+| Type-check workspace       | `pnpm typecheck` (runs `build` in every workspace) |
+| Execute one workspace      | `pnpm --filter <name> <cmd>`                       |
+| DB migrations (SQLite dev) | `pnpm db:push`                                     |
 
 Workspace names: `@qwenweaver/app`, `@qwenweaver/api`, `@qwenweaver/database`, `@qwenweaver/types`, `@qwenweaver/mcp-client`, `@qwenweaver/site`.
 

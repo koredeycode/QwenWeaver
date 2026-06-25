@@ -8,12 +8,14 @@ export const AnalyticsSummarySchema = z.object({
   totalTokens: z.number(),
   avgLatencyMs: z.number().nullable(),
   runsByModel: z.record(z.string(), z.number()),
-  recentRuns: z.array(z.object({
-    id: z.string(),
-    status: z.string(),
-    startedAt: z.string(),
-    totalTokens: z.number().optional(),
-  })),
+  recentRuns: z.array(
+    z.object({
+      id: z.string(),
+      status: z.string(),
+      startedAt: z.string(),
+      totalTokens: z.number().optional(),
+    }),
+  ),
 });
 
 // Query params for pagination

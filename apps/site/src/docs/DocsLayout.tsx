@@ -16,9 +16,7 @@ export function DocsLayout({ children }: { children: React.ReactNode }) {
               <ul className="space-y-1">
                 {section.links.map((link) => {
                   const isActive =
-                    link.to === '/docs'
-                      ? pathname === '/docs'
-                      : pathname.startsWith(link.to);
+                    link.to === '/docs' ? pathname === '/docs' : pathname.startsWith(link.to);
                   return (
                     <li key={link.to}>
                       <Link
@@ -41,9 +39,7 @@ export function DocsLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="min-w-0 flex-1 md:ml-12">
-        <article className="prose prose-slate max-w-none">
-          {children}
-        </article>
+        <article className="prose prose-slate max-w-none">{children}</article>
       </div>
     </div>
   );

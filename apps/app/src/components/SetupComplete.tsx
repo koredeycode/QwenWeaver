@@ -11,9 +11,7 @@ export function SetupComplete() {
       </div>
 
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-          Setup Complete
-        </h2>
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900">Setup Complete</h2>
         <p className="mt-2 text-sm text-slate-500 font-mono">
           QwenWeaver is configured and ready. Sign in with your admin credentials.
         </p>

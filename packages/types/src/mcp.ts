@@ -9,7 +9,9 @@ export type MCPToolDefinition = z.infer<typeof MCPToolDefinition>;
 
 export const MCPIcon = z.object({
   src: z.string().url(),
-  mimeType: z.enum(['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp']).optional(),
+  mimeType: z
+    .enum(['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp'])
+    .optional(),
   sizes: z.array(z.string()).optional(),
   theme: z.enum(['light', 'dark']).optional(),
 });

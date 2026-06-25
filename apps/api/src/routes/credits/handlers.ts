@@ -7,12 +7,15 @@ export const handleGetCredits = async (c: Context<{ Variables: Variables }>) => 
   const userId = c.get('jwtPayload').sub;
   const provider = getQueryProvider();
   const credits = await provider.getUserCredits(userId);
-  return c.json({
-    balance: credits.balance,
-    lifetimeEarned: credits.lifetimeEarned,
-    lifetimeSpent: credits.lifetimeSpent,
-    lowBalance: credits.balance < LOW_CREDIT_WARNING,
-  }, 200);
+  return c.json(
+    {
+      balance: credits.balance,
+      lifetimeEarned: credits.lifetimeEarned,
+      lifetimeSpent: credits.lifetimeSpent,
+      lowBalance: credits.balance < LOW_CREDIT_WARNING,
+    },
+    200,
+  );
 };
 
 export const handleListTransactions = async (c: Context<{ Variables: Variables }>) => {

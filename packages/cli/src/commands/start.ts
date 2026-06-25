@@ -44,7 +44,7 @@ export async function startCommand(options: StartOptions = {}): Promise<void> {
 
   // We set environment variables from the config so the API picks them up
   const envs: Record<string, string> = {
-    ...process.env as Record<string, string>,
+    ...(process.env as Record<string, string>),
     NODE_ENV: 'production',
     PORT: port,
     API_SECRET: config.apiSecret,

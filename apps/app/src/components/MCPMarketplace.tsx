@@ -30,7 +30,13 @@ interface MarketplaceServer {
   homepage?: string;
 }
 
-export const MCPMarketplace = ({ onClose, initialTab }: { onClose: () => void; initialTab?: 'registry' | 'myservers' }) => {
+export const MCPMarketplace = ({
+  onClose,
+  initialTab,
+}: {
+  onClose: () => void;
+  initialTab?: 'registry' | 'myservers';
+}) => {
   const [providedServers, setProvidedServers] = useState<MarketplaceServer[]>([]);
   const [userServers, setUserServers] = useState<MarketplaceServer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,38 +52,45 @@ export const MCPMarketplace = ({ onClose, initialTab }: { onClose: () => void; i
   const [selectedServer, setSelectedServer] = useState<MarketplaceServer | null>(null);
   const addNode = useStore((s) => s.addNode);
 
-  const loadServers = useCallback(async (q: string, transport: string, c: string | null, append = false) => {
-    try {
-      if (append) { setLoadingMore(true); } else { setLoading(true); }
-      const qs: Record<string, string> = { limit: String(PAGE_SIZE) };
-      if (q) qs['q'] = q;
-      if (transport) qs['transport'] = transport;
-      if (c) qs['cursor'] = c;
-      const [regRes, userRes] = await Promise.all([
-        client2.api.mcp.registry.search.$get({ query: qs }, { headers: authHeaders() }),
-        client.api.mcp.servers.$get({}, { headers: authHeaders() }),
-      ]);
-      if (regRes.ok) {
-        const data = await regRes.json() as any;
+  const loadServers = useCallback(
+    async (q: string, transport: string, c: string | null, append = false) => {
+      try {
         if (append) {
-          setProvidedServers(prev => [...prev, ...(data.servers || [])]);
+          setLoadingMore(true);
         } else {
-          setProvidedServers(data.servers || []);
+          setLoading(true);
         }
-        setCursor(data.cursor ?? null);
-        setHasMore(!!data.hasMore);
+        const qs: Record<string, string> = { limit: String(PAGE_SIZE) };
+        if (q) qs['q'] = q;
+        if (transport) qs['transport'] = transport;
+        if (c) qs['cursor'] = c;
+        const [regRes, userRes] = await Promise.all([
+          client2.api.mcp.registry.search.$get({ query: qs }, { headers: authHeaders() }),
+          client.api.mcp.servers.$get({}, { headers: authHeaders() }),
+        ]);
+        if (regRes.ok) {
+          const data = (await regRes.json()) as any;
+          if (append) {
+            setProvidedServers((prev) => [...prev, ...(data.servers || [])]);
+          } else {
+            setProvidedServers(data.servers || []);
+          }
+          setCursor(data.cursor ?? null);
+          setHasMore(!!data.hasMore);
+        }
+        if (userRes.ok) {
+          const data = (await userRes.json()) as any;
+          setUserServers(data.servers || []);
+        }
+      } catch (err) {
+        console.error('Failed to load servers', err);
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
       }
-      if (userRes.ok) {
-        const data = await userRes.json() as any;
-        setUserServers(data.servers || []);
-      }
-    } catch (err) {
-      console.error('Failed to load servers', err);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   // Close transport dropdown on click outside
   React.useEffect(() => {
@@ -115,7 +128,7 @@ export const MCPMarketplace = ({ onClose, initialTab }: { onClose: () => void; i
       if (res.ok) {
         const userRes = await client.api.mcp.servers.$get({}, { headers: authHeaders() });
         if (userRes.ok) {
-          const data = await userRes.json() as any;
+          const data = (await userRes.json()) as any;
           setUserServers(data.servers || []);
         }
       }
@@ -130,20 +143,26 @@ export const MCPMarketplace = ({ onClose, initialTab }: { onClose: () => void; i
     const supportedAuthTypes = server.supportedAuthTypes || [];
     // Pre-select the first supported auth type so the Inspector shows the right fields
     const initialAuthType = supportedAuthTypes.length > 0 ? supportedAuthTypes[0] : 'none';
-    const userServer = server.registryId ? userServers.find(s => s.registryId === server.registryId) : null;
-    addNode('mcp_tool', { x: 200, y: 200 }, {
-      label: server.name,
-      mcpServerUrl: server.url || '',
-      mcpServerId: userServer?.id || server.registryId || server.id || '',
-      iconUrl: server.iconUrl,
-      mcpAuthConfig: { type: initialAuthType as 'none' | 'api_key' | 'bearer' | 'basic' },
-      mcpSupportedAuthTypes: supportedAuthTypes,
-      mcpUserServerId: userServer?.id || null,
-    });
+    const userServer = server.registryId
+      ? userServers.find((s) => s.registryId === server.registryId)
+      : null;
+    addNode(
+      'mcp_tool',
+      { x: 200, y: 200 },
+      {
+        label: server.name,
+        mcpServerUrl: server.url || '',
+        mcpServerId: userServer?.id || server.registryId || server.id || '',
+        iconUrl: server.iconUrl,
+        mcpAuthConfig: { type: initialAuthType as 'none' | 'api_key' | 'bearer' | 'basic' },
+        mcpSupportedAuthTypes: supportedAuthTypes,
+        mcpUserServerId: userServer?.id || null,
+      },
+    );
     onClose();
   };
 
-  const configuredIds = new Set(userServers.map(s => s.registryId));
+  const configuredIds = new Set(userServers.map((s) => s.registryId));
 
   if (selectedServer) {
     const server = selectedServer;
@@ -154,14 +173,24 @@ export const MCPMarketplace = ({ onClose, initialTab }: { onClose: () => void; i
         <div className="bg-white w-[480px] shadow-xl border border-slate-200 max-h-[90vh] flex flex-col">
           <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 shrink-0">
             <h2 className="text-sm font-bold text-slate-900 font-sans">Server Details</h2>
-            <button onClick={() => setSelectedServer(null)} className="p-1 hover:bg-slate-100 text-slate-400">
+            <button
+              onClick={() => setSelectedServer(null)}
+              className="p-1 hover:bg-slate-100 text-slate-400"
+            >
               <X className="w-4 h-4" />
             </button>
           </div>
           <div className="p-5 overflow-y-auto flex-1">
             <div className="flex items-center gap-3 mb-4">
               {server.iconUrl ? (
-                <img src={server.iconUrl} alt="" className="w-10 h-10 rounded object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                <img
+                  src={server.iconUrl}
+                  alt=""
+                  className="w-10 h-10 rounded object-contain"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
               ) : (
                 <div className="w-10 h-10 rounded bg-purple-100 flex items-center justify-center">
                   <Wrench className="w-5 h-5 text-purple-600" />
@@ -170,9 +199,14 @@ export const MCPMarketplace = ({ onClose, initialTab }: { onClose: () => void; i
               <div>
                 <h3 className="text-sm font-bold text-slate-900">{server.name}</h3>
                 <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                  <span className="text-[10px] font-mono font-bold px-1 py-0.5 bg-slate-100 text-slate-500 uppercase">{server.transport || 'http'}</span>
+                  <span className="text-[10px] font-mono font-bold px-1 py-0.5 bg-slate-100 text-slate-500 uppercase">
+                    {server.transport || 'http'}
+                  </span>
                   {authTypes.map((t) => (
-                    <span key={t} className={`text-[9px] font-mono font-bold px-1 py-0.5 border uppercase ${AUTH_COLORS[t] || 'text-slate-500 bg-slate-50 border-slate-200'}`}>
+                    <span
+                      key={t}
+                      className={`text-[9px] font-mono font-bold px-1 py-0.5 border uppercase ${AUTH_COLORS[t] || 'text-slate-500 bg-slate-50 border-slate-200'}`}
+                    >
                       {AUTH_LABELS[t] || t}
                     </span>
                   ))}
@@ -181,7 +215,9 @@ export const MCPMarketplace = ({ onClose, initialTab }: { onClose: () => void; i
               </div>
             </div>
 
-            <p className="text-xs text-slate-600 font-mono leading-relaxed mb-4">{server.description || 'No description'}</p>
+            <p className="text-xs text-slate-600 font-mono leading-relaxed mb-4">
+              {server.description || 'No description'}
+            </p>
 
             {server.url && (
               <div className="text-[10px] text-slate-400 font-mono mb-3 truncate">
@@ -280,7 +316,9 @@ export const MCPMarketplace = ({ onClose, initialTab }: { onClose: () => void; i
                 className="text-xs border border-slate-300 px-2 py-1.5 font-mono outline-none focus:border-purple-500 bg-white flex items-center gap-1.5 whitespace-nowrap"
               >
                 {transportFilter ? transportFilter.toUpperCase() : 'All Transports'}
-                <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${transportOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown
+                  className={`w-3 h-3 text-slate-400 transition-transform ${transportOpen ? 'rotate-180' : ''}`}
+                />
               </button>
               {transportOpen && (
                 <div className="absolute z-10 top-full left-0 right-0 mt-0.5 border border-slate-300 bg-white shadow-md min-w-[140px]">
@@ -293,7 +331,10 @@ export const MCPMarketplace = ({ onClose, initialTab }: { onClose: () => void; i
                     <button
                       key={opt.value}
                       type="button"
-                      onClick={() => { setTransportFilter(opt.value); setTransportOpen(false); }}
+                      onClick={() => {
+                        setTransportFilter(opt.value);
+                        setTransportOpen(false);
+                      }}
                       className={`w-full text-left px-2 py-1.5 text-xs font-mono hover:bg-slate-50 transition-colors ${
                         transportFilter === opt.value ? 'bg-slate-100 font-bold' : ''
                       } text-slate-600`}
@@ -345,7 +386,9 @@ export const MCPMarketplace = ({ onClose, initialTab }: { onClose: () => void; i
               ) : (
                 <div className="grid grid-cols-2 gap-3">
                   {providedServers.map((server) => {
-                    const isConfigured = server.registryId ? configuredIds.has(server.registryId) : false;
+                    const isConfigured = server.registryId
+                      ? configuredIds.has(server.registryId)
+                      : false;
                     return (
                       <div
                         key={'p-' + server.registryId}
@@ -354,7 +397,14 @@ export const MCPMarketplace = ({ onClose, initialTab }: { onClose: () => void; i
                       >
                         <div className="flex items-start gap-2.5">
                           {server.iconUrl ? (
-                            <img src={server.iconUrl} alt="" className="w-7 h-7 rounded object-contain flex-shrink-0 mt-0.5" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                            <img
+                              src={server.iconUrl}
+                              alt=""
+                              className="w-7 h-7 rounded object-contain flex-shrink-0 mt-0.5"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                              }}
+                            />
                           ) : (
                             <div className="w-7 h-7 bg-purple-100 flex items-center justify-center flex-shrink-0">
                               <Wrench className="w-3.5 h-3.5 text-purple-600" />
@@ -362,17 +412,29 @@ export const MCPMarketplace = ({ onClose, initialTab }: { onClose: () => void; i
                           )}
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5">
-                              <h3 className="text-[11px] font-bold text-slate-900 truncate">{server.name}</h3>
-                              {isConfigured && <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 shrink-0" />}
+                              <h3 className="text-[11px] font-bold text-slate-900 truncate">
+                                {server.name}
+                              </h3>
+                              {isConfigured && (
+                                <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                              )}
                             </div>
-                            <p className="text-[9px] text-slate-500 mt-0.5 line-clamp-2 font-mono leading-relaxed">{server.description || 'No description'}</p>
+                            <p className="text-[9px] text-slate-500 mt-0.5 line-clamp-2 font-mono leading-relaxed">
+                              {server.description || 'No description'}
+                            </p>
                             <div className="flex items-center gap-1 flex-wrap">
-                              <span className="text-[8px] font-mono font-bold px-1 py-0.5 bg-slate-100 text-slate-500 uppercase">{server.transport || 'http'}</span>
-                              {server.supportedAuthTypes && server.supportedAuthTypes.map((t) => (
-                                <span key={t} className={`text-[7px] font-mono font-bold px-1 py-0.5 border uppercase ${AUTH_COLORS[t] || 'text-slate-500 bg-slate-50 border-slate-200'}`}>
-                                  {AUTH_LABELS[t] || t}
-                                </span>
-                              ))}
+                              <span className="text-[8px] font-mono font-bold px-1 py-0.5 bg-slate-100 text-slate-500 uppercase">
+                                {server.transport || 'http'}
+                              </span>
+                              {server.supportedAuthTypes &&
+                                server.supportedAuthTypes.map((t) => (
+                                  <span
+                                    key={t}
+                                    className={`text-[7px] font-mono font-bold px-1 py-0.5 border uppercase ${AUTH_COLORS[t] || 'text-slate-500 bg-slate-50 border-slate-200'}`}
+                                  >
+                                    {AUTH_LABELS[t] || t}
+                                  </span>
+                                ))}
                             </div>
                           </div>
                         </div>
@@ -405,7 +467,9 @@ export const MCPMarketplace = ({ onClose, initialTab }: { onClose: () => void; i
               {userServers.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-slate-400">
                   <p className="text-xs font-mono mb-1">No saved servers yet.</p>
-                  <p className="text-[10px] font-mono text-slate-300">Save a server from the Registry tab to see it here.</p>
+                  <p className="text-[10px] font-mono text-slate-300">
+                    Save a server from the Registry tab to see it here.
+                  </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-3">
@@ -417,7 +481,14 @@ export const MCPMarketplace = ({ onClose, initialTab }: { onClose: () => void; i
                     >
                       <div className="flex items-start gap-2.5">
                         {server.iconUrl ? (
-                          <img src={server.iconUrl} alt="" className="w-7 h-7 rounded object-contain flex-shrink-0 mt-0.5" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                          <img
+                            src={server.iconUrl}
+                            alt=""
+                            className="w-7 h-7 rounded object-contain flex-shrink-0 mt-0.5"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
                         ) : (
                           <div className="w-7 h-7 bg-emerald-100 flex items-center justify-center flex-shrink-0">
                             <Wrench className="w-3.5 h-3.5 text-emerald-600" />
@@ -425,17 +496,27 @@ export const MCPMarketplace = ({ onClose, initialTab }: { onClose: () => void; i
                         )}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
-                            <h3 className="text-[11px] font-bold text-slate-900 truncate">{server.name}</h3>
+                            <h3 className="text-[11px] font-bold text-slate-900 truncate">
+                              {server.name}
+                            </h3>
                             <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
                           </div>
-                          <p className="text-[9px] text-slate-500 mt-0.5 line-clamp-2 font-mono leading-relaxed">{server.description || 'No description'}</p>
+                          <p className="text-[9px] text-slate-500 mt-0.5 line-clamp-2 font-mono leading-relaxed">
+                            {server.description || 'No description'}
+                          </p>
                           <div className="flex items-center gap-1 mt-2 flex-wrap">
-                            <span className="text-[8px] font-mono font-bold px-1 py-0.5 bg-emerald-100 text-emerald-700 uppercase">{server.transport || 'http'}</span>
-                            {server.supportedAuthTypes && server.supportedAuthTypes.map((t) => (
-                              <span key={t} className={`text-[7px] font-mono font-bold px-1 py-0.5 border uppercase ${AUTH_COLORS[t] || 'text-slate-500 bg-slate-50 border-slate-200'}`}>
-                                {AUTH_LABELS[t] || t}
-                              </span>
-                            ))}
+                            <span className="text-[8px] font-mono font-bold px-1 py-0.5 bg-emerald-100 text-emerald-700 uppercase">
+                              {server.transport || 'http'}
+                            </span>
+                            {server.supportedAuthTypes &&
+                              server.supportedAuthTypes.map((t) => (
+                                <span
+                                  key={t}
+                                  className={`text-[7px] font-mono font-bold px-1 py-0.5 border uppercase ${AUTH_COLORS[t] || 'text-slate-500 bg-slate-50 border-slate-200'}`}
+                                >
+                                  {AUTH_LABELS[t] || t}
+                                </span>
+                              ))}
                           </div>
                         </div>
                       </div>
@@ -446,7 +527,6 @@ export const MCPMarketplace = ({ onClose, initialTab }: { onClose: () => void; i
             </div>
           )}
         </div>
-
       </div>
     </div>
   );

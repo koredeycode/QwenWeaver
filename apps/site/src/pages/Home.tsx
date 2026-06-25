@@ -10,7 +10,7 @@ const features = [
   },
   {
     title: 'Multi-Agent Orchestration',
-    desc: 'Chain agents, supervisors, and MCP tools in parallel. Kahn\'s Algorithm ensures optimal execution.',
+    desc: "Chain agents, supervisors, and MCP tools in parallel. Kahn's Algorithm ensures optimal execution.",
     color: 'border-blue-400/40 group-hover:border-blue-400/70',
     badge: 'bg-blue-500',
     port: 'bg-blue-400',
@@ -85,19 +85,27 @@ function Hero() {
             <span className="text-primary">Workflows Visually</span>
           </h1>
 
-          <p className="mt-6 text-lg leading-relaxed text-on-surface-variant sm:text-xl animate-fade-in" style={{ animationDelay: '0.15s' }}>
+          <p
+            className="mt-6 text-lg leading-relaxed text-on-surface-variant sm:text-xl animate-fade-in"
+            style={{ animationDelay: '0.15s' }}
+          >
             Design, execute, and monitor complex AI agent pipelines with a drag-and-drop canvas.
             Powered by Qwen, MCP, and parallel DAG execution.
           </p>
 
-          <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center animate-slide-up" style={{ animationDelay: '0.25s' }}>
+          <div
+            className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center animate-slide-up"
+            style={{ animationDelay: '0.25s' }}
+          >
             <a
               href="/app"
               className="group relative inline-flex items-center gap-2 rounded-lg bg-primary px-8 py-3 text-base font-semibold text-on-primary shadow-sm transition-all hover:shadow-lg hover:shadow-orange-500/20"
             >
               <span className="absolute -inset-0.5 rounded-lg bg-gradient-to-r from-orange-500 to-blue-500 opacity-0 blur transition-opacity group-hover:opacity-30" />
               <span className="relative">Try Cloud Free</span>
-              <span className="relative inline-block transition-transform group-hover:translate-x-0.5">→</span>
+              <span className="relative inline-block transition-transform group-hover:translate-x-0.5">
+                →
+              </span>
             </a>
             <a
               href="/self-hosted"
@@ -107,14 +115,24 @@ function Hero() {
             </a>
           </div>
 
-          <p className="mt-4 text-sm text-on-surface-variant animate-fade-in" style={{ animationDelay: '0.35s' }}>
-            1000 free credits on signup <span className="mx-1.5 text-outline">·</span> No credit card required
+          <p
+            className="mt-4 text-sm text-on-surface-variant animate-fade-in"
+            style={{ animationDelay: '0.35s' }}
+          >
+            1000 free credits on signup <span className="mx-1.5 text-outline">·</span> No credit
+            card required
           </p>
         </div>
       </div>
 
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 animate-bounce">
-        <svg className="h-5 w-5 text-on-surface-variant/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg
+          className="h-5 w-5 text-on-surface-variant/50"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
         </svg>
       </div>
@@ -124,7 +142,9 @@ function Hero() {
 
 function Features() {
   const gridRef = useRef<HTMLDivElement>(null);
-  const [lines, setLines] = useState<{ x1: number; y1: number; x2: number; y2: number; color: string; delay: number }[]>([]);
+  const [lines, setLines] = useState<
+    { x1: number; y1: number; x2: number; y2: number; color: string; delay: number }[]
+  >([]);
   const [size, setSize] = useState({ w: 100, h: 100 });
 
   useEffect(() => {
@@ -149,7 +169,14 @@ function Features() {
 
       if (cols === 3 || cols === 2) {
         const rowLen = cols;
-        const result: { x1: number; y1: number; x2: number; y2: number; color: string; delay: number }[] = [];
+        const result: {
+          x1: number;
+          y1: number;
+          x2: number;
+          y2: number;
+          color: string;
+          delay: number;
+        }[] = [];
         let delay = 0;
 
         for (let row = 0; row < Math.ceil(cards.length / rowLen); row++) {
@@ -157,13 +184,27 @@ function Features() {
             const i = row * rowLen + col;
             const j = i + 1;
             if (j < cards.length) {
-              result.push({ x1: centers[i].x, y1: centers[i].y, x2: centers[j].x, y2: centers[j].y, color: col % 2 === 0 ? '#ea580c' : '#2563eb', delay: delay++ * 0.08 });
+              result.push({
+                x1: centers[i].x,
+                y1: centers[i].y,
+                x2: centers[j].x,
+                y2: centers[j].y,
+                color: col % 2 === 0 ? '#ea580c' : '#2563eb',
+                delay: delay++ * 0.08,
+              });
             }
             if (row > 0) {
               const top = (row - 1) * rowLen + col;
               const bottom = row * rowLen + col;
               if (top < cards.length && bottom < cards.length) {
-                result.push({ x1: centers[top].x, y1: centers[top].y, x2: centers[bottom].x, y2: centers[bottom].y, color: col % 2 === 0 ? '#ea580c' : '#2563eb', delay: delay++ * 0.08 });
+                result.push({
+                  x1: centers[top].x,
+                  y1: centers[top].y,
+                  x2: centers[bottom].x,
+                  y2: centers[bottom].y,
+                  color: col % 2 === 0 ? '#ea580c' : '#2563eb',
+                  delay: delay++ * 0.08,
+                });
               }
             }
           }
@@ -196,7 +237,10 @@ function Features() {
           <h2 className="mt-6 text-3xl font-bold tracking-tight sm:text-4xl animate-fade-in">
             Everything you need to build agent systems
           </h2>
-          <p className="mt-4 text-lg text-on-surface-variant animate-fade-in" style={{ animationDelay: '0.1s' }}>
+          <p
+            className="mt-4 text-lg text-on-surface-variant animate-fade-in"
+            style={{ animationDelay: '0.1s' }}
+          >
             From simple chains to complex multi-agent societies with supervisor oversight.
           </p>
         </div>
@@ -220,8 +264,29 @@ function Features() {
 
             {lines.map((e, i) => (
               <g key={i}>
-                <line x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2} stroke={e.color} strokeWidth="3" strokeOpacity="0.2" className="animate-edge-pulse" style={{ animationDelay: `${e.delay}s` }} />
-                <line x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2} stroke={e.color} strokeWidth="3" strokeOpacity="0.5" strokeDasharray="8 12" className="animate-edge-flow" style={{ animationDelay: `${e.delay}s` }} />
+                <line
+                  x1={e.x1}
+                  y1={e.y1}
+                  x2={e.x2}
+                  y2={e.y2}
+                  stroke={e.color}
+                  strokeWidth="3"
+                  strokeOpacity="0.2"
+                  className="animate-edge-pulse"
+                  style={{ animationDelay: `${e.delay}s` }}
+                />
+                <line
+                  x1={e.x1}
+                  y1={e.y1}
+                  x2={e.x2}
+                  y2={e.y2}
+                  stroke={e.color}
+                  strokeWidth="3"
+                  strokeOpacity="0.5"
+                  strokeDasharray="8 12"
+                  className="animate-edge-flow"
+                  style={{ animationDelay: `${e.delay}s` }}
+                />
               </g>
             ))}
           </svg>
@@ -233,13 +298,24 @@ function Features() {
               className={`group relative z-10 rounded-xl border-2 bg-surface-bright p-6 transition-all duration-300 hover:shadow-lg animate-slide-up ${f.color}`}
               style={{ animationDelay: `${i * 0.08}s` }}
             >
-              <div className={`absolute top-4 left-1/2 -translate-x-1/2 h-3 w-3 rounded-full ${f.badge} shadow-lg`}>
-                <span className={`absolute inset-0 rounded-full animate-ping opacity-40 ${f.badge}`} style={{ animationDelay: `${i * 0.3}s` }} />
+              <div
+                className={`absolute top-4 left-1/2 -translate-x-1/2 h-3 w-3 rounded-full ${f.badge} shadow-lg`}
+              >
+                <span
+                  className={`absolute inset-0 rounded-full animate-ping opacity-40 ${f.badge}`}
+                  style={{ animationDelay: `${i * 0.3}s` }}
+                />
               </div>
-              <div className={`absolute top-1/2 -left-1.5 -translate-y-1/2 h-3 w-3 rounded-full ${f.port} opacity-0 group-hover:opacity-100 transition-opacity`} />
-              <div className={`absolute top-1/2 -right-1.5 -translate-y-1/2 h-3 w-3 rounded-full ${f.port} opacity-0 group-hover:opacity-100 transition-opacity`} />
+              <div
+                className={`absolute top-1/2 -left-1.5 -translate-y-1/2 h-3 w-3 rounded-full ${f.port} opacity-0 group-hover:opacity-100 transition-opacity`}
+              />
+              <div
+                className={`absolute top-1/2 -right-1.5 -translate-y-1/2 h-3 w-3 rounded-full ${f.port} opacity-0 group-hover:opacity-100 transition-opacity`}
+              />
               <h3 className="mt-4 text-center text-lg font-semibold">{f.title}</h3>
-              <p className="mt-2 text-center text-sm leading-relaxed text-on-surface-variant">{f.desc}</p>
+              <p className="mt-2 text-center text-sm leading-relaxed text-on-surface-variant">
+                {f.desc}
+              </p>
             </div>
           ))}
         </div>
@@ -256,10 +332,16 @@ function CTA() {
         <h2 className="text-3xl font-bold tracking-tight sm:text-4xl animate-fade-in">
           Ready to build your first agent workflow?
         </h2>
-        <p className="mx-auto mt-4 max-w-xl text-lg text-on-surface-variant animate-fade-in" style={{ animationDelay: '0.1s' }}>
+        <p
+          className="mx-auto mt-4 max-w-xl text-lg text-on-surface-variant animate-fade-in"
+          style={{ animationDelay: '0.1s' }}
+        >
           Sign up free and get 1000 credits to start orchestrating. No credit card.
         </p>
-        <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center animate-slide-up" style={{ animationDelay: '0.2s' }}>
+        <div
+          className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center animate-slide-up"
+          style={{ animationDelay: '0.2s' }}
+        >
           <div className="relative">
             <span className="absolute inset-0 rounded-lg bg-gradient-to-r from-orange-500 to-blue-500 opacity-20 blur-xl animate-pulse-slow" />
             <a
@@ -267,7 +349,9 @@ function CTA() {
               className="relative inline-flex items-center gap-2 rounded-lg bg-primary px-8 py-3 text-base font-semibold text-on-primary shadow-sm transition-all hover:shadow-lg hover:shadow-orange-500/20"
             >
               Get Started Free
-              <span className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
+              <span className="inline-block transition-transform group-hover:translate-x-0.5">
+                →
+              </span>
             </a>
           </div>
           <a
@@ -276,7 +360,9 @@ function CTA() {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 rounded-lg border border-outline/60 bg-surface-bright/80 px-6 py-3 text-base font-semibold text-on-surface backdrop-blur-sm transition-all hover:border-outline hover:bg-surface-dim"
           >
-            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+            </svg>
             View on GitHub
           </a>
         </div>

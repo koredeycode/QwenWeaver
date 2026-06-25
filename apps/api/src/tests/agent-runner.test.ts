@@ -48,7 +48,7 @@ describe('agent-runner', () => {
     expect(result.outputs).toHaveLength(1);
     expect(result.outputs[0].type).toBe('image');
     expect(result.outputs[0].contentType).toBe('image/png');
-    
+
     const fileUrl = result.outputs[0].value;
     expect(fileUrl).toContain('/public/storage/runs/test-run-id/I1_output.png');
 

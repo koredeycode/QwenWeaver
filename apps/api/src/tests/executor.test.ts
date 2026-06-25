@@ -60,7 +60,10 @@ describe('executor', () => {
   it('executes a linear chain in correct order', async () => {
     const workflow = createWorkflow(
       [{ id: 'A' }, { id: 'B' }, { id: 'C' }],
-      [{ source: 'A', target: 'B' }, { source: 'B', target: 'C' }],
+      [
+        { source: 'A', target: 'B' },
+        { source: 'B', target: 'C' },
+      ],
     );
 
     const emitter = createMockEmitter();
@@ -99,7 +102,10 @@ describe('executor', () => {
   it('fails on cyclic graph', async () => {
     const workflow = createWorkflow(
       [{ id: 'A' }, { id: 'B' }],
-      [{ source: 'A', target: 'B' }, { source: 'B', target: 'A' }],
+      [
+        { source: 'A', target: 'B' },
+        { source: 'B', target: 'A' },
+      ],
     );
 
     const emitter = createMockEmitter();
@@ -116,7 +122,10 @@ describe('executor', () => {
   it('computes speedup metrics', async () => {
     const workflow = createWorkflow(
       [{ id: 'A' }, { id: 'B' }, { id: 'C' }],
-      [{ source: 'A', target: 'B' }, { source: 'A', target: 'C' }],
+      [
+        { source: 'A', target: 'B' },
+        { source: 'A', target: 'C' },
+      ],
     );
 
     const emitter = createMockEmitter();
@@ -132,10 +141,7 @@ describe('executor', () => {
   });
 
   it('emits edge_active events when data flows between nodes', async () => {
-    const workflow = createWorkflow(
-      [{ id: 'A' }, { id: 'B' }],
-      [{ source: 'A', target: 'B' }],
-    );
+    const workflow = createWorkflow([{ id: 'A' }, { id: 'B' }], [{ source: 'A', target: 'B' }]);
 
     const emitter = createMockEmitter();
     await executeWorkflow(workflow, 'exec-5', emitter);
@@ -158,7 +164,7 @@ describe('executor', () => {
 
   it('supports supervisor rejection and negotiation backtrack loops', async () => {
     const { runAgent } = await import('../engine/agent-runner.js');
-    
+
     let roundCount = 0;
     vi.mocked(runAgent).mockImplementation(async (node: any) => {
       if (node.type === 'supervisor') {
@@ -218,7 +224,10 @@ describe('executor', () => {
     });
 
     const workflow = createWorkflow(
-      [{ id: 'W', type: 'agent' }, { id: 'S', type: 'supervisor' }],
+      [
+        { id: 'W', type: 'agent' },
+        { id: 'S', type: 'supervisor' },
+      ],
       [{ source: 'W', target: 'S' }],
     );
 
@@ -230,9 +239,13 @@ describe('executor', () => {
 
     expect(result.status).toBe('completed');
     expect(result.outputs.get('W')?.text).toBe('Revised output from W');
-    expect(result.outputs.get('S')?.text).toBe('The worker revised output looks perfect. Accepted.');
+    expect(result.outputs.get('S')?.text).toBe(
+      'The worker revised output looks perfect. Accepted.',
+    );
 
-    const pendingEvents = emitter.events.filter((e) => e.event === 'status_update' && (e.data as any).status === 'pending');
+    const pendingEvents = emitter.events.filter(
+      (e) => e.event === 'status_update' && (e.data as any).status === 'pending',
+    );
     expect(pendingEvents.length).toBeGreaterThanOrEqual(2);
 
     vi.mocked(runAgent).mockImplementation(async (node: any) => {

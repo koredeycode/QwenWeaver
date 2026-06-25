@@ -10,7 +10,7 @@ const isDev = NODE_ENV === 'development' || NODE_ENV === 'test';
 if (!process.env.API_SECRET && !isDev) {
   throw new Error(
     'FATAL: API_SECRET environment variable is required in production. ' +
-    'Set it to a strong random string (e.g. `openssl rand -hex 32`).'
+      'Set it to a strong random string (e.g. `openssl rand -hex 32`).',
   );
 }
 
@@ -30,15 +30,15 @@ export const METRICS_TOKEN = process.env.METRICS_TOKEN;
 export const RATE_LIMIT = {
   auth: {
     windowMs: 15 * 60 * 1000, // 15 minutes
-    maxRequests: 20,           // 20 auth attempts per window
+    maxRequests: 20, // 20 auth attempts per window
   },
   copilot: {
-    windowMs: 60 * 1000,      // 1 minute
-    maxRequests: 10,           // 10 copilot requests per minute
+    windowMs: 60 * 1000, // 1 minute
+    maxRequests: 10, // 10 copilot requests per minute
   },
   api: {
-    windowMs: 60 * 1000,      // 1 minute
-    maxRequests: 120,          // 120 general API requests per minute
+    windowMs: 60 * 1000, // 1 minute
+    maxRequests: 120, // 120 general API requests per minute
   },
 };
 

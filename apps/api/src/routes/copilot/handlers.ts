@@ -14,7 +14,6 @@ import type { Context } from 'hono';
 
 const log = createModuleLogger('routes/copilot.handlers');
 
-
 export const handleCopilot = async (c: Context<{ Variables: Variables }>) => {
   // Validate body through Zod instead of blind cast
   const raw = await c.req.json();

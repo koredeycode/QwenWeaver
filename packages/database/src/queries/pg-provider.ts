@@ -3,12 +3,26 @@ import { eq, and, sql, desc, count, inArray } from 'drizzle-orm';
 import { getConnection, pgSchema } from '../index.js';
 import type { QueryProvider, WorkflowRow, WorkflowDetail } from './provider.js';
 import type { SavedMCPServerInput, SavedMCPServer } from './mcp.js';
-import type { WorkflowPayload, ExecutionMetrics, AgentLogInput, AgentLogOutput, MCPAuthConfig } from '@qwenweaver/types';
+import type {
+  WorkflowPayload,
+  ExecutionMetrics,
+  AgentLogInput,
+  AgentLogOutput,
+  MCPAuthConfig,
+} from '@qwenweaver/types';
 
 const log = {
   info: (data: Record<string, unknown>, message: string) => {
-    console.log(JSON.stringify({ level: 30, time: Date.now(), service: 'qwenweaver-database', ...data, msg: message }));
-  }
+    console.log(
+      JSON.stringify({
+        level: 30,
+        time: Date.now(),
+        service: 'qwenweaver-database',
+        ...data,
+        msg: message,
+      }),
+    );
+  },
 };
 
 export const pgProvider: QueryProvider = {
@@ -26,19 +40,31 @@ export const pgProvider: QueryProvider = {
   async getUserByEmail(email: string) {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
-    const rows = await pgDb.select().from(pgSchema.pgUsers).where(eq(pgSchema.pgUsers.email, email)).limit(1);
+    const rows = await pgDb
+      .select()
+      .from(pgSchema.pgUsers)
+      .where(eq(pgSchema.pgUsers.email, email))
+      .limit(1);
     return rows[0] || null;
   },
 
   async getUserById(id: string) {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
-    const rows = await pgDb.select().from(pgSchema.pgUsers).where(eq(pgSchema.pgUsers.id, id)).limit(1);
+    const rows = await pgDb
+      .select()
+      .from(pgSchema.pgUsers)
+      .where(eq(pgSchema.pgUsers.id, id))
+      .limit(1);
     if (!rows[0]) return null;
     return { id: rows[0].id, email: rows[0].email, createdAt: rows[0].createdAt };
   },
 
-  async saveMcpServer(id: string, userId: string, input: SavedMCPServerInput): Promise<SavedMCPServer> {
+  async saveMcpServer(
+    id: string,
+    userId: string,
+    input: SavedMCPServerInput,
+  ): Promise<SavedMCPServer> {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
     const baseValues = {
@@ -79,7 +105,10 @@ export const pgProvider: QueryProvider = {
   async getMcpServers(userId: string): Promise<SavedMCPServer[]> {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
-    const rows = await pgDb.select().from(pgSchema.pgMcpServers).where(eq(pgSchema.pgMcpServers.userId, userId));
+    const rows = await pgDb
+      .select()
+      .from(pgSchema.pgMcpServers)
+      .where(eq(pgSchema.pgMcpServers.userId, userId));
     return rows.map((r) => ({
       id: r.id,
       name: r.name,
@@ -116,7 +145,11 @@ export const pgProvider: QueryProvider = {
     return true;
   },
 
-  async updateMcpServerAuth(id: string, userId: string, authConfig: MCPAuthConfig): Promise<SavedMCPServer> {
+  async updateMcpServerAuth(
+    id: string,
+    userId: string,
+    authConfig: MCPAuthConfig,
+  ): Promise<SavedMCPServer> {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
     await pgDb
@@ -129,7 +162,8 @@ export const pgProvider: QueryProvider = {
       .where(eq(pgSchema.pgMcpServers.id, id))
       .limit(1);
     return {
-      id: r.id, name: r.name,
+      id: r.id,
+      name: r.name,
       description: r.description ?? undefined,
       transport: r.transport,
       url: r.url ?? undefined,
@@ -167,7 +201,7 @@ export const pgProvider: QueryProvider = {
           data: node.data,
           positionX: node.position.x,
           positionY: node.position.y,
-        }))
+        })),
       );
     }
 
@@ -180,7 +214,7 @@ export const pgProvider: QueryProvider = {
           target: `${workflowId}_${edge.target}`,
           sourceHandle: edge.sourceHandle || null,
           targetHandle: edge.targetHandle || null,
-        }))
+        })),
       );
     }
 
@@ -190,19 +224,20 @@ export const pgProvider: QueryProvider = {
   async listUserWorkflows(userId: string): Promise<WorkflowRow[]> {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
-    const workflows = await pgDb.select({
-      id: pgSchema.pgWorkflows.id,
-      name: pgSchema.pgWorkflows.name,
-      description: pgSchema.pgWorkflows.description,
-      createdAt: pgSchema.pgWorkflows.createdAt,
-    })
+    const workflows = await pgDb
+      .select({
+        id: pgSchema.pgWorkflows.id,
+        name: pgSchema.pgWorkflows.name,
+        description: pgSchema.pgWorkflows.description,
+        createdAt: pgSchema.pgWorkflows.createdAt,
+      })
       .from(pgSchema.pgWorkflows)
       .where(eq(pgSchema.pgWorkflows.userId, userId))
       .orderBy(desc(pgSchema.pgWorkflows.createdAt));
 
     if (workflows.length === 0) return workflows;
 
-    const wfIds = workflows.map(w => w.id);
+    const wfIds = workflows.map((w) => w.id);
     const counts = await pgDb
       .select({
         workflowId: pgSchema.pgNodes.workflowId,
@@ -220,7 +255,7 @@ export const pgProvider: QueryProvider = {
       countsByWf[row.workflowId][row.type] = row.count;
     }
 
-    return workflows.map(w => ({
+    return workflows.map((w) => ({
       ...w,
       nodeCounts: countsByWf[w.id] ?? {},
     }));
@@ -291,7 +326,7 @@ export const pgProvider: QueryProvider = {
   async updateExecution(
     executionId: string,
     status: string,
-    metrics?: ExecutionMetrics
+    metrics?: ExecutionMetrics,
   ): Promise<void> {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
@@ -312,7 +347,7 @@ export const pgProvider: QueryProvider = {
     input: AgentLogInput | null,
     output: AgentLogOutput | null,
     tokensUsed?: number,
-    error?: string | null
+    error?: string | null,
   ): Promise<void> {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
@@ -378,28 +413,30 @@ export const pgProvider: QueryProvider = {
   async getAnalyticsSummary(userId: string, recentLimit: number = 10) {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
-    
-    const summaryRows = await pgDb.select({
-      totalRuns: sql<number>`cast(count(*) as integer)`,
-      completedRuns: sql<number>`cast(sum(case when status = 'completed' then 1 else 0 end) as integer)`,
-      failedRuns: sql<number>`cast(sum(case when status = 'failed' then 1 else 0 end) as integer)`,
-      avgSpeedup: sql<number | null>`avg(cast(metrics->>'speedupS' as numeric))`,
-      totalTokens: sql<number>`cast(sum(cast(metrics->>'totalTokens' as integer)) as integer)`,
-      avgLatencyMs: sql<number | null>`avg(cast(metrics->>'totalLatencyMs' as numeric))`,
-    })
-    .from(pgSchema.pgExecutions)
-    .where(eq(pgSchema.pgExecutions.userId, userId));
 
-    const recentRows = await pgDb.select({
-      id: pgSchema.pgExecutions.id,
-      status: pgSchema.pgExecutions.status,
-      startedAt: pgSchema.pgExecutions.startedAt,
-      metrics: pgSchema.pgExecutions.metrics,
-    })
-    .from(pgSchema.pgExecutions)
-    .where(eq(pgSchema.pgExecutions.userId, userId))
-    .orderBy(desc(pgSchema.pgExecutions.startedAt))
-    .limit(recentLimit);
+    const summaryRows = await pgDb
+      .select({
+        totalRuns: sql<number>`cast(count(*) as integer)`,
+        completedRuns: sql<number>`cast(sum(case when status = 'completed' then 1 else 0 end) as integer)`,
+        failedRuns: sql<number>`cast(sum(case when status = 'failed' then 1 else 0 end) as integer)`,
+        avgSpeedup: sql<number | null>`avg(cast(metrics->>'speedupS' as numeric))`,
+        totalTokens: sql<number>`cast(sum(cast(metrics->>'totalTokens' as integer)) as integer)`,
+        avgLatencyMs: sql<number | null>`avg(cast(metrics->>'totalLatencyMs' as numeric))`,
+      })
+      .from(pgSchema.pgExecutions)
+      .where(eq(pgSchema.pgExecutions.userId, userId));
+
+    const recentRows = await pgDb
+      .select({
+        id: pgSchema.pgExecutions.id,
+        status: pgSchema.pgExecutions.status,
+        startedAt: pgSchema.pgExecutions.startedAt,
+        metrics: pgSchema.pgExecutions.metrics,
+      })
+      .from(pgSchema.pgExecutions)
+      .where(eq(pgSchema.pgExecutions.userId, userId))
+      .orderBy(desc(pgSchema.pgExecutions.startedAt))
+      .limit(recentLimit);
 
     const summary = summaryRows[0];
 
@@ -411,7 +448,7 @@ export const pgProvider: QueryProvider = {
       totalTokens: summary?.totalTokens || 0,
       avgLatencyMs: summary?.avgLatencyMs || null,
       runsByModel: {}, // Not currently tracked in metrics
-      recentRuns: recentRows.map(r => ({
+      recentRuns: recentRows.map((r) => ({
         id: r.id,
         status: r.status,
         startedAt: r.startedAt.toISOString(),
@@ -436,7 +473,8 @@ export const pgProvider: QueryProvider = {
 
     if (options?.categoryId) conditions.push(eq(s.pgTemplates.categoryId, options.categoryId));
     if (options?.featured) conditions.push(eq(s.pgTemplates.featured, 1));
-    if (options?.search) conditions.push(sql`${s.pgTemplates.name} ILIKE ${'%' + options.search + '%'}`);
+    if (options?.search)
+      conditions.push(sql`${s.pgTemplates.name} ILIKE ${'%' + options.search + '%'}`);
 
     let query: any = pgDb.select().from(s.pgTemplates).orderBy(desc(s.pgTemplates.downloads));
     if (conditions.length > 0) query = query.where(and(...conditions));
@@ -452,9 +490,12 @@ export const pgProvider: QueryProvider = {
 
     if (options?.categoryId) conditions.push(eq(s.pgTemplates.categoryId, options.categoryId));
     if (options?.featured) conditions.push(eq(s.pgTemplates.featured, 1));
-    if (options?.search) conditions.push(sql`${s.pgTemplates.name} ILIKE ${'%' + options.search + '%'}`);
+    if (options?.search)
+      conditions.push(sql`${s.pgTemplates.name} ILIKE ${'%' + options.search + '%'}`);
 
-    let query: any = pgDb.select({ count: sql<number>`cast(count(*) as integer)` }).from(s.pgTemplates);
+    let query: any = pgDb
+      .select({ count: sql<number>`cast(count(*) as integer)` })
+      .from(s.pgTemplates);
     if (conditions.length > 0) query = query.where(and(...conditions));
 
     const result = await query;
@@ -464,7 +505,11 @@ export const pgProvider: QueryProvider = {
   async getTemplate(id: string) {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
-    const rows = await pgDb.select().from(pgSchema.pgTemplates).where(eq(pgSchema.pgTemplates.id, id)).limit(1);
+    const rows = await pgDb
+      .select()
+      .from(pgSchema.pgTemplates)
+      .where(eq(pgSchema.pgTemplates.id, id))
+      .limit(1);
     return rows[0] ?? null;
   },
 
@@ -499,7 +544,8 @@ export const pgProvider: QueryProvider = {
   async incrementTemplateDownloads(id: string) {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
-    await pgDb.update(pgSchema.pgTemplates)
+    await pgDb
+      .update(pgSchema.pgTemplates)
       .set({ downloads: sql`${pgSchema.pgTemplates.downloads} + 1` })
       .where(eq(pgSchema.pgTemplates.id, id));
   },
@@ -507,49 +553,70 @@ export const pgProvider: QueryProvider = {
   async listTemplateReviews(templateId: string) {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
-    return await pgDb.select()
+    return await pgDb
+      .select()
       .from(pgSchema.pgTemplateReviews)
       .where(eq(pgSchema.pgTemplateReviews.templateId, templateId))
       .orderBy(desc(pgSchema.pgTemplateReviews.createdAt));
   },
 
-  async upsertTemplateReview(id: string, templateId: string, userId: string, rating: number, review?: string | null) {
+  async upsertTemplateReview(
+    id: string,
+    templateId: string,
+    userId: string,
+    rating: number,
+    review?: string | null,
+  ) {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
-    const existing = await pgDb.select()
+    const existing = await pgDb
+      .select()
       .from(pgSchema.pgTemplateReviews)
-      .where(and(
-        eq(pgSchema.pgTemplateReviews.templateId, templateId),
-        eq(pgSchema.pgTemplateReviews.userId, userId),
-      ))
+      .where(
+        and(
+          eq(pgSchema.pgTemplateReviews.templateId, templateId),
+          eq(pgSchema.pgTemplateReviews.userId, userId),
+        ),
+      )
       .limit(1);
 
     if (existing.length > 0) {
-      await pgDb.update(pgSchema.pgTemplateReviews)
+      await pgDb
+        .update(pgSchema.pgTemplateReviews)
         .set({ rating, review: review ?? null })
         .where(eq(pgSchema.pgTemplateReviews.id, existing[0].id));
 
-      const stats = await pgDb.select({
-        avg: sql<number>`cast(avg(${pgSchema.pgTemplateReviews.rating}) as integer)`,
-        count: sql<number>`cast(count(*) as integer)`,
-      }).from(pgSchema.pgTemplateReviews)
+      const stats = await pgDb
+        .select({
+          avg: sql<number>`cast(avg(${pgSchema.pgTemplateReviews.rating}) as integer)`,
+          count: sql<number>`cast(count(*) as integer)`,
+        })
+        .from(pgSchema.pgTemplateReviews)
         .where(eq(pgSchema.pgTemplateReviews.templateId, templateId));
 
-      await pgDb.update(pgSchema.pgTemplates)
+      await pgDb
+        .update(pgSchema.pgTemplates)
         .set({ avgRating: stats[0]?.avg ?? 0, ratingCount: stats[0]?.count ?? 0 })
         .where(eq(pgSchema.pgTemplates.id, templateId));
     } else {
       await pgDb.insert(pgSchema.pgTemplateReviews).values({
-        id, templateId, userId, rating, review: review ?? null,
+        id,
+        templateId,
+        userId,
+        rating,
+        review: review ?? null,
       });
 
-      const stats = await pgDb.select({
-        avg: sql<number>`cast(avg(${pgSchema.pgTemplateReviews.rating}) as integer)`,
-        count: sql<number>`cast(count(*) as integer)`,
-      }).from(pgSchema.pgTemplateReviews)
+      const stats = await pgDb
+        .select({
+          avg: sql<number>`cast(avg(${pgSchema.pgTemplateReviews.rating}) as integer)`,
+          count: sql<number>`cast(count(*) as integer)`,
+        })
+        .from(pgSchema.pgTemplateReviews)
         .where(eq(pgSchema.pgTemplateReviews.templateId, templateId));
 
-      await pgDb.update(pgSchema.pgTemplates)
+      await pgDb
+        .update(pgSchema.pgTemplates)
         .set({ avgRating: stats[0]?.avg ?? 0, ratingCount: stats[0]?.count ?? 0 })
         .where(eq(pgSchema.pgTemplates.id, templateId));
     }
@@ -558,7 +625,8 @@ export const pgProvider: QueryProvider = {
   async listTemplateCategories() {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
-    return await pgDb.select()
+    return await pgDb
+      .select()
       .from(pgSchema.pgTemplateCategories)
       .orderBy(pgSchema.pgTemplateCategories.sortOrder);
   },
@@ -581,7 +649,13 @@ export const pgProvider: QueryProvider = {
     };
   },
 
-  async grantCredits(userId: string, amount: number, type: string, description?: string, executionId?: string) {
+  async grantCredits(
+    userId: string,
+    amount: number,
+    type: string,
+    description?: string,
+    executionId?: string,
+  ) {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
     const existing = await pgDb
@@ -599,7 +673,8 @@ export const pgProvider: QueryProvider = {
         updatedAt: new Date(),
       });
     } else {
-      await pgDb.update(pgSchema.pgUserCredits)
+      await pgDb
+        .update(pgSchema.pgUserCredits)
         .set({
           balance: sql`${pgSchema.pgUserCredits.balance} + ${amount}`,
           lifetimeEarned: sql`${pgSchema.pgUserCredits.lifetimeEarned} + ${amount}`,
@@ -622,7 +697,8 @@ export const pgProvider: QueryProvider = {
   async deductCredits(userId: string, amount: number, description?: string, executionId?: string) {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
-    await pgDb.update(pgSchema.pgUserCredits)
+    await pgDb
+      .update(pgSchema.pgUserCredits)
       .set({
         balance: sql`${pgSchema.pgUserCredits.balance} - ${amount}`,
         lifetimeSpent: sql`${pgSchema.pgUserCredits.lifetimeSpent} + ${amount}`,

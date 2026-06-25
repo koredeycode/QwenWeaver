@@ -26,10 +26,7 @@ program
   .option('--password <string>', 'Master password to decrypt config')
   .action(startCommand);
 
-program
-  .command('build')
-  .description('Build all packages for production')
-  .action(buildCommand);
+program.command('build').description('Build all packages for production').action(buildCommand);
 
 program
   .command('migrate')

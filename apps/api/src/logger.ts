@@ -34,7 +34,7 @@ export const logger = pino(
   pino.multistream([
     { stream: stdout, level },
     { stream: fileLog, level },
-  ])
+  ]),
 );
 
 export function createModuleLogger(module: string): pino.Logger {
@@ -65,7 +65,9 @@ export function requestLogger(): MiddlewareHandler {
         duration: `${Math.round(duration)}ms`,
       };
 
-      http_request_duration_ms.labels(c.req.method, routePath(c), c.res.status.toString()).observe(duration);
+      http_request_duration_ms
+        .labels(c.req.method, routePath(c), c.res.status.toString())
+        .observe(duration);
 
       if (c.res.status >= 500) {
         logger.error(log, 'request failed');
@@ -77,4 +79,3 @@ export function requestLogger(): MiddlewareHandler {
     });
   };
 }
-

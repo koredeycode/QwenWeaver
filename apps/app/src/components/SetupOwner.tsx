@@ -17,10 +17,22 @@ export function SetupOwner({ onSubmit, initialEmail = '' }: SetupOwnerProps) {
     e.preventDefault();
     setError('');
 
-    if (!email.trim()) { setError('Email is required.'); return; }
-    if (!password) { setError('Password is required.'); return; }
-    if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
-    if (password !== confirmPassword) { setError('Passwords do not match.'); return; }
+    if (!email.trim()) {
+      setError('Email is required.');
+      return;
+    }
+    if (!password) {
+      setError('Password is required.');
+      return;
+    }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
 
     onSubmit({ email: email.trim(), password });
   };

@@ -25,9 +25,8 @@ export async function createMCPClient(
   });
 
   if (urlOrCommand.startsWith('http://') || urlOrCommand.startsWith('https://')) {
-    const { StreamableHTTPClientTransport } = await import(
-      '@modelcontextprotocol/sdk/client/streamableHttp.js'
-    );
+    const { StreamableHTTPClientTransport } =
+      await import('@modelcontextprotocol/sdk/client/streamableHttp.js');
     const transportOpts: Record<string, unknown> = {};
     if (options.headers) {
       transportOpts.requestInit = { headers: options.headers };
@@ -35,9 +34,7 @@ export async function createMCPClient(
     const transport = new StreamableHTTPClientTransport(new URL(urlOrCommand), transportOpts);
     await client.connect(transport);
   } else {
-    const { StdioClientTransport } = await import(
-      '@modelcontextprotocol/sdk/client/stdio.js'
-    );
+    const { StdioClientTransport } = await import('@modelcontextprotocol/sdk/client/stdio.js');
     const transport = new StdioClientTransport({
       command: urlOrCommand,
       args: options.commandArgs || [],

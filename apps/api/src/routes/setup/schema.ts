@@ -3,9 +3,11 @@ import { z } from 'zod';
 export const SetupStatusSchema = z.object({
   complete: z.boolean(),
   ownerExists: z.boolean(),
-  runtimeConfig: z.object({
-    dbPath: z.string(),
-  }).optional(),
+  runtimeConfig: z
+    .object({
+      dbPath: z.string(),
+    })
+    .optional(),
 });
 
 export const OwnerSetupSchema = z.object({

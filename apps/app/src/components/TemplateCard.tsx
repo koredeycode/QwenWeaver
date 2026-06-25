@@ -9,7 +9,12 @@ interface TemplateCardProps {
   onFork: (id: string) => void;
 }
 
-function parseWorkflowData(wf: any): { agents: number; supervisors: number; tools: number; triggers: number } {
+function parseWorkflowData(wf: any): {
+  agents: number;
+  supervisors: number;
+  tools: number;
+  triggers: number;
+} {
   if (!wf?.nodes) return { agents: 0, supervisors: 0, tools: 0, triggers: 0 };
   const nodes = wf.nodes as any[];
   return {
@@ -50,7 +55,6 @@ export const TemplateCard = React.memo(({ template, onSelect, onFork }: Template
         </div>
       )}
       <div className="p-6 flex flex-col justify-between flex-1 min-h-0">
-
         <div>
           <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#ea580c] transition-colors">
             {template.name}
@@ -62,25 +66,40 @@ export const TemplateCard = React.memo(({ template, onSelect, onFork }: Template
           )}
         </div>
 
-        {(counts.triggers > 0 || counts.agents > 0 || counts.supervisors > 0 || counts.tools > 0) && (
+        {(counts.triggers > 0 ||
+          counts.agents > 0 ||
+          counts.supervisors > 0 ||
+          counts.tools > 0) && (
           <div className="flex gap-1.5 flex-wrap">
             {counts.triggers > 0 && (
-              <span className="flex items-center gap-0.5 text-[9px] font-mono bg-emerald-50 border border-emerald-200 text-emerald-700 px-1 py-0.5" title="Triggers">
+              <span
+                className="flex items-center gap-0.5 text-[9px] font-mono bg-emerald-50 border border-emerald-200 text-emerald-700 px-1 py-0.5"
+                title="Triggers"
+              >
                 <Play className="w-2.5 h-2.5" /> {counts.triggers}
               </span>
             )}
             {counts.agents > 0 && (
-              <span className="flex items-center gap-0.5 text-[9px] font-mono bg-orange-50 border border-orange-200 text-[#ea580c] px-1 py-0.5" title="Agents">
+              <span
+                className="flex items-center gap-0.5 text-[9px] font-mono bg-orange-50 border border-orange-200 text-[#ea580c] px-1 py-0.5"
+                title="Agents"
+              >
                 <Bot className="w-2.5 h-2.5" /> {counts.agents}
               </span>
             )}
             {counts.supervisors > 0 && (
-              <span className="flex items-center gap-0.5 text-[9px] font-mono bg-blue-50 border border-blue-200 text-[#2563eb] px-1 py-0.5" title="Supervisors">
+              <span
+                className="flex items-center gap-0.5 text-[9px] font-mono bg-blue-50 border border-blue-200 text-[#2563eb] px-1 py-0.5"
+                title="Supervisors"
+              >
                 <Brain className="w-2.5 h-2.5" /> {counts.supervisors}
               </span>
             )}
             {counts.tools > 0 && (
-              <span className="flex items-center gap-0.5 text-[9px] font-mono bg-purple-50 border border-purple-200 text-purple-700 px-1 py-0.5" title="MCP Tools">
+              <span
+                className="flex items-center gap-0.5 text-[9px] font-mono bg-purple-50 border border-purple-200 text-purple-700 px-1 py-0.5"
+                title="MCP Tools"
+              >
                 <Wrench className="w-2.5 h-2.5" /> {counts.tools}
               </span>
             )}
@@ -97,13 +116,19 @@ export const TemplateCard = React.memo(({ template, onSelect, onFork }: Template
         </div>
         <div className="flex gap-2">
           <button
-            onClick={(e) => { e.stopPropagation(); onSelect(template.id); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect(template.id);
+            }}
             className="flex-1 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-mono font-bold transition-all"
           >
             VIEW DETAILS
           </button>
           <button
-            onClick={(e) => { e.stopPropagation(); onFork(template.id); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onFork(template.id);
+            }}
             className="py-1.5 px-3 bg-[#9a3412] hover:bg-[#a73a00] text-white text-[10px] font-mono font-bold transition-all"
           >
             FORK →

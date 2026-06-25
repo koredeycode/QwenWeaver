@@ -7,11 +7,7 @@ interface CreateWorkflowDialogProps {
   onConfirm: (name: string, description: string) => void;
 }
 
-export const CreateWorkflowDialog = ({
-  isOpen,
-  onClose,
-  onConfirm
-}: CreateWorkflowDialogProps) => {
+export const CreateWorkflowDialog = ({ isOpen, onClose, onConfirm }: CreateWorkflowDialogProps) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -45,7 +41,9 @@ export const CreateWorkflowDialog = ({
         <div className="bg-white text-slate-800 px-6 py-4 flex items-center justify-between border-b border-slate-200">
           <div className="flex items-center gap-2.5">
             <Plus className="w-4 h-4 text-[#ea580c]" />
-            <h2 className="text-sm font-bold font-mono text-slate-800 tracking-tight">NEW WORKFLOW</h2>
+            <h2 className="text-sm font-bold font-mono text-slate-800 tracking-tight">
+              NEW WORKFLOW
+            </h2>
           </div>
           <button
             onClick={onClose}

@@ -2,10 +2,7 @@ import { useState } from 'react';
 import { Key, Database } from 'lucide-react';
 
 interface SetupRuntimeProps {
-  onSubmit: (data: {
-    dashscopeApiKey?: string;
-    databaseUrl?: string;
-  }) => void;
+  onSubmit: (data: { dashscopeApiKey?: string; databaseUrl?: string }) => void;
 }
 
 export function SetupRuntime({ onSubmit }: SetupRuntimeProps) {
@@ -33,7 +30,17 @@ export function SetupRuntime({ onSubmit }: SetupRuntimeProps) {
           className="w-full bg-white border border-[#cbd5e1] p-2.5 text-sm text-slate-800 outline-none focus:border-secondary"
           placeholder="sk-..."
         />
-        <p className="text-[10px] text-slate-400 font-mono">Required for AI agent nodes. <a href="https://bailian.console.aliyun.com" target="_blank" rel="noopener noreferrer" className="text-secondary underline">Get one</a></p>
+        <p className="text-[10px] text-slate-400 font-mono">
+          Required for AI agent nodes.{' '}
+          <a
+            href="https://bailian.console.aliyun.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-secondary underline"
+          >
+            Get one
+          </a>
+        </p>
       </div>
 
       <div className="space-y-1">
@@ -46,11 +53,14 @@ export function SetupRuntime({ onSubmit }: SetupRuntimeProps) {
           onChange={(e) => setDatabaseUrl(e.target.value)}
           className="w-full bg-white border border-[#cbd5e1] p-2.5 text-sm text-slate-800 outline-none focus:border-secondary font-mono"
         />
-        <p className="text-[10px] text-slate-400 font-mono">SQLite path (<code>./data/qwenweaver.db</code>) or PostgreSQL URI</p>
+        <p className="text-[10px] text-slate-400 font-mono">
+          SQLite path (<code>./data/qwenweaver.db</code>) or PostgreSQL URI
+        </p>
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-[10px] font-mono text-slate-500">
-        JWT secret and other settings are auto-generated. You can change them later in your <code>.env</code> file.
+        JWT secret and other settings are auto-generated. You can change them later in your{' '}
+        <code>.env</code> file.
       </div>
 
       <button

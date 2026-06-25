@@ -27,7 +27,8 @@ export function SetupWizard() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    client2.api.setup.status.$get({}, { headers: authHeaders() })
+    client2.api.setup.status
+      .$get({}, { headers: authHeaders() })
       .then((res: Response) => res.json())
       .then((data: SetupStatus) => {
         setStatus(data);
@@ -53,7 +54,8 @@ export function SetupWizard() {
       };
     }
 
-    client2.api.setup.$post({ json: payload }, { headers: authHeaders() })
+    client2.api.setup
+      .$post({ json: payload }, { headers: authHeaders() })
       .then(async (res: Response) => {
         if (!res.ok) {
           const body = await res.json();
@@ -71,7 +73,8 @@ export function SetupWizard() {
 
     const payload = { runtime: data };
 
-    client2.api.setup.$post({ json: payload }, { headers: authHeaders() })
+    client2.api.setup
+      .$post({ json: payload }, { headers: authHeaders() })
       .then(async (res: Response) => {
         if (!res.ok) {
           const body = await res.json();
@@ -106,7 +109,9 @@ export function SetupWizard() {
       <div className="w-full max-w-lg bg-white border-2 border-slate-200 p-8 shadow-xl relative z-10 my-8">
         <div className="flex items-center gap-2 mb-2">
           <Cpu className="w-6 h-6 text-[#ea580c]" />
-          <span className="text-sm font-mono font-bold tracking-wider text-[#ea580c]">QWENWEAVER</span>
+          <span className="text-sm font-mono font-bold tracking-wider text-[#ea580c]">
+            QWENWEAVER
+          </span>
         </div>
 
         <h2 className="text-2xl font-bold tracking-tight text-slate-900 mb-1">
@@ -142,9 +147,7 @@ export function SetupWizard() {
                   {s.label}
                 </span>
               </div>
-              {i < STEPS.length - 1 && (
-                <div className="h-px w-8 bg-slate-200" />
-              )}
+              {i < STEPS.length - 1 && <div className="h-px w-8 bg-slate-200" />}
             </div>
           ))}
         </div>

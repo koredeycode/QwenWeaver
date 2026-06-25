@@ -114,7 +114,10 @@ export const handleSaveWorkflow = async (c: Context<{ Variables: Variables }>) =
   if (!IS_SELF_HOSTED) {
     const workflowCount = await provider.countUserWorkflows(jwtPayload.sub);
     if (workflowCount >= MAX_FREE_WORKFLOWS) {
-      return c.json({ error: `Workflow limit reached. Maximum ${MAX_FREE_WORKFLOWS} workflows allowed.` }, 403);
+      return c.json(
+        { error: `Workflow limit reached. Maximum ${MAX_FREE_WORKFLOWS} workflows allowed.` },
+        403,
+      );
     }
   }
   const workflowId = await provider.saveWorkflow(jwtPayload.sub, parsed.data);
@@ -169,7 +172,13 @@ export const handleExecute = async (c: Context<{ Variables: Variables }>) => {
   });
 
   log.info(
-    { executionId, workflowId, userId, nodeCount: workflow.nodes.length, edgeCount: workflow.edges.length },
+    {
+      executionId,
+      workflowId,
+      userId,
+      nodeCount: workflow.nodes.length,
+      edgeCount: workflow.edges.length,
+    },
     'Workflow execution created in database',
   );
 
@@ -178,7 +187,7 @@ export const handleExecute = async (c: Context<{ Variables: Variables }>) => {
   });
 
   return c.json({ executionId, status: 'pending' }, 201);
-}
+};
 
 export const handleStream = async (c: Context<{ Variables: Variables }>) => {
   const executionId = c.req.param('executionId');
@@ -187,7 +196,7 @@ export const handleStream = async (c: Context<{ Variables: Variables }>) => {
   }
   const userId = c.get('jwtPayload').sub;
   const provider = getQueryProvider();
-  
+
   let execution = activeExecutions.get(executionId);
 
   const dbExecution = await provider.getExecution(executionId);
@@ -280,7 +289,7 @@ export const handleStream = async (c: Context<{ Variables: Variables }>) => {
       closed = true;
     }
   });
-}
+};
 
 export const handleGetStatus = async (c: Context<{ Variables: Variables }>) => {
   const executionId = c.req.param('executionId');
@@ -295,11 +304,14 @@ export const handleGetStatus = async (c: Context<{ Variables: Variables }>) => {
     if (dbExecution.userId !== userId) {
       return c.json({ error: 'Unauthorized' }, 403);
     }
-    return c.json({
-      id: dbExecution.id,
-      status: dbExecution.status,
-      metrics: dbExecution.metrics,
-    }, 200);
+    return c.json(
+      {
+        id: dbExecution.id,
+        status: dbExecution.status,
+        metrics: dbExecution.metrics,
+      },
+      200,
+    );
   }
 
   const execution = activeExecutions.get(executionId);
@@ -307,12 +319,15 @@ export const handleGetStatus = async (c: Context<{ Variables: Variables }>) => {
     return c.json({ error: 'Execution not found' }, 404);
   }
 
-  return c.json({
-    id: executionId,
-    status: execution.status,
-    metrics: execution.result?.metrics,
-  }, 200);
-}
+  return c.json(
+    {
+      id: executionId,
+      status: execution.status,
+      metrics: execution.result?.metrics,
+    },
+    200,
+  );
+};
 
 // ─── Cost estimation ──────────────────────────────────────────────────────────
 
@@ -324,7 +339,10 @@ function estimateExecutionCost(workflow: z.infer<typeof WorkflowPayload>): numbe
   return Math.max(total, MIN_COST);
 }
 
-function calculateFinalCost(workflow: z.infer<typeof WorkflowPayload>, totalTokens: number): number {
+function calculateFinalCost(
+  workflow: z.infer<typeof WorkflowPayload>,
+  totalTokens: number,
+): number {
   const baseCost = estimateExecutionCost(workflow);
   const tokenCost = Math.round(totalTokens * (PROMPT_TOKEN_COST + COMPLETION_TOKEN_COST));
   return Math.max(baseCost + tokenCost, MIN_COST);
@@ -354,11 +372,7 @@ async function runExecutionAsync(executionId: string, workflow: WorkflowPayload)
       isClosed: () => execution.emitters.size === 0,
     };
 
-    const result = await executeWorkflow(
-      workflow,
-      executionId,
-      broadcastEmitter,
-    );
+    const result = await executeWorkflow(workflow, executionId, broadcastEmitter);
 
     execution.status = result.status;
     execution.result = result;
@@ -371,7 +385,12 @@ async function runExecutionAsync(executionId: string, workflow: WorkflowPayload)
         const provider = getQueryProvider();
         const dbExec = await provider.getExecution(executionId);
         if (dbExec) {
-          await provider.deductCredits(dbExec.userId, cost, `Execution ${executionId}`, executionId);
+          await provider.deductCredits(
+            dbExec.userId,
+            cost,
+            `Execution ${executionId}`,
+            executionId,
+          );
           log.info({ executionId, cost, totalTokens }, 'Credits deducted for execution');
         }
       } catch (err) {
@@ -379,10 +398,7 @@ async function runExecutionAsync(executionId: string, workflow: WorkflowPayload)
       }
     }
 
-    log.info(
-      { executionId, status: result.status },
-      'Execution finished',
-    );
+    log.info({ executionId, status: result.status }, 'Execution finished');
   } finally {
     // Always resolve the promise and schedule cleanup
     if (execution.resolve) {

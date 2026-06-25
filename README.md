@@ -53,14 +53,14 @@ pnpm dev
 
 ## Available Commands
 
-| Action | Command |
-|---|---|
-| Start dev servers | `pnpm dev` |
-| Build all packages | `pnpm build` |
-| Run tests | `pnpm test` |
-| Lint | `pnpm lint` |
-| Type-check | `pnpm typecheck` |
-| DB migrations (dev) | `pnpm db:push` |
+| Action              | Command          |
+| ------------------- | ---------------- |
+| Start dev servers   | `pnpm dev`       |
+| Build all packages  | `pnpm build`     |
+| Run tests           | `pnpm test`      |
+| Lint                | `pnpm lint`      |
+| Type-check          | `pnpm typecheck` |
+| DB migrations (dev) | `pnpm db:push`   |
 
 ## Key Features
 
@@ -73,13 +73,13 @@ pnpm dev
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
+| Layer        | Technology                                                        |
+| ------------ | ----------------------------------------------------------------- |
 | **Frontend** | React 19, Vite 8, React Flow v12, Zustand, Tailwind v4, shadcn/ui |
-| **Backend** | Hono.js 4, `@hono/node-server`, SSE streaming |
-| **Database** | Drizzle ORM, better-sqlite3 (dev) / postgres (prod) |
-| **AI** | `@ai-sdk/alibaba` — Qwen3-Max / Qwen3-Plus on DashScope |
-| **MCP** | `@modelcontextprotocol/sdk` — HTTP & Stdio transports |
+| **Backend**  | Hono.js 4, `@hono/node-server`, SSE streaming                     |
+| **Database** | Drizzle ORM, better-sqlite3 (dev) / postgres (prod)               |
+| **AI**       | `@ai-sdk/alibaba` — Qwen3-Max / Qwen3-Plus on DashScope           |
+| **MCP**      | `@modelcontextprotocol/sdk` — HTTP & Stdio transports             |
 
 ## License
 

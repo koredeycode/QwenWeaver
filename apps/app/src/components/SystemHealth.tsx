@@ -54,7 +54,9 @@ export const SystemHealth = () => {
       }
     };
     fetchHealth();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (error) {
@@ -90,12 +92,16 @@ export const SystemHealth = () => {
         <div className="flex items-center gap-2 text-xs text-slate-600">
           <span className="w-3 flex justify-center">{statusDot(dbStatus(health.database))}</span>
           <span className="w-16">Database</span>
-          <span className="font-mono text-[10px] text-slate-400 capitalize">{health.database.type}</span>
+          <span className="font-mono text-[10px] text-slate-400 capitalize">
+            {health.database.type}
+          </span>
         </div>
         <div className="flex items-center gap-2 text-xs text-slate-600">
           <span className="w-3 flex justify-center">{statusDot(dockerStatus(health.docker))}</span>
           <span className="w-16">Docker</span>
-          <span className="font-mono text-[10px] text-slate-400">{health.docker.available ? 'available' : 'not found'}</span>
+          <span className="font-mono text-[10px] text-slate-400">
+            {health.docker.available ? 'available' : 'not found'}
+          </span>
         </div>
         <div className="flex items-center gap-2 text-xs text-slate-600">
           <span className="w-3 flex justify-center">{statusDot('healthy')}</span>

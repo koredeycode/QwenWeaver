@@ -25,8 +25,11 @@ export async function runAgent(
 
   // Set up dynamic abort controller linked to SSE connection and a 120s timeout
   const abortController = new AbortController();
-  const timeoutId = setTimeout(() => abortController.abort('Agent execution timed out (120s)'), 120000);
-  
+  const timeoutId = setTimeout(
+    () => abortController.abort('Agent execution timed out (120s)'),
+    120000,
+  );
+
   let pollInterval: ReturnType<typeof setInterval> | undefined;
   if (emitter) {
     pollInterval = setInterval(() => {
@@ -43,15 +46,18 @@ export async function runAgent(
     if (node.data.outputFormat === 'image') {
       const prompt = node.data.label ?? 'Generates an image';
       let buffer: Buffer;
-      
+
       if (apiKey) {
         log.info({ nodeId: node.id, prompt }, 'Calling Wanx image generation API');
         buffer = await generateWanxImage(prompt, apiKey, abortController.signal);
       } else {
-        log.info({ nodeId: node.id }, 'No DASHSCOPE_API_KEY set, generating placeholder mock image');
+        log.info(
+          { nodeId: node.id },
+          'No DASHSCOPE_API_KEY set, generating placeholder mock image',
+        );
         buffer = Buffer.from(
           'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
-          'base64'
+          'base64',
         );
       }
 
@@ -84,10 +90,13 @@ export async function runAgent(
         log.info({ nodeId: node.id, prompt }, 'Calling CosyVoice speech synthesis API');
         buffer = await generateCosyVoiceAudio(prompt, apiKey);
       } else {
-        log.info({ nodeId: node.id }, 'No DASHSCOPE_API_KEY set, generating placeholder mock audio');
+        log.info(
+          { nodeId: node.id },
+          'No DASHSCOPE_API_KEY set, generating placeholder mock audio',
+        );
         buffer = Buffer.from(
           '//MkxAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABXhpbmcAAAADAAAAAQAAAAAAAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ohs=',
-          'base64'
+          'base64',
         );
       }
 
@@ -120,10 +129,13 @@ export async function runAgent(
         log.info({ nodeId: node.id, prompt }, 'Calling Wanx video generation API');
         buffer = await generateWanxVideo(prompt, apiKey, abortController.signal);
       } else {
-        log.info({ nodeId: node.id }, 'No DASHSCOPE_API_KEY set, generating placeholder mock video');
+        log.info(
+          { nodeId: node.id },
+          'No DASHSCOPE_API_KEY set, generating placeholder mock video',
+        );
         buffer = Buffer.from(
           'AAAAGGZ0eXBtcDQyAAAAAG1wNDJpc29tAAAAKHV1aWRkZWYoY29tcGxldGVfZmlsZV9tZXRhZGF0YSkAAAAIZnJlZQAAAAttZGF0AAAAAG1vb3YAAABs',
-          'base64'
+          'base64',
         );
       }
 
@@ -167,7 +179,7 @@ export async function runAgent(
               log.info({ nodeId: node.id, toolName: t.name, args }, 'Executing MCP tool call');
               const typedArgs = args as Record<string, unknown>;
               return await callMCPTool(node.data.mcpServerUrl!, t.name, typedArgs);
-            }
+            },
           } as any);
         }
       } catch (err) {
@@ -269,10 +281,7 @@ export async function runAgent(
     const durationMs = Math.round(performance.now() - startTime);
     const errorMessage = (error as Error).message;
 
-    log.error(
-      { nodeId: node.id, error: errorMessage, durationMs },
-      'Agent execution failed',
-    );
+    log.error({ nodeId: node.id, error: errorMessage, durationMs }, 'Agent execution failed');
 
     return {
       nodeId: node.id,
@@ -367,17 +376,17 @@ async function writeBinaryAsset(
   executionId: string,
   nodeId: string,
   extension: string,
-  dataBuffer: Buffer
+  dataBuffer: Buffer,
 ): Promise<string> {
   const relativeDir = path.join('public', 'storage', 'runs', executionId);
   const absoluteDir = path.resolve(relativeDir);
-  
+
   await fs.mkdir(absoluteDir, { recursive: true });
-  
+
   const filename = `${nodeId}_output.${extension}`;
   const absolutePath = path.join(absoluteDir, filename);
   await fs.writeFile(absolutePath, dataBuffer);
-  
+
   return `/public/storage/runs/${executionId}/${filename}`;
 }
 
@@ -412,7 +421,9 @@ async function pollWithBackoff(
     if (status === 'SUCCEEDED') {
       const resultUrl = opts.resultExtractor(pollData);
       if (!resultUrl) {
-        throw new Error(`${opts.taskName} succeeded but returned no result URL: ${JSON.stringify(pollData)}`);
+        throw new Error(
+          `${opts.taskName} succeeded but returned no result URL: ${JSON.stringify(pollData)}`,
+        );
       }
       const resultResponse = await fetch(resultUrl, { signal: opts.signal });
       if (!resultResponse.ok) {
@@ -423,16 +434,21 @@ async function pollWithBackoff(
       throw new Error(`${opts.taskName} failed or was canceled: ${JSON.stringify(pollData)}`);
     }
 
-    await new Promise(resolve => setTimeout(resolve, delay));
+    await new Promise((resolve) => setTimeout(resolve, delay));
     delay = Math.min(delay * 2, opts.maxDelayMs);
   }
   throw new Error(`${opts.taskName} timed out after ${opts.maxAttempts} attempts`);
 }
 
-async function generateWanxImage(prompt: string, apiKey: string, signal?: AbortSignal): Promise<Buffer> {
-  const submitUrl = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis';
+async function generateWanxImage(
+  prompt: string,
+  apiKey: string,
+  signal?: AbortSignal,
+): Promise<Buffer> {
+  const submitUrl =
+    'https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis';
   const headers = {
-    'Authorization': `Bearer ${apiKey}`,
+    Authorization: `Bearer ${apiKey}`,
     'Content-Type': 'application/json',
     'X-DashScope-Async': 'enable',
   };
@@ -465,7 +481,7 @@ async function generateWanxImage(prompt: string, apiKey: string, signal?: AbortS
 
   return pollWithBackoff(
     `https://dashscope.aliyuncs.com/api/v1/tasks/${taskId}`,
-    { 'Authorization': `Bearer ${apiKey}` },
+    { Authorization: `Bearer ${apiKey}` },
     {
       maxAttempts: 20,
       initialDelayMs: 1000,
@@ -481,7 +497,7 @@ async function generateWanxImage(prompt: string, apiKey: string, signal?: AbortS
 async function generateCosyVoiceAudio(text: string, apiKey: string): Promise<Buffer> {
   const ttsUrl = 'https://dashscope.aliyuncs.com/api/v1/services/audio/tts/cosyvoice-synthesis';
   const headers = {
-    'Authorization': `Bearer ${apiKey}`,
+    Authorization: `Bearer ${apiKey}`,
     'Content-Type': 'application/json',
   };
   const body = {
@@ -506,10 +522,15 @@ async function generateCosyVoiceAudio(text: string, apiKey: string): Promise<Buf
   return Buffer.from(await response.arrayBuffer());
 }
 
-async function generateWanxVideo(prompt: string, apiKey: string, signal?: AbortSignal): Promise<Buffer> {
-  const submitUrl = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text2video/video-synthesis';
+async function generateWanxVideo(
+  prompt: string,
+  apiKey: string,
+  signal?: AbortSignal,
+): Promise<Buffer> {
+  const submitUrl =
+    'https://dashscope.aliyuncs.com/api/v1/services/aigc/text2video/video-synthesis';
   const headers = {
-    'Authorization': `Bearer ${apiKey}`,
+    Authorization: `Bearer ${apiKey}`,
     'Content-Type': 'application/json',
     'X-DashScope-Async': 'enable',
   };
@@ -535,12 +556,14 @@ async function generateWanxVideo(prompt: string, apiKey: string, signal?: AbortS
   const submitData = (await response.json()) as { output?: { task_id?: string } };
   const taskId = submitData.output?.task_id;
   if (!taskId) {
-    throw new Error(`Wanx Video task submission did not return a task_id: ${JSON.stringify(submitData)}`);
+    throw new Error(
+      `Wanx Video task submission did not return a task_id: ${JSON.stringify(submitData)}`,
+    );
   }
 
   return pollWithBackoff(
     `https://dashscope.aliyuncs.com/api/v1/tasks/${taskId}`,
-    { 'Authorization': `Bearer ${apiKey}` },
+    { Authorization: `Bearer ${apiKey}` },
     {
       maxAttempts: 20,
       initialDelayMs: 2000,

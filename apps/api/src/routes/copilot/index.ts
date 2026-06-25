@@ -2,5 +2,4 @@ import { Hono } from 'hono';
 import type { Variables } from '../../index.js';
 import { handleCopilot } from './handlers.js';
 
-export const copilotRoutes = new Hono<{ Variables: Variables }>()
-  .post('/', handleCopilot);
+export const copilotRoutes = new Hono<{ Variables: Variables }>().post('/', handleCopilot);

@@ -24,9 +24,5 @@ function dialect(): 'mysql' | 'postgresql' | 'sqlite' {
 export default defineConfig({
   schema: schemaPath(),
   dialect: dialect(),
-  dbCredentials: isMysql
-    ? { url }
-    : isPostgres
-      ? { url }
-      : { url },
+  dbCredentials: isMysql ? { url } : isPostgres ? { url } : { url },
 });

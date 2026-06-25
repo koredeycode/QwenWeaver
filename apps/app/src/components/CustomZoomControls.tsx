@@ -7,16 +7,16 @@ interface CustomZoomControlsProps {
   onToggleLock: () => void;
 }
 
-export const CustomZoomControls = ({ 
-  isLocked, 
-  onToggleLock 
-}: CustomZoomControlsProps) => {
+export const CustomZoomControls = ({ isLocked, onToggleLock }: CustomZoomControlsProps) => {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   const { zoom } = useViewport();
   const zoomPercent = Math.round(zoom * 100);
 
   return (
-    <Panel position="bottom-center" className="mb-4 bg-white border border-[#cbd5e1] p-0.5 shadow-sm flex flex-row items-center select-none pointer-events-auto rounded-none h-8">
+    <Panel
+      position="bottom-center"
+      className="mb-4 bg-white border border-[#cbd5e1] p-0.5 shadow-sm flex flex-row items-center select-none pointer-events-auto rounded-none h-8"
+    >
       <button
         onClick={() => zoomOut()}
         className="w-7 h-7 flex items-center justify-center hover:bg-slate-50 text-slate-600 font-bold transition-colors cursor-pointer"
@@ -44,7 +44,7 @@ export const CustomZoomControls = ({
       <button
         onClick={onToggleLock}
         className="w-7 h-7 flex items-center justify-center hover:bg-slate-50 text-slate-500 hover:text-slate-700 transition-colors border-l border-slate-100 cursor-pointer"
-        title={isLocked ? "Unlock Workspace Interactions" : "Lock Workspace Interactions"}
+        title={isLocked ? 'Unlock Workspace Interactions' : 'Lock Workspace Interactions'}
       >
         {isLocked ? (
           <Lock className="w-3.5 h-3.5 text-rose-600 fill-rose-50/50" />

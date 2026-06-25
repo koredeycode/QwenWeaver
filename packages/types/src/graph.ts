@@ -1,20 +1,27 @@
 import { z } from 'zod';
 
-export const NodeType = z.enum(['trigger', 'agent', 'supervisor', 'mcp_tool', 'logic', 'input_trigger']);
+export const NodeType = z.enum([
+  'trigger',
+  'agent',
+  'supervisor',
+  'mcp_tool',
+  'logic',
+  'input_trigger',
+]);
 export type NodeType = z.infer<typeof NodeType>;
 
 export const OutputFormat = z.enum([
-  'markdown', 
-  'html', 
-  'json', 
-  'csv', 
-  'xml', 
-  'yaml', 
-  'text', 
-  'code', 
-  'image', 
-  'audio', 
-  'video'
+  'markdown',
+  'html',
+  'json',
+  'csv',
+  'xml',
+  'yaml',
+  'text',
+  'code',
+  'image',
+  'audio',
+  'video',
 ]);
 export type OutputFormat = z.infer<typeof OutputFormat>;
 
@@ -36,13 +43,15 @@ export const NodeData = z.object({
   mcpServerUrl: z.string().optional(),
   mcpServerId: z.string().optional(),
   iconUrl: z.string().optional(),
-  mcpAuthConfig: z.object({
-    type: z.enum(['none', 'api_key', 'bearer', 'basic']).optional(),
-    apiKey: z.string().optional(),
-    token: z.string().optional(),
-    username: z.string().optional(),
-    password: z.string().optional(),
-  }).optional(),
+  mcpAuthConfig: z
+    .object({
+      type: z.enum(['none', 'api_key', 'bearer', 'basic']).optional(),
+      apiKey: z.string().optional(),
+      token: z.string().optional(),
+      username: z.string().optional(),
+      password: z.string().optional(),
+    })
+    .optional(),
   enableThinking: z.boolean().optional(),
   outputFormat: OutputFormat.optional(),
 });
@@ -71,26 +80,31 @@ export const EdgePayload = z.object({
 });
 export type EdgePayload = z.infer<typeof EdgePayload>;
 
-export const WorkflowPayload = z.object({
-  id: z.string().optional(),
-  name: z.string(),
-  description: z.string().optional(),
-  nodes: z.array(NodePayload),
-  edges: z.array(EdgePayload),
-}).refine((data) => {
-  const nodeMap = new Map(data.nodes.map((n) => [n.id, n]));
-  for (const edge of data.edges) {
-    const sourceNode = nodeMap.get(edge.source);
-    const targetNode = nodeMap.get(edge.target);
-    if (sourceNode?.type === 'mcp_tool' && targetNode?.type === 'mcp_tool') {
-      return false;
-    }
-  }
-  return true;
-}, {
-  message: "MCP tools cannot be connected directly to each other",
-  path: ["edges"]
-});
+export const WorkflowPayload = z
+  .object({
+    id: z.string().optional(),
+    name: z.string(),
+    description: z.string().optional(),
+    nodes: z.array(NodePayload),
+    edges: z.array(EdgePayload),
+  })
+  .refine(
+    (data) => {
+      const nodeMap = new Map(data.nodes.map((n) => [n.id, n]));
+      for (const edge of data.edges) {
+        const sourceNode = nodeMap.get(edge.source);
+        const targetNode = nodeMap.get(edge.target);
+        if (sourceNode?.type === 'mcp_tool' && targetNode?.type === 'mcp_tool') {
+          return false;
+        }
+      }
+      return true;
+    },
+    {
+      message: 'MCP tools cannot be connected directly to each other',
+      path: ['edges'],
+    },
+  );
 export type WorkflowPayload = z.infer<typeof WorkflowPayload>;
 
 export const ExecutionStatus = z.enum(['pending', 'running', 'completed', 'failed']);

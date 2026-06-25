@@ -9,7 +9,9 @@ vi.mock('@qwenweaver/mcp-client', () => ({
 const { createMCPClient } = await import('@qwenweaver/mcp-client');
 const { discoverMCPTools, callMCPTool } = await import('../engine/mcp-bridge.js');
 
-function createMockClient(tools: Array<{ name: string; description?: string; inputSchema?: unknown }> = []) {
+function createMockClient(
+  tools: Array<{ name: string; description?: string; inputSchema?: unknown }> = [],
+) {
   return {
     listTools: vi.fn().mockResolvedValue({ tools }),
     callTool: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: 'result' }] }),
@@ -93,15 +95,11 @@ describe('mcp-bridge', () => {
   it('throws on callMCPTool failure', async () => {
     vi.mocked(createMCPClient).mockRejectedValue(new Error('Connection failed'));
 
-    await expect(
-      callMCPTool('http://unreachable:9090', 'test_tool', {}),
-    ).rejects.toThrow();
+    await expect(callMCPTool('http://unreachable:9090', 'test_tool', {})).rejects.toThrow();
   });
 
   it('handles tools with missing descriptions and schemas gracefully', async () => {
-    const mockTools = [
-      { name: 'bare_tool' },
-    ];
+    const mockTools = [{ name: 'bare_tool' }];
     const mockClient = createMockClient(mockTools);
     vi.mocked(createMCPClient).mockResolvedValue(mockClient as any);
 

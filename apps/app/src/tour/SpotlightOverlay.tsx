@@ -1,10 +1,4 @@
-import React, {
-  useState,
-  useLayoutEffect,
-  useCallback,
-  useMemo,
-  useRef,
-} from 'react';
+import React, { useState, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import { X } from 'lucide-react';
 import { useStore } from '../store/index.js';
 import { getCanvasNodeScreenCoords } from './getCanvasNodeScreenCoords.js';
@@ -93,8 +87,7 @@ function computeTooltipPosition(
   viewW: number,
   viewH: number,
 ): TooltipPos {
-  const fits = (l: number, t: number) =>
-    l >= 0 && t >= 0 && l + tw <= viewW && t + th <= viewH;
+  const fits = (l: number, t: number) => l >= 0 && t >= 0 && l + tw <= viewW && t + th <= viewH;
 
   // prettier-ignore
   const sides: { left: number; top: number; side: TooltipSide }[] = [
@@ -147,7 +140,10 @@ export const SpotlightOverlay = () => {
 
   const activeStep: TourStep | undefined = steps[currentStepIndex];
 
-  const [spotlight, setSpotlight] = useState<{ combined: SpotlightBox; individual: SpotlightBox[] } | null>(null);
+  const [spotlight, setSpotlight] = useState<{
+    combined: SpotlightBox;
+    individual: SpotlightBox[];
+  } | null>(null);
   const animRef = useRef<SpotlightBox | null>(null);
   const rafId = useRef(0);
 
@@ -244,14 +240,7 @@ export const SpotlightOverlay = () => {
       };
     }
     return {
-      ...computeTooltipPosition(
-        spotlight.combined,
-        TOOLTIP_W,
-        TOOLTIP_H,
-        14,
-        viewW,
-        viewH,
-      ),
+      ...computeTooltipPosition(spotlight.combined, TOOLTIP_W, TOOLTIP_H, 14, viewW, viewH),
       isCentered: false,
     };
   }, [spotlight, viewW, viewH]);
@@ -265,10 +254,7 @@ export const SpotlightOverlay = () => {
   return (
     <div className="fixed inset-0 z-[9999]">
       {/* ---------- SVG spotlight mask + dark overlay ---------- */}
-      <svg
-        className="absolute inset-0 h-full w-full"
-        style={{ pointerEvents: 'none' }}
-      >
+      <svg className="absolute inset-0 h-full w-full" style={{ pointerEvents: 'none' }}>
         {spotlight && !tooltip.isCentered && (
           <defs>
             <mask id="tour-spotlight-mask">
@@ -291,11 +277,7 @@ export const SpotlightOverlay = () => {
           width="100%"
           height="100%"
           fill="rgba(0,0,0,0.55)"
-          mask={
-            spotlight && !tooltip.isCentered
-              ? 'url(#tour-spotlight-mask)'
-              : undefined
-          }
+          mask={spotlight && !tooltip.isCentered ? 'url(#tour-spotlight-mask)' : undefined}
         />
       </svg>
 
@@ -306,14 +288,8 @@ export const SpotlightOverlay = () => {
           pointerEvents: 'none',
           backdropFilter: 'blur(4px)',
           WebkitBackdropFilter: 'blur(4px)',
-          mask:
-            spotlight && !tooltip.isCentered
-              ? 'url(#tour-spotlight-mask)'
-              : undefined,
-          WebkitMask:
-            spotlight && !tooltip.isCentered
-              ? 'url(#tour-spotlight-mask)'
-              : undefined,
+          mask: spotlight && !tooltip.isCentered ? 'url(#tour-spotlight-mask)' : undefined,
+          WebkitMask: spotlight && !tooltip.isCentered ? 'url(#tour-spotlight-mask)' : undefined,
           maskSize: '100% 100%',
           WebkitMaskSize: '100% 100%',
         }}
@@ -345,12 +321,8 @@ export const SpotlightOverlay = () => {
 
         {/* Body */}
         <div className="px-4 pb-3 pt-1.5">
-          <h3 className="mb-1 text-sm font-bold text-slate-900">
-            {activeStep.title}
-          </h3>
-          <p className="text-xs leading-relaxed text-slate-600">
-            {activeStep.description}
-          </p>
+          <h3 className="mb-1 text-sm font-bold text-slate-900">{activeStep.title}</h3>
+          <p className="text-xs leading-relaxed text-slate-600">{activeStep.description}</p>
         </div>
 
         {/* Footer actions */}

@@ -4,18 +4,28 @@ export const CopilotGenerateBody = z.object({
   /** Natural language prompt from the user */
   prompt: z.string().min(1),
   /** Current canvas state (minimized JSON of existing nodes/edges) */
-  canvasState: z.object({
-    nodes: z.array(z.object({
-      id: z.string(),
-      type: z.string(),
-      data: z.record(z.unknown()).optional(),
-    })).optional(),
-    edges: z.array(z.object({
-      id: z.string(),
-      source: z.string(),
-      target: z.string(),
-    })).optional(),
-  }).optional(),
+  canvasState: z
+    .object({
+      nodes: z
+        .array(
+          z.object({
+            id: z.string(),
+            type: z.string(),
+            data: z.record(z.unknown()).optional(),
+          }),
+        )
+        .optional(),
+      edges: z
+        .array(
+          z.object({
+            id: z.string(),
+            source: z.string(),
+            target: z.string(),
+          }),
+        )
+        .optional(),
+    })
+    .optional(),
   /** Whether to modify existing canvas, generate from scratch, or explain */
   mode: z.enum(['generate', 'modify', 'explain']).default('generate'),
 });

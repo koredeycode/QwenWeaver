@@ -24,15 +24,17 @@ function detectDialect(url: string): Dialect {
   return 'sqlite';
 }
 
-export type DB = 
-  | BetterSQLite3Database<typeof sqliteSchema> 
+export type DB =
+  | BetterSQLite3Database<typeof sqliteSchema>
   | PostgresJsDatabase<typeof pgSchema>
   | MySql2Database<typeof mysqlSchema>;
 
 let _db: DB | null = null;
 let _dialect: Dialect | null = null;
 
-export async function createConnectionAsync(databaseUrl?: string): Promise<{ db: DB; dialect: Dialect }> {
+export async function createConnectionAsync(
+  databaseUrl?: string,
+): Promise<{ db: DB; dialect: Dialect }> {
   const defaultPath = fileURLToPath(new URL('../data/dev.db', import.meta.url));
   const url = databaseUrl ?? process.env.DATABASE_URL ?? defaultPath;
   const dialect = detectDialect(url);
@@ -76,7 +78,9 @@ export function createConnection(databaseUrl?: string): { db: DB; dialect: Diale
   const dialect = detectDialect(url);
 
   if (dialect === 'mysql') {
-    throw new Error('MySQL requires createConnectionAsync. Please initialize the DB connection asynchronously.');
+    throw new Error(
+      'MySQL requires createConnectionAsync. Please initialize the DB connection asynchronously.',
+    );
   }
 
   if (dialect === 'sqlite') {
@@ -101,7 +105,6 @@ export function createConnection(databaseUrl?: string): { db: DB; dialect: Diale
   _dialect = 'postgres';
   return { db, dialect };
 }
-
 
 export function getConnection(): { db: DB; dialect: Dialect } {
   if (_db && _dialect) {

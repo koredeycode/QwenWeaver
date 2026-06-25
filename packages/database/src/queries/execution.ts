@@ -1,18 +1,18 @@
-import type {
-  ExecutionMetrics,
-  AgentLogInput,
-  AgentLogOutput,
-} from '@qwenweaver/types';
+import type { ExecutionMetrics, AgentLogInput, AgentLogOutput } from '@qwenweaver/types';
 import { getQueryProvider } from './provider.js';
 
-export async function createExecution(executionId: string, workflowId: string, userId: string): Promise<void> {
+export async function createExecution(
+  executionId: string,
+  workflowId: string,
+  userId: string,
+): Promise<void> {
   return getQueryProvider().createExecution(executionId, workflowId, userId);
 }
 
 export async function updateExecution(
   executionId: string,
   status: string,
-  metrics?: ExecutionMetrics
+  metrics?: ExecutionMetrics,
 ): Promise<void> {
   return getQueryProvider().updateExecution(executionId, status, metrics);
 }
@@ -24,9 +24,17 @@ export async function saveAgentLog(
   input: AgentLogInput | null,
   output: AgentLogOutput | null,
   tokensUsed?: number,
-  error?: string | null
+  error?: string | null,
 ): Promise<void> {
-  return getQueryProvider().saveAgentLog(executionId, nodeId, status, input, output, tokensUsed, error);
+  return getQueryProvider().saveAgentLog(
+    executionId,
+    nodeId,
+    status,
+    input,
+    output,
+    tokensUsed,
+    error,
+  );
 }
 
 export async function getExecution(executionId: string) {

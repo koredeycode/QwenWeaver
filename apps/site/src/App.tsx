@@ -22,14 +22,70 @@ function App() {
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/self-hosted" element={<SelfHosted />} />
 
-          <Route path="/docs" element={<DocsLayout><Overview /></DocsLayout>} />
-          <Route path="/docs/getting-started" element={<DocsLayout><GettingStarted /></DocsLayout>} />
-          <Route path="/docs/self-hosted" element={<DocsLayout><SelfHostedGuide /></DocsLayout>} />
-          <Route path="/docs/workflow-guide" element={<DocsLayout><WorkflowGuide /></DocsLayout>} />
-          <Route path="/docs/node-types" element={<DocsLayout><NodeTypes /></DocsLayout>} />
-          <Route path="/docs/mcp" element={<DocsLayout><MCPIntegration /></DocsLayout>} />
-          <Route path="/docs/api" element={<DocsLayout><APIReference /></DocsLayout>} />
-          <Route path="/docs/architecture" element={<DocsLayout><Architecture /></DocsLayout>} />
+          <Route
+            path="/docs"
+            element={
+              <DocsLayout>
+                <Overview />
+              </DocsLayout>
+            }
+          />
+          <Route
+            path="/docs/getting-started"
+            element={
+              <DocsLayout>
+                <GettingStarted />
+              </DocsLayout>
+            }
+          />
+          <Route
+            path="/docs/self-hosted"
+            element={
+              <DocsLayout>
+                <SelfHostedGuide />
+              </DocsLayout>
+            }
+          />
+          <Route
+            path="/docs/workflow-guide"
+            element={
+              <DocsLayout>
+                <WorkflowGuide />
+              </DocsLayout>
+            }
+          />
+          <Route
+            path="/docs/node-types"
+            element={
+              <DocsLayout>
+                <NodeTypes />
+              </DocsLayout>
+            }
+          />
+          <Route
+            path="/docs/mcp"
+            element={
+              <DocsLayout>
+                <MCPIntegration />
+              </DocsLayout>
+            }
+          />
+          <Route
+            path="/docs/api"
+            element={
+              <DocsLayout>
+                <APIReference />
+              </DocsLayout>
+            }
+          />
+          <Route
+            path="/docs/architecture"
+            element={
+              <DocsLayout>
+                <Architecture />
+              </DocsLayout>
+            }
+          />
         </Route>
       </Routes>
     </BrowserRouter>

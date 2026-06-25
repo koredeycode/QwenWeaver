@@ -1,21 +1,13 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/index.js';
-import { 
-  X,
-  Bot,
-  Brain,
-  Wrench,
-  Play,
-  PanelLeft,
-  PanelRight
-} from 'lucide-react';
+import { X, Bot, Brain, Wrench, Play, PanelLeft, PanelRight } from 'lucide-react';
 
 export const MaximizedNodeOverlay = () => {
   const nodes = useStore((s) => s.nodes);
   const edges = useStore((s) => s.edges);
   const maximizedNodeId = useStore((s) => s.maximizedNodeId);
   const setMaximizedNodeId = useStore((s) => s.setMaximizedNodeId);
-  
+
   const maximizedNodeOutput = useStore((s) => s.nodeOutputs[maximizedNodeId || ''] || '');
   const maximizedNodeStatus = useStore((s) => s.nodeStatuses[maximizedNodeId || ''] || 'pending');
 
@@ -50,11 +42,11 @@ export const MaximizedNodeOverlay = () => {
   const outgoingNodes = nodes.filter((n) => outgoingEdges.some((e) => e.target === n.id));
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[999] flex items-center justify-center p-6 select-text pointer-events-auto"
       onClick={() => setMaximizedNodeId(null)}
     >
-      <div 
+      <div
         className="bg-white border-2 border-slate-900 shadow-2xl rounded-none w-full max-w-4xl h-[85vh] flex flex-col relative overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
@@ -64,7 +56,8 @@ export const MaximizedNodeOverlay = () => {
             {getNodeIcon(maximizedNode.type)}
             <div>
               <div className="text-[10px] font-mono text-slate-400 font-bold tracking-wider uppercase">
-                {(maximizedNode.type || '').replace('_', ' ')} NODE &bull; STATUS: {maximizedNodeStatus.toUpperCase()}
+                {(maximizedNode.type || '').replace('_', ' ')} NODE &bull; STATUS:{' '}
+                {maximizedNodeStatus.toUpperCase()}
               </div>
               <h2 className="text-sm font-bold font-mono text-slate-800 tracking-tight">
                 {maximizedNode.data.label || 'Node Details'}
@@ -75,27 +68,29 @@ export const MaximizedNodeOverlay = () => {
             <button
               onClick={() => setShowOverlayLeft(!showOverlayLeft)}
               className={`p-1.5 rounded-none transition-colors cursor-pointer border ${
-                showOverlayLeft 
-                  ? 'bg-slate-100 text-[#ea580c] border-slate-200 hover:bg-slate-200' 
+                showOverlayLeft
+                  ? 'bg-slate-100 text-[#ea580c] border-slate-200 hover:bg-slate-200'
                   : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50'
               }`}
-              title={showOverlayLeft ? "Hide Left Parameters Panel" : "Show Left Parameters Panel"}
+              title={showOverlayLeft ? 'Hide Left Parameters Panel' : 'Show Left Parameters Panel'}
             >
               <PanelLeft className="w-4 h-4" />
             </button>
             <button
               onClick={() => setShowOverlayRight(!showOverlayRight)}
               className={`p-1.5 rounded-none transition-colors cursor-pointer border ${
-                showOverlayRight 
-                  ? 'bg-slate-100 text-[#ea580c] border-slate-200 hover:bg-slate-200' 
+                showOverlayRight
+                  ? 'bg-slate-100 text-[#ea580c] border-slate-200 hover:bg-slate-200'
                   : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50'
               }`}
-              title={showOverlayRight ? "Hide Right Connections Panel" : "Show Right Connections Panel"}
+              title={
+                showOverlayRight ? 'Hide Right Connections Panel' : 'Show Right Connections Panel'
+              }
             >
               <PanelRight className="w-4 h-4" />
             </button>
             <div className="h-6 w-[1px] bg-slate-200 mx-1" />
-            <button 
+            <button
               onClick={() => setMaximizedNodeId(null)}
               className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
               title="Close overlay (Esc)"
@@ -111,7 +106,9 @@ export const MaximizedNodeOverlay = () => {
           {showOverlayLeft && (
             <div className="w-full md:w-72 p-6 space-y-4 bg-slate-50 overflow-y-auto">
               <div>
-                <label className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block mb-1">Node Identifier</label>
+                <label className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                  Node Identifier
+                </label>
                 <div className="font-mono text-[11px] text-slate-800 bg-white border border-slate-200 p-2 select-all break-all">
                   {maximizedNode.id}
                 </div>
@@ -119,7 +116,9 @@ export const MaximizedNodeOverlay = () => {
 
               {maximizedNode.data.model && (
                 <div>
-                  <label className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block mb-1">Model Engine</label>
+                  <label className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                    Model Engine
+                  </label>
                   <div className="font-mono text-xs font-bold text-slate-800 bg-white border border-slate-200 p-2">
                     {maximizedNode.data.model}
                   </div>
@@ -128,7 +127,9 @@ export const MaximizedNodeOverlay = () => {
 
               {maximizedNode.data.mcpServerUrl && (
                 <div>
-                  <label className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block mb-1">MCP URL Endpoint</label>
+                  <label className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                    MCP URL Endpoint
+                  </label>
                   <div className="font-mono text-xs text-slate-700 bg-white border border-slate-200 p-2 select-all overflow-x-auto truncate">
                     {maximizedNode.data.mcpServerUrl}
                   </div>
@@ -137,8 +138,10 @@ export const MaximizedNodeOverlay = () => {
 
               {maximizedNode.data.systemPrompt && (
                 <div className="flex flex-col min-h-[180px]">
-                  <label className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block mb-1">System Instructions</label>
-                  <textarea 
+                  <label className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                    System Instructions
+                  </label>
+                  <textarea
                     readOnly
                     disabled
                     className="flex-1 w-full text-[11px] font-mono p-3 bg-white border border-slate-200 text-slate-500 resize-none outline-none leading-relaxed"
@@ -149,12 +152,18 @@ export const MaximizedNodeOverlay = () => {
 
               {maximizedNode.type === 'input_trigger' && (
                 <div>
-                  <label className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block mb-1">Live Custom Instruction</label>
+                  <label className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                    Live Custom Instruction
+                  </label>
                   <textarea
                     className="w-full text-xs font-mono p-2 border border-slate-200 focus:border-emerald-500 outline-none resize-none bg-white text-slate-800"
                     rows={4}
                     value={maximizedNode.data.label || ''}
-                    onChange={(e) => useStore.getState().updateNodeData(maximizedNode.id, { label: e.target.value })}
+                    onChange={(e) =>
+                      useStore
+                        .getState()
+                        .updateNodeData(maximizedNode.id, { label: e.target.value })
+                    }
                     placeholder="Enter instruction to feed upstream..."
                   />
                 </div>
@@ -174,7 +183,7 @@ export const MaximizedNodeOverlay = () => {
               <span className="text-[10px] font-mono text-slate-500">AUTO-SCROLL ENABLED</span>
             </div>
 
-            <div 
+            <div
               className="flex-1 font-mono text-[11px] leading-relaxed overflow-y-auto whitespace-pre-wrap p-2 select-text scrollbar"
               ref={(el) => {
                 if (el) {
@@ -182,8 +191,11 @@ export const MaximizedNodeOverlay = () => {
                 }
               }}
             >
-              {maximizedNodeOutput || `[System] Node is in ${maximizedNodeStatus} state. Awaiting telemetry stream...`}
-              {maximizedNodeStatus === 'running' && <span className="animate-pulse text-orange-500 ml-0.5">_</span>}
+              {maximizedNodeOutput ||
+                `[System] Node is in ${maximizedNodeStatus} state. Awaiting telemetry stream...`}
+              {maximizedNodeStatus === 'running' && (
+                <span className="animate-pulse text-orange-500 ml-0.5">_</span>
+              )}
             </div>
           </div>
 
@@ -192,7 +204,9 @@ export const MaximizedNodeOverlay = () => {
             <div className="w-full md:w-72 p-6 space-y-4 bg-slate-50 overflow-y-auto">
               <div className="space-y-4">
                 <div>
-                  <label className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block mb-2">Connected Inputs (Incoming)</label>
+                  <label className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                    Connected Inputs (Incoming)
+                  </label>
                   {incomingNodes.length > 0 ? (
                     <div className="flex flex-col gap-1.5">
                       {incomingNodes.map((n) => (
@@ -208,12 +222,16 @@ export const MaximizedNodeOverlay = () => {
                       ))}
                     </div>
                   ) : (
-                    <span className="text-[10px] font-mono italic text-slate-400">No incoming connections</span>
+                    <span className="text-[10px] font-mono italic text-slate-400">
+                      No incoming connections
+                    </span>
                   )}
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block mb-2">Connected Outputs (Outgoing)</label>
+                  <label className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                    Connected Outputs (Outgoing)
+                  </label>
                   {outgoingNodes.length > 0 ? (
                     <div className="flex flex-col gap-1.5">
                       {outgoingNodes.map((n) => (
@@ -229,7 +247,9 @@ export const MaximizedNodeOverlay = () => {
                       ))}
                     </div>
                   ) : (
-                    <span className="text-[10px] font-mono italic text-slate-400">No outgoing connections</span>
+                    <span className="text-[10px] font-mono italic text-slate-400">
+                      No outgoing connections
+                    </span>
                   )}
                 </div>
               </div>
@@ -240,7 +260,11 @@ export const MaximizedNodeOverlay = () => {
         {/* Footer */}
         <div className="bg-slate-50 px-6 py-3 flex items-center justify-between border-t border-slate-200">
           <span className="text-[10px] font-mono text-slate-400">
-            Press <kbd className="bg-white px-1 border border-slate-350 text-slate-600 rounded-sm">ESC</kbd> or click backdrop to close
+            Press{' '}
+            <kbd className="bg-white px-1 border border-slate-350 text-slate-600 rounded-sm">
+              ESC
+            </kbd>{' '}
+            or click backdrop to close
           </span>
           <button
             onClick={() => setMaximizedNodeId(null)}

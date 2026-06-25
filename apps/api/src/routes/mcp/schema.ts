@@ -3,13 +3,15 @@ import { z } from 'zod';
 export const DiscoverToolsBody = z.object({
   serverId: z.string().min(1),
   serverUrl: z.string().optional(),
-  auth: z.object({
-    type: z.enum(['none', 'api_key', 'bearer', 'basic']),
-    token: z.string().optional(),
-    apiKey: z.string().optional(),
-    username: z.string().optional(),
-    password: z.string().optional(),
-  }).optional(),
+  auth: z
+    .object({
+      type: z.enum(['none', 'api_key', 'bearer', 'basic']),
+      token: z.string().optional(),
+      apiKey: z.string().optional(),
+      username: z.string().optional(),
+      password: z.string().optional(),
+    })
+    .optional(),
 });
 
 export const SaveServerBody = z.object({
@@ -23,13 +25,15 @@ export const SaveServerBody = z.object({
 
 export const AdoptRegistryBody = z.object({
   registryId: z.string().min(1),
-  authConfig: z.object({
-    type: z.enum(['none', 'api_key', 'bearer', 'basic']).optional(),
-    apiKey: z.string().optional(),
-    token: z.string().optional(),
-    username: z.string().optional(),
-    password: z.string().optional(),
-  }).optional(),
+  authConfig: z
+    .object({
+      type: z.enum(['none', 'api_key', 'bearer', 'basic']).optional(),
+      apiKey: z.string().optional(),
+      token: z.string().optional(),
+      username: z.string().optional(),
+      password: z.string().optional(),
+    })
+    .optional(),
 });
 
 export const UpdateServerAuthBody = z.object({

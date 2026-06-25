@@ -1,14 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Lock, 
-  Mail, 
-  Cpu, 
-  ArrowRight,
-  Eye,
-  EyeOff,
-  Loader2,
-} from 'lucide-react';
+import { Lock, Mail, Cpu, ArrowRight, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useStore } from '../store/index.js';
 import { client2, authHeaders, isSelfHosted } from '../lib/api-client.js';
 
@@ -33,7 +25,8 @@ export const AuthScreen = () => {
       setCheckingSetup(false);
       return;
     }
-    client2.api.setup.status.$get({}, { headers: authHeaders() })
+    client2.api.setup.status
+      .$get({}, { headers: authHeaders() })
       .then((res: Response) => res.json())
       .then((data: { complete: boolean }) => {
         if (!data.complete) {
@@ -71,9 +64,7 @@ export const AuthScreen = () => {
     setIsLoading(true);
 
     try {
-      const success = isLogin 
-        ? await login(email, password)
-        : await register(email, password);
+      const success = isLogin ? await login(email, password) : await register(email, password);
 
       if (success) {
         navigate('/');
@@ -96,14 +87,18 @@ export const AuthScreen = () => {
       <div className="w-96 bg-white border-2 border-slate-200 p-8 shadow-xl relative z-10">
         <div className="flex items-center gap-2 mb-2">
           <Cpu className="w-6 h-6 text-[#ea580c]" />
-          <span className="text-sm font-mono font-bold tracking-wider text-[#ea580c]">QWENWEAVER v0.1.0</span>
+          <span className="text-sm font-mono font-bold tracking-wider text-[#ea580c]">
+            QWENWEAVER v0.1.0
+          </span>
         </div>
-        
+
         <h2 className="text-2xl font-bold tracking-tight text-slate-900 mb-1">
           {isLogin ? 'Sign in' : 'Create account'}
         </h2>
         <p className="text-xs text-slate-500 font-mono mb-6">
-          {isLogin ? 'Enter your credentials to continue.' : 'Register a new account to get started.'}
+          {isLogin
+            ? 'Enter your credentials to continue.'
+            : 'Register a new account to get started.'}
         </p>
 
         {error && (

@@ -1,17 +1,7 @@
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
-import {
-  createCipheriv,
-  createDecipheriv,
-  createHash,
-  randomBytes,
-} from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 import readline from 'node:readline';
 
 /* ------------------------------------------------------------------ */
@@ -65,10 +55,7 @@ function encrypt(text: string, password: string): string {
   const key = deriveKey(password);
   const iv = randomBytes(16);
   const cipher = createCipheriv('aes-256-gcm', key, iv);
-  const encrypted = Buffer.concat([
-    cipher.update(text, 'utf-8'),
-    cipher.final(),
-  ]);
+  const encrypted = Buffer.concat([cipher.update(text, 'utf-8'), cipher.final()]);
   const tag = cipher.getAuthTag();
   // Format: iv:tag:ciphertext (all base64)
   return `${iv.toString('base64')}:${tag.toString('base64')}:${encrypted.toString('base64')}`;
@@ -120,10 +107,7 @@ export function loadConfig(password?: string): QwenWeaverConfig {
   }
 }
 
-export function saveConfig(
-  config: QwenWeaverConfig,
-  password?: string,
-): void {
+export function saveConfig(config: QwenWeaverConfig, password?: string): void {
   ensureDir();
   const raw = JSON.stringify(config, null, 2);
 
@@ -148,9 +132,7 @@ function question(query: string, defaultValue?: string): Promise<string> {
     output: process.stdout,
   });
 
-  const prompt = defaultValue
-    ? `${query} [${defaultValue}]: `
-    : `${query}: `;
+  const prompt = defaultValue ? `${query} [${defaultValue}]: ` : `${query}: `;
 
   return new Promise((resolve) => {
     rl.question(prompt, (answer) => {
@@ -160,9 +142,7 @@ function question(query: string, defaultValue?: string): Promise<string> {
   });
 }
 
-export async function promptForConfig(
-  existing: QwenWeaverConfig,
-): Promise<QwenWeaverConfig> {
+export async function promptForConfig(existing: QwenWeaverConfig): Promise<QwenWeaverConfig> {
   console.log('\nConfigure your QwenWeaver instance.\n');
 
   const apiSecret =
@@ -172,30 +152,14 @@ export async function promptForConfig(
     existing.dashscopeApiKey ||
     (await question('Dashscope API key (DASHSCOPE_API_KEY) — required for AI agents'));
   const databaseUrl =
-    existing.databaseUrl ||
-    (await question(
-      'Database URL (DATABASE_URL)',
-      './data/dev.db',
-    ));
+    existing.databaseUrl || (await question('Database URL (DATABASE_URL)', './data/dev.db'));
   const corsOrigins =
     existing.corsOrigins ||
-    (await question(
-      'CORS origins (comma-separated, or * for all)',
-      'http://localhost:5173',
-    ));
-  const portStr = await question(
-    'Port',
-    String(existing.port || 3001),
-  );
-  const logLevel = await question(
-    'Log level',
-    existing.logLevel || 'info',
-  );
+    (await question('CORS origins (comma-separated, or * for all)', 'http://localhost:5173'));
+  const portStr = await question('Port', String(existing.port || 3001));
+  const logLevel = await question('Log level', existing.logLevel || 'info');
 
-  const useEncryption = await question(
-    'Encrypt config file with a master password? (y/n)',
-    'n',
-  );
+  const useEncryption = await question('Encrypt config file with a master password? (y/n)', 'n');
 
   let password: string | undefined;
   if (useEncryption.toLowerCase().startsWith('y')) {

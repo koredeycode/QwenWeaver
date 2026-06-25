@@ -1,8 +1,4 @@
-import {
-  loadConfig,
-  saveConfig,
-  configExists,
-} from '../config-store.js';
+import { loadConfig, saveConfig, configExists } from '../config-store.js';
 import type { QwenWeaverConfig } from '../config-store.js';
 
 export async function configCommand(key?: string, value?: string): Promise<void> {

@@ -17,7 +17,7 @@ export const ExportWorkflowModal = ({
   onClose,
   nodes,
   edges,
-  workflowId
+  workflowId,
 }: ExportWorkflowModalProps) => {
   const [hasCopied, setHasCopied] = useState(false);
 
@@ -27,7 +27,7 @@ export const ExportWorkflowModal = ({
   const exportData = {
     name: workflowName,
     nodes,
-    edges
+    edges,
   };
   const jsonString = JSON.stringify(exportData, null, 2);
 
@@ -35,10 +35,10 @@ export const ExportWorkflowModal = ({
     try {
       await navigator.clipboard.writeText(jsonString);
       setHasCopied(true);
-      toast.success("Workflow config copied to clipboard!");
+      toast.success('Workflow config copied to clipboard!');
       setTimeout(() => setHasCopied(false), 2000);
     } catch {
-      toast.error("Failed to copy workflow to clipboard.");
+      toast.error('Failed to copy workflow to clipboard.');
     }
   };
 
@@ -53,18 +53,18 @@ export const ExportWorkflowModal = ({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success("Workflow file download started.");
+      toast.success('Workflow file download started.');
     } catch {
-      toast.error("Failed to download workflow file.");
+      toast.error('Failed to download workflow file.');
     }
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[999] flex items-center justify-center p-6 select-text pointer-events-auto"
       onClick={onClose}
     >
-      <div 
+      <div
         className="bg-white border-2 border-slate-900 shadow-2xl rounded-none w-full max-w-xl flex flex-col relative overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
@@ -72,9 +72,11 @@ export const ExportWorkflowModal = ({
         <div className="bg-white text-slate-800 px-6 py-4 flex items-center justify-between border-b border-slate-200">
           <div className="flex items-center gap-2.5">
             <Upload className="w-4 h-4 text-[#ea580c]" />
-            <h2 className="text-sm font-bold font-mono text-slate-800 tracking-tight">EXPORT WORKFLOW</h2>
+            <h2 className="text-sm font-bold font-mono text-slate-800 tracking-tight">
+              EXPORT WORKFLOW
+            </h2>
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
           >
@@ -85,12 +87,18 @@ export const ExportWorkflowModal = ({
         {/* Body */}
         <div className="p-6 space-y-4">
           <div className="flex gap-4 text-xs font-mono text-slate-500 border-b border-slate-100 pb-3">
-            <div>NODES: <span className="font-bold text-slate-800">{nodes.length}</span></div>
-            <div>EDGES: <span className="font-bold text-slate-800">{edges.length}</span></div>
+            <div>
+              NODES: <span className="font-bold text-slate-800">{nodes.length}</span>
+            </div>
+            <div>
+              EDGES: <span className="font-bold text-slate-800">{edges.length}</span>
+            </div>
           </div>
 
           <div className="space-y-1">
-            <label className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block">Workflow JSON Preview</label>
+            <label className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block">
+              Workflow JSON Preview
+            </label>
             <div className="h-48 border border-slate-200 bg-slate-50 p-3 font-mono text-[10px] overflow-y-auto whitespace-pre-wrap select-all leading-normal text-slate-600">
               {jsonString}
             </div>
@@ -101,8 +109,12 @@ export const ExportWorkflowModal = ({
               onClick={handleCopy}
               className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 text-xs font-mono font-bold flex items-center justify-center gap-2 transition-all cursor-pointer rounded-none"
             >
-              {hasCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-slate-600" />}
-              {hasCopied ? "COPIED!" : "COPY TO CLIPBOARD"}
+              {hasCopied ? (
+                <Check className="w-4 h-4 text-emerald-600" />
+              ) : (
+                <Copy className="w-4 h-4 text-slate-600" />
+              )}
+              {hasCopied ? 'COPIED!' : 'COPY TO CLIPBOARD'}
             </button>
             <button
               onClick={handleDownload}

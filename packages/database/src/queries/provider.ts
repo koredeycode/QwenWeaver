@@ -1,7 +1,13 @@
 import type { SavedMCPServerInput, SavedMCPServer } from './mcp.js';
 import type { MCPAuthConfig } from '@qwenweaver/types';
 import type { TemplateRow, TemplateReviewRow, TemplateCategoryRow } from './templates.js';
-import type { WorkflowPayload, ExecutionMetrics, AgentLogInput, AgentLogOutput, CreditTransaction } from '@qwenweaver/types';
+import type {
+  WorkflowPayload,
+  ExecutionMetrics,
+  AgentLogInput,
+  AgentLogOutput,
+  CreditTransaction,
+} from '@qwenweaver/types';
 import { getConnection } from '../index.js';
 import { sqliteProvider } from './sqlite-provider.js';
 import { pgProvider } from './pg-provider.js';
@@ -43,14 +49,27 @@ export interface WorkflowDetail {
 export interface QueryProvider {
   // Auth
   createUser(id: string, email: string, passwordHash: string): Promise<void>;
-  getUserByEmail(email: string): Promise<{ id: string; email: string; passwordHash: string; createdAt: Date | string | number } | null>;
-  getUserById(id: string): Promise<{ id: string; email: string; createdAt: Date | string | number } | null>;
+  getUserByEmail(
+    email: string,
+  ): Promise<{
+    id: string;
+    email: string;
+    passwordHash: string;
+    createdAt: Date | string | number;
+  } | null>;
+  getUserById(
+    id: string,
+  ): Promise<{ id: string; email: string; createdAt: Date | string | number } | null>;
 
   saveMcpServer(id: string, userId: string, input: SavedMCPServerInput): Promise<SavedMCPServer>;
   getMcpServers(userId: string): Promise<SavedMCPServer[]>;
   deleteMcpServer(id: string, userId: string): Promise<boolean>;
   /** Update auth config for a user-owned server */
-  updateMcpServerAuth(id: string, userId: string, authConfig: MCPAuthConfig): Promise<SavedMCPServer>;
+  updateMcpServerAuth(
+    id: string,
+    userId: string,
+    authConfig: MCPAuthConfig,
+  ): Promise<SavedMCPServer>;
 
   saveWorkflow(userId: string, workflow: WorkflowPayload): Promise<string>;
   listUserWorkflows(userId: string): Promise<WorkflowRow[]>;
@@ -66,7 +85,7 @@ export interface QueryProvider {
     input: AgentLogInput | null,
     output: AgentLogOutput | null,
     tokensUsed?: number,
-    error?: string | null
+    error?: string | null,
   ): Promise<void>;
   getExecution(executionId: string): Promise<{
     id: string;
@@ -77,20 +96,25 @@ export interface QueryProvider {
     startedAt: string;
     completedAt?: string;
   } | null>;
-  getAgentLogs(executionId: string): Promise<Array<{
-    id: string;
-    executionId: string;
-    nodeId: string;
-    status: string;
-    input?: any;
-    output?: any;
-    tokensUsed?: number;
-    startedAt: string;
-    completedAt?: string;
-    error?: string;
-  }>>;
+  getAgentLogs(executionId: string): Promise<
+    Array<{
+      id: string;
+      executionId: string;
+      nodeId: string;
+      status: string;
+      input?: any;
+      output?: any;
+      tokensUsed?: number;
+      startedAt: string;
+      completedAt?: string;
+      error?: string;
+    }>
+  >;
 
-  getAnalyticsSummary(userId: string, recentLimit?: number): Promise<{
+  getAnalyticsSummary(
+    userId: string,
+    recentLimit?: number,
+  ): Promise<{
     totalRuns: number;
     completedRuns: number;
     failedRuns: number;
@@ -107,26 +131,63 @@ export interface QueryProvider {
   }>;
 
   // Templates
-  listTemplates(options?: { categoryId?: string; featured?: boolean; search?: string; limit?: number; offset?: number }): Promise<TemplateRow[]>;
-  countTemplates(options?: { categoryId?: string; featured?: boolean; search?: string }): Promise<number>;
+  listTemplates(options?: {
+    categoryId?: string;
+    featured?: boolean;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<TemplateRow[]>;
+  countTemplates(options?: {
+    categoryId?: string;
+    featured?: boolean;
+    search?: string;
+  }): Promise<number>;
   getTemplate(id: string): Promise<TemplateRow | null>;
-  createTemplate(id: string, data: {
-    name: string; description?: string | null; workflowData: WorkflowPayload;
-    categoryId?: string | null; tags?: string[] | null; authorId: string; thumbnail?: string | null;
-  }): Promise<void>;
+  createTemplate(
+    id: string,
+    data: {
+      name: string;
+      description?: string | null;
+      workflowData: WorkflowPayload;
+      categoryId?: string | null;
+      tags?: string[] | null;
+      authorId: string;
+      thumbnail?: string | null;
+    },
+  ): Promise<void>;
   deleteTemplate(id: string): Promise<boolean>;
   incrementTemplateDownloads(id: string): Promise<void>;
   listTemplateReviews(templateId: string): Promise<TemplateReviewRow[]>;
-  upsertTemplateReview(id: string, templateId: string, userId: string, rating: number, review?: string | null): Promise<void>;
+  upsertTemplateReview(
+    id: string,
+    templateId: string,
+    userId: string,
+    rating: number,
+    review?: string | null,
+  ): Promise<void>;
   listTemplateCategories(): Promise<TemplateCategoryRow[]>;
 
   /** Runs a lightweight query to verify the database connection is alive. */
   healthCheck(): Promise<void>;
 
   // Credits
-  getUserCredits(userId: string): Promise<{ balance: number; lifetimeEarned: number; lifetimeSpent: number }>;
-  grantCredits(userId: string, amount: number, type: string, description?: string, executionId?: string): Promise<void>;
-  deductCredits(userId: string, amount: number, description?: string, executionId?: string): Promise<void>;
+  getUserCredits(
+    userId: string,
+  ): Promise<{ balance: number; lifetimeEarned: number; lifetimeSpent: number }>;
+  grantCredits(
+    userId: string,
+    amount: number,
+    type: string,
+    description?: string,
+    executionId?: string,
+  ): Promise<void>;
+  deductCredits(
+    userId: string,
+    amount: number,
+    description?: string,
+    executionId?: string,
+  ): Promise<void>;
   listCreditTransactions(userId: string, limit?: number): Promise<CreditTransaction[]>;
 
   // Workflow limits

@@ -1,11 +1,25 @@
 import { relations } from 'drizzle-orm';
 import {
-  pgWorkflows, pgNodes, pgEdges, pgExecutions, pgAgentLogs, pgMcpServers,
-  pgTemplates, pgTemplateCategories, pgTemplateReviews,
+  pgWorkflows,
+  pgNodes,
+  pgEdges,
+  pgExecutions,
+  pgAgentLogs,
+  pgMcpServers,
+  pgTemplates,
+  pgTemplateCategories,
+  pgTemplateReviews,
 } from './pg.js';
 import {
-  sqliteWorkflows, sqliteNodes, sqliteEdges, sqliteExecutions, sqliteAgentLogs, sqliteMcpServers,
-  sqliteTemplates, sqliteTemplateCategories, sqliteTemplateReviews,
+  sqliteWorkflows,
+  sqliteNodes,
+  sqliteEdges,
+  sqliteExecutions,
+  sqliteAgentLogs,
+  sqliteMcpServers,
+  sqliteTemplates,
+  sqliteTemplateCategories,
+  sqliteTemplateReviews,
 } from './sqlite.js';
 
 export const pgWorkflowsRelations = relations(pgWorkflows, ({ many }) => ({
@@ -101,9 +115,12 @@ export const sqliteAgentLogsRelations = relations(sqliteAgentLogs, ({ one }) => 
 
 export const sqliteMcpServersRelations = relations(sqliteMcpServers, () => ({}));
 
-export const sqliteTemplateCategoriesRelations = relations(sqliteTemplateCategories, ({ many }) => ({
-  templates: many(sqliteTemplates),
-}));
+export const sqliteTemplateCategoriesRelations = relations(
+  sqliteTemplateCategories,
+  ({ many }) => ({
+    templates: many(sqliteTemplates),
+  }),
+);
 
 export const sqliteTemplatesRelations = relations(sqliteTemplates, ({ one, many }) => ({
   category: one(sqliteTemplateCategories, {

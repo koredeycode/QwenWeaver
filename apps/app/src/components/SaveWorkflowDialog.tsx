@@ -14,7 +14,7 @@ export const SaveWorkflowDialog = ({
   initialName = '',
   initialDescription = '',
   onClose,
-  onConfirm
+  onConfirm,
 }: SaveWorkflowDialogProps) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -49,7 +49,9 @@ export const SaveWorkflowDialog = ({
         <div className="bg-white text-slate-800 px-6 py-4 flex items-center justify-between border-b border-slate-200">
           <div className="flex items-center gap-2.5">
             <Save className="w-4 h-4 text-[#ea580c]" />
-            <h2 className="text-sm font-bold font-mono text-slate-800 tracking-tight">SAVE WORKFLOW</h2>
+            <h2 className="text-sm font-bold font-mono text-slate-800 tracking-tight">
+              SAVE WORKFLOW
+            </h2>
           </div>
           <button
             onClick={onClose}

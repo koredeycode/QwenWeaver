@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Eye, 
-  Trash2, 
-  X, 
+import {
+  Eye,
+  Trash2,
+  X,
   HelpCircle,
   Bot,
   Brain,
   Wrench,
   Play,
   Puzzle,
-  ChevronDown
+  ChevronDown,
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
 import { client, authHeaders } from '../lib/api-client.js';
@@ -26,7 +26,9 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
   const [webBrowsing, setWebBrowsing] = useState(true);
   const [fileAccess, setFileAccess] = useState(false);
 
-  const [mcpStatus, setMcpStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
+  const [mcpStatus, setMcpStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>(
+    'disconnected',
+  );
   const [discoveredTools, setDiscoveredTools] = useState<any[]>([]);
   const [mcpError, setMcpError] = useState('');
   // MCP credential secrets stored in local state only (never persisted to graph)
@@ -41,7 +43,10 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
       if (authType && authType !== 'none') {
         body.auth = { type: authType, ...mcpSecrets };
       }
-      const res = await client.api.mcp.tools.discover.$post({ json: body as any }, { headers: authHeaders() });
+      const res = await client.api.mcp.tools.discover.$post(
+        { json: body as any },
+        { headers: authHeaders() },
+      );
       const data: any = await res.json();
       if (!res.ok) {
         setMcpStatus('error');
@@ -53,10 +58,15 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
       // Auto-save credentials to the server if we have a user server ID
       const userServerId = (selectedNode?.data as any).mcpUserServerId;
       if (authType && authType !== 'none' && userServerId) {
-        (client.api.mcp.servers[':id'] as any).auth.$post(
-          { param: { id: userServerId }, json: { authConfig: { type: authType, ...mcpSecrets } } },
-          { headers: authHeaders() },
-        ).catch(() => {});
+        (client.api.mcp.servers[':id'] as any).auth
+          .$post(
+            {
+              param: { id: userServerId },
+              json: { authConfig: { type: authType, ...mcpSecrets } },
+            },
+            { headers: authHeaders() },
+          )
+          .catch(() => {});
       }
     } catch {
       setMcpStatus('error');
@@ -69,7 +79,13 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
       if (selectedNode.data.mcpServerId) {
         // If auth is required but no secrets have been entered yet, show a hint instead of failing
         const authType = selectedNode.data.mcpAuthConfig?.type;
-        if (authType && authType !== 'none' && !mcpSecrets.token && !mcpSecrets.apiKey && !mcpSecrets.username) {
+        if (
+          authType &&
+          authType !== 'none' &&
+          !mcpSecrets.token &&
+          !mcpSecrets.apiKey &&
+          !mcpSecrets.username
+        ) {
           setMcpStatus('disconnected');
           setMcpError('Enter credentials and click Connect');
         } else {
@@ -104,7 +120,8 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
   };
 
   const handleFormatChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    if (selectedNodeId) updateNodeData(selectedNodeId, { outputFormat: e.target.value as OutputFormat });
+    if (selectedNodeId)
+      updateNodeData(selectedNodeId, { outputFormat: e.target.value as OutputFormat });
   };
 
   const handleMcpUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -152,7 +169,10 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
   };
 
   return (
-    <div className="w-80 h-full bg-white border-l border-[#cbd5e1] flex flex-col font-sans select-none text-slate-800" data-tour="inspector">
+    <div
+      className="w-80 h-full bg-white border-l border-[#cbd5e1] flex flex-col font-sans select-none text-slate-800"
+      data-tour="inspector"
+    >
       {/* Title Header */}
       <div className="flex items-center justify-between border-b border-[#cbd5e1] bg-[#f8fafc] px-4 py-2.5">
         <div className="flex items-center gap-1.5 text-xs font-mono font-bold tracking-wider text-slate-900">
@@ -177,15 +197,26 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
               <div className="flex items-center gap-2.5">
                 {selectedNode.type === 'mcp_tool' && selectedNode.data.iconUrl ? (
                   <div className="w-8 h-8 flex items-center justify-center rounded-lg shadow-sm bg-white border border-slate-200">
-                    <img src={selectedNode.data.iconUrl} alt="" className="w-5 h-5 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    <img
+                      src={selectedNode.data.iconUrl}
+                      alt=""
+                      className="w-5 h-5 object-contain"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
                   </div>
                 ) : (
-                  <div className={`w-8 h-8 ${getNodeIconColor(selectedNode.type)} flex items-center justify-center rounded-lg shadow-sm`}>
+                  <div
+                    className={`w-8 h-8 ${getNodeIconColor(selectedNode.type)} flex items-center justify-center rounded-lg shadow-sm`}
+                  >
                     {getNodeIcon(selectedNode.type)}
                   </div>
                 )}
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">{selectedNode.data.label || 'Research Agent'}</h3>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    {selectedNode.data.label || 'Research Agent'}
+                  </h3>
                   <p className="text-[10px] text-slate-400 font-mono">Node Configuration</p>
                 </div>
               </div>
@@ -257,22 +288,32 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                   <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-2">
                     Authentication
                   </label>
-                  {selectedNode.data.mcpAuthConfig?.type && selectedNode.data.mcpAuthConfig.type !== 'none' && !mcpSecrets.token && !mcpSecrets.apiKey && !mcpSecrets.username && (
-                    <p className="text-[9px] text-amber-600 font-mono mb-2">
-                      Enter credentials below, then click Connect.
-                    </p>
-                  )}
+                  {selectedNode.data.mcpAuthConfig?.type &&
+                    selectedNode.data.mcpAuthConfig.type !== 'none' &&
+                    !mcpSecrets.token &&
+                    !mcpSecrets.apiKey &&
+                    !mcpSecrets.username && (
+                      <p className="text-[9px] text-amber-600 font-mono mb-2">
+                        Enter credentials below, then click Connect.
+                      </p>
+                    )}
                   <AuthTypeSelect
                     value={selectedNode.data.mcpAuthConfig?.type || 'none'}
-                    supportedTypes={(selectedNode.data as any).mcpSupportedAuthTypes as string[] | undefined}
+                    supportedTypes={
+                      (selectedNode.data as any).mcpSupportedAuthTypes as string[] | undefined
+                    }
                     onChange={(type) => {
-                      if (selectedNodeId) updateNodeData(selectedNodeId, {
-                        mcpAuthConfig: { ...selectedNode.data.mcpAuthConfig, type: type as 'none' | 'api_key' | 'bearer' | 'basic' },
-                      });
+                      if (selectedNodeId)
+                        updateNodeData(selectedNodeId, {
+                          mcpAuthConfig: {
+                            ...selectedNode.data.mcpAuthConfig,
+                            type: type as 'none' | 'api_key' | 'bearer' | 'basic',
+                          },
+                        });
                     }}
                   />
 
-                  {(selectedNode.data.mcpAuthConfig?.type === 'bearer') && (
+                  {selectedNode.data.mcpAuthConfig?.type === 'bearer' && (
                     <input
                       type="password"
                       value={mcpSecrets.token || ''}
@@ -282,7 +323,7 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                     />
                   )}
 
-                  {(selectedNode.data.mcpAuthConfig?.type === 'api_key') && (
+                  {selectedNode.data.mcpAuthConfig?.type === 'api_key' && (
                     <input
                       type="password"
                       value={mcpSecrets.apiKey || ''}
@@ -292,7 +333,7 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                     />
                   )}
 
-                  {(selectedNode.data.mcpAuthConfig?.type === 'basic') && (
+                  {selectedNode.data.mcpAuthConfig?.type === 'basic' && (
                     <div className="space-y-2">
                       <input
                         type="text"
@@ -321,13 +362,14 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                       mcpStatus === 'connected'
                         ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
                         : mcpStatus === 'error'
-                        ? 'bg-rose-50 border-rose-300 text-rose-700'
-                        : 'bg-white hover:bg-slate-50 border-[#cbd5e1] text-slate-700'
+                          ? 'bg-rose-50 border-rose-300 text-rose-700'
+                          : 'bg-white hover:bg-slate-50 border-[#cbd5e1] text-slate-700'
                     }`}
                   >
                     {mcpStatus === 'disconnected' && 'Connect & Discover Tools'}
                     {mcpStatus === 'connecting' && 'Connecting to MCP Server...'}
-                    {mcpStatus === 'connected' && `Connected (${discoveredTools.length} Tools Discovered)`}
+                    {mcpStatus === 'connected' &&
+                      `Connected (${discoveredTools.length} Tools Discovered)`}
                     {mcpStatus === 'error' && `Failed: ${mcpError}`}
                   </button>
                 </div>
@@ -340,22 +382,32 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                     </span>
                     <div className="bg-slate-50 border border-slate-200 p-2.5 font-mono text-[9px] text-slate-600 space-y-2 select-text max-h-48 overflow-y-auto">
                       {discoveredTools.map((tool, idx) => (
-                        <div key={idx} className="border-b border-slate-200/60 pb-1.5 last:border-b-0 last:pb-0 flex items-start gap-2">
+                        <div
+                          key={idx}
+                          className="border-b border-slate-200/60 pb-1.5 last:border-b-0 last:pb-0 flex items-start gap-2"
+                        >
                           {selectedNode?.data.iconUrl ? (
                             <img
                               src={selectedNode.data.iconUrl}
                               alt=""
                               className="w-3.5 h-3.5 rounded object-contain mt-0.5 shrink-0"
-                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                              }}
                             />
                           ) : (
                             <Puzzle className="w-3.5 h-3.5 text-purple-500 mt-0.5 shrink-0" />
                           )}
                           <div className="min-w-0">
                             <div className="font-bold text-[#2563eb] truncate">{tool.name}</div>
-                            <div className="text-slate-500 mt-0.5 line-clamp-2">{tool.description}</div>
+                            <div className="text-slate-500 mt-0.5 line-clamp-2">
+                              {tool.description}
+                            </div>
                             <div className="text-[8px] text-purple-600 mt-0.5">
-                              input: {tool.inputSchema ? JSON.stringify(tool.inputSchema).slice(0, 60) + '...' : 'none'}
+                              input:{' '}
+                              {tool.inputSchema
+                                ? JSON.stringify(tool.inputSchema).slice(0, 60) + '...'
+                                : 'none'}
                             </div>
                           </div>
                         </div>
@@ -375,7 +427,10 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                     AI LLM Model
                   </label>
                   <select
-                    value={selectedNode.data.model || (selectedNode.type === 'supervisor' ? 'qwen3-max' : 'qwen-plus')}
+                    value={
+                      selectedNode.data.model ||
+                      (selectedNode.type === 'supervisor' ? 'qwen3-max' : 'qwen-plus')
+                    }
                     onChange={handleModelChange}
                     className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
                   >
@@ -509,7 +564,9 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
           <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400 font-sans border-2 border-dashed border-slate-200">
             <HelpCircle className="w-10 h-10 text-slate-300 mb-2" />
             <p className="text-xs font-bold text-slate-500">No node selected.</p>
-            <p className="text-[10px] mt-1">Select an agent, trigger, or tool on the canvas to configure parameters.</p>
+            <p className="text-[10px] mt-1">
+              Select an agent, trigger, or tool on the canvas to configure parameters.
+            </p>
           </div>
         )}
       </div>
@@ -564,8 +621,12 @@ function AuthTypeSelect({
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between text-xs border border-[#cbd5e1] px-2 py-1.5 font-mono bg-white focus:outline-none focus:border-purple-500"
       >
-        <span className={AUTH_COLORS[value] || 'text-slate-500'}>{AUTH_LABELS[value] || value}</span>
-        <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <span className={AUTH_COLORS[value] || 'text-slate-500'}>
+          {AUTH_LABELS[value] || value}
+        </span>
+        <ChevronDown
+          className={`w-3 h-3 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}
+        />
       </button>
       {open && (
         <div className="absolute z-10 top-full left-0 right-0 mt-0.5 border border-[#cbd5e1] bg-white shadow-md">
@@ -573,7 +634,10 @@ function AuthTypeSelect({
             <button
               key={type}
               type="button"
-              onClick={() => { onChange(type); setOpen(false); }}
+              onClick={() => {
+                onChange(type);
+                setOpen(false);
+              }}
               className={`w-full text-left px-2 py-1.5 text-xs font-mono hover:bg-slate-50 transition-colors ${
                 value === type ? 'bg-slate-100 font-bold' : ''
               } ${AUTH_COLORS[type] || 'text-slate-500'}`}

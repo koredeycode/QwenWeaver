@@ -19,29 +19,29 @@ export const handleRegister = async (c: Context<{ Variables: Variables }>) => {
   try {
     const body = await c.req.json();
     const result = authSchema.safeParse(body);
-    
+
     if (!result.success) {
       return c.json({ error: 'Invalid input', details: result.error.format() }, 400);
     }
-    
+
     const { email, password } = result.data;
     const provider = getQueryProvider();
-    
+
     const existing = await provider.getUserByEmail(email);
     if (existing) {
       return c.json({ error: 'User already exists' }, 409);
     }
-    
+
     const id = crypto.randomUUID();
     const passwordHash = await bcrypt.hash(password, 10);
-    
+
     await provider.createUser(id, email, passwordHash);
     if (!IS_SELF_HOSTED) {
       await provider.grantCredits(id, SIGNUP_CREDITS, 'signup_bonus', 'Welcome credits');
     }
 
     log.info({ userId: id, email }, 'User registered successfully');
-    
+
     // Short-lived access token + long-lived refresh token
     const now = Math.floor(Date.now() / 1000);
     const accessToken = await sign(
@@ -52,7 +52,7 @@ export const handleRegister = async (c: Context<{ Variables: Variables }>) => {
       { sub: id, email, exp: now + REFRESH_TOKEN_EXPIRY_SECONDS, type: 'refresh' },
       JWT_SECRET,
     );
-    
+
     return c.json({ token: accessToken, refreshToken, user: { id, email } }, 201);
   } catch (err) {
     log.error({ error: (err as Error).message }, 'Registration failed');
@@ -64,26 +64,26 @@ export const handleLogin = async (c: Context<{ Variables: Variables }>) => {
   try {
     const body = await c.req.json();
     const result = authSchema.safeParse(body);
-    
+
     if (!result.success) {
       return c.json({ error: 'Invalid input' }, 400);
     }
-    
+
     const { email, password } = result.data;
     const provider = getQueryProvider();
-    
+
     const user = await provider.getUserByEmail(email);
     if (!user) {
       return c.json({ error: 'Invalid credentials' }, 401);
     }
-    
+
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
       return c.json({ error: 'Invalid credentials' }, 401);
     }
-    
+
     log.info({ userId: user.id }, 'User logged in');
-    
+
     // Short-lived access token + long-lived refresh token
     const now = Math.floor(Date.now() / 1000);
     const accessToken = await sign(
@@ -94,8 +94,11 @@ export const handleLogin = async (c: Context<{ Variables: Variables }>) => {
       { sub: user.id, email, exp: now + REFRESH_TOKEN_EXPIRY_SECONDS, type: 'refresh' },
       JWT_SECRET,
     );
-    
-    return c.json({ token: accessToken, refreshToken, user: { id: user.id, email: user.email } }, 200);
+
+    return c.json(
+      { token: accessToken, refreshToken, user: { id: user.id, email: user.email } },
+      200,
+    );
   } catch (err) {
     log.error({ error: (err as Error).message }, 'Login failed');
     return c.json({ error: 'Internal Server Error' }, 500);

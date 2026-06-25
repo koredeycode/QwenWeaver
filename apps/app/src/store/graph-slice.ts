@@ -1,12 +1,5 @@
 import { StateCreator } from 'zustand';
-import { 
-  Node, 
-  Edge, 
-  Connection,
-  applyNodeChanges,
-  applyEdgeChanges,
-  addEdge
-} from '@xyflow/react';
+import { Node, Edge, Connection, applyNodeChanges, applyEdgeChanges, addEdge } from '@xyflow/react';
 import { StoreState, GraphSlice } from './types.js';
 import { toast } from 'sonner';
 import { EXAMPLE_WORKFLOWS } from '../lib/example-workflows.js';
@@ -19,63 +12,65 @@ const RESEARCH_SWARM_TEMPLATE = {
       id: 'node-trigger',
       type: 'trigger',
       position: { x: 50, y: 200 },
-      data: { label: 'Web Trigger (Cron 9 AM)', outputFormat: 'text' }
+      data: { label: 'Web Trigger (Cron 9 AM)', outputFormat: 'text' },
     },
     {
       id: 'node-agent-1',
       type: 'agent',
       position: { x: 300, y: 100 },
-      data: { 
-        label: 'Academic Searcher', 
-        model: 'qwen-plus', 
+      data: {
+        label: 'Academic Searcher',
+        model: 'qwen-plus',
         systemPrompt: 'Scrapes Google Scholar for the latest papers on multi-agent consensus.',
-        outputFormat: 'markdown'
-      }
+        outputFormat: 'markdown',
+      },
     },
     {
       id: 'node-agent-2',
       type: 'agent',
       position: { x: 300, y: 300 },
-      data: { 
-        label: 'Patent Scanner', 
-        model: 'qwen-plus', 
+      data: {
+        label: 'Patent Scanner',
+        model: 'qwen-plus',
         systemPrompt: 'Queries global patent databases for visual node orchestration systems.',
-        outputFormat: 'markdown'
-      }
+        outputFormat: 'markdown',
+      },
     },
     {
       id: 'node-supervisor',
       type: 'supervisor',
       position: { x: 600, y: 200 },
-      data: { 
-        label: 'Consensus Supervisor', 
-        model: 'qwen3-max', 
-        systemPrompt: 'Review the outputs of both Searcher and Scanner. Synthesize findings. If they contradict, ask them to re-verify.',
+      data: {
+        label: 'Consensus Supervisor',
+        model: 'qwen3-max',
+        systemPrompt:
+          'Review the outputs of both Searcher and Scanner. Synthesize findings. If they contradict, ask them to re-verify.',
         enableThinking: true,
         thinkingBudget: 1024,
-        outputFormat: 'json'
-      }
+        outputFormat: 'json',
+      },
     },
     {
       id: 'node-mcp-tool',
       type: 'mcp_tool',
       position: { x: 900, y: 200 },
-      data: { 
-        label: 'GitHub Writer Tool', 
+      data: {
+        label: 'GitHub Writer Tool',
         mcpServerId: 'github-server',
         mcpServerUrl: 'http://localhost:8000',
-        systemPrompt: 'Pushes the Synthesized consensus report to repository: qwen-weaver/research-reports',
-        outputFormat: 'text'
-      }
-    }
+        systemPrompt:
+          'Pushes the Synthesized consensus report to repository: qwen-weaver/research-reports',
+        outputFormat: 'text',
+      },
+    },
   ] as Node<NodeData>[],
   edges: [
     { id: 'e-t-a1', source: 'node-trigger', target: 'node-agent-1', type: 'animated' },
     { id: 'e-t-a2', source: 'node-trigger', target: 'node-agent-2', type: 'animated' },
     { id: 'e-a1-s', source: 'node-agent-1', target: 'node-supervisor', type: 'animated' },
     { id: 'e-a2-s', source: 'node-agent-2', target: 'node-supervisor', type: 'animated' },
-    { id: 'e-s-m', source: 'node-supervisor', target: 'node-mcp-tool', type: 'animated' }
-  ] as Edge[]
+    { id: 'e-s-m', source: 'node-supervisor', target: 'node-mcp-tool', type: 'animated' },
+  ] as Edge[],
 };
 
 export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (set, get) => ({
@@ -90,24 +85,27 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
 
   onNodesChange: (changes) => set((state) => ({ nodes: applyNodeChanges(changes, state.nodes) })),
   onEdgesChange: (changes) => set((state) => ({ edges: applyEdgeChanges(changes, state.edges) })),
-  
-  onConnect: (connection: Connection) => set((state) => {
-    const sourceNode = state.nodes.find((n) => n.id === connection.source);
-    const targetNode = state.nodes.find((n) => n.id === connection.target);
-    if (sourceNode?.type === 'mcp_tool' && targetNode?.type === 'mcp_tool') {
-      toast.error("Error: MCP Tools cannot be directly connected to each other.");
-      return {};
-    }
-    return { 
-      edges: addEdge({ ...connection, id: `e-${connection.source}-${connection.target}`, type: 'animated' }, state.edges) 
-    };
-  }),
+
+  onConnect: (connection: Connection) =>
+    set((state) => {
+      const sourceNode = state.nodes.find((n) => n.id === connection.source);
+      const targetNode = state.nodes.find((n) => n.id === connection.target);
+      if (sourceNode?.type === 'mcp_tool' && targetNode?.type === 'mcp_tool') {
+        toast.error('Error: MCP Tools cannot be directly connected to each other.');
+        return {};
+      }
+      return {
+        edges: addEdge(
+          { ...connection, id: `e-${connection.source}-${connection.target}`, type: 'animated' },
+          state.edges,
+        ),
+      };
+    }),
 
   addNode: (type, position, additionalData) => {
     const id = `node-${type}-${Date.now().toString().slice(-4)}`;
-    const label = type === 'input_trigger' 
-      ? 'Initial workflow instruction' 
-      : `${type.toUpperCase()} Node`;
+    const label =
+      type === 'input_trigger' ? 'Initial workflow instruction' : `${type.toUpperCase()} Node`;
     const newNode: Node<any> = {
       id,
       type,
@@ -115,44 +113,56 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
       data: {
         label,
         model: type === 'supervisor' ? 'qwen3-max' : type === 'agent' ? 'qwen-plus' : undefined,
-        systemPrompt: type === 'agent' || type === 'supervisor' ? 'You are a helpful assistant.' : undefined,
+        systemPrompt:
+          type === 'agent' || type === 'supervisor' ? 'You are a helpful assistant.' : undefined,
         outputFormat: 'text',
         ...additionalData,
-      }
+      },
     };
     set((state) => ({
       nodes: [...state.nodes, newNode],
-      selectedNodeId: id
+      selectedNodeId: id,
     }));
   },
 
-  deleteNode: (id) => set((state) => ({
-    nodes: state.nodes.filter((n) => n.id !== id),
-    edges: state.edges.filter((e) => e.source !== id && e.target !== id),
-    selectedNodeId: state.selectedNodeId === id ? null : state.selectedNodeId
-  })),
+  deleteNode: (id) =>
+    set((state) => ({
+      nodes: state.nodes.filter((n) => n.id !== id),
+      edges: state.edges.filter((e) => e.source !== id && e.target !== id),
+      selectedNodeId: state.selectedNodeId === id ? null : state.selectedNodeId,
+    })),
 
-  updateNodeData: (id, data) => set((state) => ({
-    nodes: state.nodes.map((node) => {
-      if (node.id === id) {
-        return { ...node, data: { ...node.data, ...data } };
-      }
-      return node;
-    })
-  })),
+  updateNodeData: (id, data) =>
+    set((state) => ({
+      nodes: state.nodes.map((node) => {
+        if (node.id === id) {
+          return { ...node, data: { ...node.data, ...data } };
+        }
+        return node;
+      }),
+    })),
 
   selectNode: (id) => set({ selectedNodeId: id }),
 
-  setWorkflowMeta: (name, description) => set({ workflowName: name, workflowDescription: description }),
+  setWorkflowMeta: (name, description) =>
+    set({ workflowName: name, workflowDescription: description }),
 
-  clearGraph: () => set({ nodes: [], edges: [], selectedNodeId: null, workflowId: null, workflowName: '', workflowDescription: '' }),
+  clearGraph: () =>
+    set({
+      nodes: [],
+      edges: [],
+      selectedNodeId: null,
+      workflowId: null,
+      workflowName: '',
+      workflowDescription: '',
+    }),
 
   loadTemplate: (templateName) => {
     if (templateName === 'research') {
-      set({ 
-        nodes: RESEARCH_SWARM_TEMPLATE.nodes, 
+      set({
+        nodes: RESEARCH_SWARM_TEMPLATE.nodes,
         edges: RESEARCH_SWARM_TEMPLATE.edges,
-        selectedNodeId: null
+        selectedNodeId: null,
       });
     }
   },
@@ -160,13 +170,13 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
   loadWorkflow: (workflowId) => {
     const wf = EXAMPLE_WORKFLOWS.find((w) => w.id === workflowId);
     if (wf) {
-      set({ 
-        nodes: wf.nodes as any, 
+      set({
+        nodes: wf.nodes as any,
         edges: wf.edges as any,
         selectedNodeId: null,
         workflowId: null,
         workflowName: wf.name,
-        workflowDescription: wf.description
+        workflowDescription: wf.description,
       });
       get().rearrangeGraph();
       toast.success(`Loaded workflow: ${wf.name}`);
@@ -252,14 +262,14 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
       const level = levelMap.get(node.id) || 0;
       const levelNodes = nodesByLevel.get(level) || [];
       const index = levelNodes.indexOf(node.id);
-      
+
       const x = level * X_GAP + 80;
       const totalHeight = (levelNodes.length - 1) * Y_GAP;
       const y = 200 + index * Y_GAP - totalHeight / 2;
 
       return {
         ...node,
-        position: { x, y }
+        position: { x, y },
       };
     });
 
@@ -271,12 +281,14 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
       const validatedData = {
         name: (workflowData as any).name || 'Imported Workflow',
         nodes: workflowData.nodes || [],
-        edges: workflowData.edges || []
+        edges: workflowData.edges || [],
       };
 
       const result = WorkflowPayload.safeParse(validatedData);
       if (!result.success) {
-        const errorMsg = result.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ');
+        const errorMsg = result.error.errors
+          .map((e) => `${e.path.join('.')}: ${e.message}`)
+          .join(', ');
         toast.error(`Invalid workflow structure: ${errorMsg}`);
         return false;
       }
@@ -284,7 +296,7 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
       const importedNodes = result.data.nodes as Node<any>[];
       const importedEdges = (result.data.edges as Edge<any>[]).map((edge) => ({
         ...edge,
-        type: edge.type || 'animated'
+        type: edge.type || 'animated',
       }));
 
       if (!merge) {
@@ -292,7 +304,7 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
           nodes: importedNodes,
           edges: importedEdges,
           selectedNodeId: null,
-          maximizedNodeId: null
+          maximizedNodeId: null,
         });
         toast.success(`Workflow successfully imported!`);
         return true;
@@ -300,12 +312,12 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
         // Merge mode: map IDs to prevent collisions
         const idMap = new Map<string, string>();
         const timestamp = Date.now().toString().slice(-4);
-        
+
         const newNodes = importedNodes.map((node) => {
           const randomSuffix = Math.random().toString(36).slice(-4);
           const newId = `node-${node.type}-${timestamp}-${randomSuffix}`;
           idMap.set(node.id, newId);
-          
+
           return {
             ...node,
             id: newId,
@@ -314,25 +326,27 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
             // Offset slightly to prevent exact overlay
             position: {
               x: node.position.x + 50,
-              y: node.position.y + 50
-            }
+              y: node.position.y + 50,
+            },
           };
         });
 
-        const newEdges = importedEdges.map((edge) => {
-          const newSource = idMap.get(edge.source);
-          const newTarget = idMap.get(edge.target);
-          if (newSource && newTarget) {
-            return {
-              ...edge,
-              id: `e-${newSource}-${newTarget}`,
-              source: newSource,
-              target: newTarget,
-              type: edge.type || 'animated'
-            };
-          }
-          return null;
-        }).filter(Boolean) as Edge<any>[];
+        const newEdges = importedEdges
+          .map((edge) => {
+            const newSource = idMap.get(edge.source);
+            const newTarget = idMap.get(edge.target);
+            if (newSource && newTarget) {
+              return {
+                ...edge,
+                id: `e-${newSource}-${newTarget}`,
+                source: newSource,
+                target: newTarget,
+                type: edge.type || 'animated',
+              };
+            }
+            return null;
+          })
+          .filter(Boolean) as Edge<any>[];
 
         const existingNodes = get().nodes;
         const existingEdges = get().edges;
@@ -340,14 +354,16 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
         set({
           nodes: [...existingNodes, ...newNodes],
           edges: [...existingEdges, ...newEdges],
-          selectedNodeId: null
+          selectedNodeId: null,
         });
-        toast.success(`Merged ${newNodes.length} nodes and ${newEdges.length} edges into the canvas.`);
+        toast.success(
+          `Merged ${newNodes.length} nodes and ${newEdges.length} edges into the canvas.`,
+        );
         return true;
       }
     } catch (err: any) {
       toast.error(`Import failed: ${err.message || err}`);
       return false;
     }
-  }
+  },
 });

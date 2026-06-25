@@ -1,8 +1,4 @@
-import {
-  loadConfig,
-  configExists,
-  promptForConfig,
-} from '../config-store.js';
+import { loadConfig, configExists, promptForConfig } from '../config-store.js';
 
 export async function initCommand(): Promise<void> {
   console.log('=== QwenWeaver Init ===\n');

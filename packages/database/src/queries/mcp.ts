@@ -32,7 +32,11 @@ export interface SavedMCPServer {
   createdAt: string;
 }
 
-export async function saveMcpServer(id: string, userId: string, input: SavedMCPServerInput): Promise<SavedMCPServer> {
+export async function saveMcpServer(
+  id: string,
+  userId: string,
+  input: SavedMCPServerInput,
+): Promise<SavedMCPServer> {
   return getQueryProvider().saveMcpServer(id, userId, input);
 }
 

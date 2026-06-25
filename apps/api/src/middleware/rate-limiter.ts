@@ -78,15 +78,9 @@ export function rateLimiter(name: string, options: RateLimitOptions): Middleware
       const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
       c.header('Retry-After', String(retryAfter));
 
-      log.warn(
-        { key, limiter: name, count: entry.count, maxRequests },
-        'Rate limit exceeded',
-      );
+      log.warn({ key, limiter: name, count: entry.count, maxRequests }, 'Rate limit exceeded');
 
-      return c.json(
-        { error: 'Too many requests. Please try again later.' },
-        429,
-      );
+      return c.json({ error: 'Too many requests. Please try again later.' }, 429);
     }
 
     await next();

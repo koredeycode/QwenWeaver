@@ -3,12 +3,26 @@ import { eq, and, sql, desc, count, inArray } from 'drizzle-orm';
 import { getConnection, mysqlSchema } from '../index.js';
 import type { QueryProvider, WorkflowRow, WorkflowDetail } from './provider.js';
 import type { SavedMCPServerInput, SavedMCPServer } from './mcp.js';
-import type { WorkflowPayload, ExecutionMetrics, AgentLogInput, AgentLogOutput, MCPAuthConfig } from '@qwenweaver/types';
+import type {
+  WorkflowPayload,
+  ExecutionMetrics,
+  AgentLogInput,
+  AgentLogOutput,
+  MCPAuthConfig,
+} from '@qwenweaver/types';
 
 const log = {
   info: (data: Record<string, unknown>, message: string) => {
-    console.log(JSON.stringify({ level: 30, time: Date.now(), service: 'qwenweaver-database', ...data, msg: message }));
-  }
+    console.log(
+      JSON.stringify({
+        level: 30,
+        time: Date.now(),
+        service: 'qwenweaver-database',
+        ...data,
+        msg: message,
+      }),
+    );
+  },
 };
 
 export const mysqlProvider: QueryProvider = {
@@ -26,19 +40,31 @@ export const mysqlProvider: QueryProvider = {
   async getUserByEmail(email: string) {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
-    const rows = await mysqlDb.select().from(mysqlSchema.mysqlUsers).where(eq(mysqlSchema.mysqlUsers.email, email)).limit(1);
+    const rows = await mysqlDb
+      .select()
+      .from(mysqlSchema.mysqlUsers)
+      .where(eq(mysqlSchema.mysqlUsers.email, email))
+      .limit(1);
     return rows[0] || null;
   },
 
   async getUserById(id: string) {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
-    const rows = await mysqlDb.select().from(mysqlSchema.mysqlUsers).where(eq(mysqlSchema.mysqlUsers.id, id)).limit(1);
+    const rows = await mysqlDb
+      .select()
+      .from(mysqlSchema.mysqlUsers)
+      .where(eq(mysqlSchema.mysqlUsers.id, id))
+      .limit(1);
     if (!rows[0]) return null;
     return { id: rows[0].id, email: rows[0].email, createdAt: rows[0].createdAt };
   },
 
-  async saveMcpServer(id: string, userId: string, input: SavedMCPServerInput): Promise<SavedMCPServer> {
+  async saveMcpServer(
+    id: string,
+    userId: string,
+    input: SavedMCPServerInput,
+  ): Promise<SavedMCPServer> {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
     const baseValues = {
@@ -79,7 +105,10 @@ export const mysqlProvider: QueryProvider = {
   async getMcpServers(userId: string): Promise<SavedMCPServer[]> {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
-    const rows = await mysqlDb.select().from(mysqlSchema.mysqlMcpServers).where(eq(mysqlSchema.mysqlMcpServers.userId, userId));
+    const rows = await mysqlDb
+      .select()
+      .from(mysqlSchema.mysqlMcpServers)
+      .where(eq(mysqlSchema.mysqlMcpServers.userId, userId));
     return rows.map((r) => ({
       id: r.id,
       name: r.name,
@@ -102,7 +131,9 @@ export const mysqlProvider: QueryProvider = {
     const existing = await mysqlDb
       .select()
       .from(mysqlSchema.mysqlMcpServers)
-      .where(and(eq(mysqlSchema.mysqlMcpServers.id, id), eq(mysqlSchema.mysqlMcpServers.userId, userId)))
+      .where(
+        and(eq(mysqlSchema.mysqlMcpServers.id, id), eq(mysqlSchema.mysqlMcpServers.userId, userId)),
+      )
       .limit(1);
 
     if (existing.length === 0) {
@@ -111,25 +142,34 @@ export const mysqlProvider: QueryProvider = {
 
     await mysqlDb
       .delete(mysqlSchema.mysqlMcpServers)
-      .where(and(eq(mysqlSchema.mysqlMcpServers.id, id), eq(mysqlSchema.mysqlMcpServers.userId, userId)));
+      .where(
+        and(eq(mysqlSchema.mysqlMcpServers.id, id), eq(mysqlSchema.mysqlMcpServers.userId, userId)),
+      );
 
     return true;
   },
 
-  async updateMcpServerAuth(id: string, userId: string, authConfig: MCPAuthConfig): Promise<SavedMCPServer> {
+  async updateMcpServerAuth(
+    id: string,
+    userId: string,
+    authConfig: MCPAuthConfig,
+  ): Promise<SavedMCPServer> {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
     await mysqlDb
       .update(mysqlSchema.mysqlMcpServers)
       .set({ authConfig })
-      .where(and(eq(mysqlSchema.mysqlMcpServers.id, id), eq(mysqlSchema.mysqlMcpServers.userId, userId)));
+      .where(
+        and(eq(mysqlSchema.mysqlMcpServers.id, id), eq(mysqlSchema.mysqlMcpServers.userId, userId)),
+      );
     const [r] = await mysqlDb
       .select()
       .from(mysqlSchema.mysqlMcpServers)
       .where(eq(mysqlSchema.mysqlMcpServers.id, id))
       .limit(1);
     return {
-      id: r.id, name: r.name,
+      id: r.id,
+      name: r.name,
       description: r.description ?? undefined,
       transport: r.transport,
       url: r.url ?? undefined,
@@ -167,7 +207,7 @@ export const mysqlProvider: QueryProvider = {
           data: node.data,
           positionX: node.position.x,
           positionY: node.position.y,
-        }))
+        })),
       );
     }
 
@@ -180,7 +220,7 @@ export const mysqlProvider: QueryProvider = {
           target: `${workflowId}_${edge.target}`,
           sourceHandle: edge.sourceHandle || null,
           targetHandle: edge.targetHandle || null,
-        }))
+        })),
       );
     }
 
@@ -190,19 +230,20 @@ export const mysqlProvider: QueryProvider = {
   async listUserWorkflows(userId: string): Promise<WorkflowRow[]> {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
-    const workflows = await mysqlDb.select({
-      id: mysqlSchema.mysqlWorkflows.id,
-      name: mysqlSchema.mysqlWorkflows.name,
-      description: mysqlSchema.mysqlWorkflows.description,
-      createdAt: mysqlSchema.mysqlWorkflows.createdAt,
-    })
+    const workflows = await mysqlDb
+      .select({
+        id: mysqlSchema.mysqlWorkflows.id,
+        name: mysqlSchema.mysqlWorkflows.name,
+        description: mysqlSchema.mysqlWorkflows.description,
+        createdAt: mysqlSchema.mysqlWorkflows.createdAt,
+      })
       .from(mysqlSchema.mysqlWorkflows)
       .where(eq(mysqlSchema.mysqlWorkflows.userId, userId))
       .orderBy(desc(mysqlSchema.mysqlWorkflows.createdAt));
 
     if (workflows.length === 0) return workflows;
 
-    const wfIds = workflows.map(w => w.id);
+    const wfIds = workflows.map((w) => w.id);
     const counts = await mysqlDb
       .select({
         workflowId: mysqlSchema.mysqlNodes.workflowId,
@@ -220,7 +261,7 @@ export const mysqlProvider: QueryProvider = {
       countsByWf[row.workflowId][row.type] = row.count;
     }
 
-    return workflows.map(w => ({
+    return workflows.map((w) => ({
       ...w,
       nodeCounts: countsByWf[w.id] ?? {},
     }));
@@ -237,7 +278,9 @@ export const mysqlProvider: QueryProvider = {
         createdAt: mysqlSchema.mysqlWorkflows.createdAt,
       })
       .from(mysqlSchema.mysqlWorkflows)
-      .where(and(eq(mysqlSchema.mysqlWorkflows.id, id), eq(mysqlSchema.mysqlWorkflows.userId, userId)))
+      .where(
+        and(eq(mysqlSchema.mysqlWorkflows.id, id), eq(mysqlSchema.mysqlWorkflows.userId, userId)),
+      )
       .limit(1);
     if (wf.length === 0) return null;
 
@@ -271,7 +314,9 @@ export const mysqlProvider: QueryProvider = {
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
     const result = await mysqlDb
       .delete(mysqlSchema.mysqlWorkflows)
-      .where(and(eq(mysqlSchema.mysqlWorkflows.id, id), eq(mysqlSchema.mysqlWorkflows.userId, userId)));
+      .where(
+        and(eq(mysqlSchema.mysqlWorkflows.id, id), eq(mysqlSchema.mysqlWorkflows.userId, userId)),
+      );
     const affectedRows = (result as unknown as { affectedRows: number }).affectedRows;
     return (affectedRows ?? 0) > 0;
   },
@@ -291,7 +336,7 @@ export const mysqlProvider: QueryProvider = {
   async updateExecution(
     executionId: string,
     status: string,
-    metrics?: ExecutionMetrics
+    metrics?: ExecutionMetrics,
   ): Promise<void> {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
@@ -312,7 +357,7 @@ export const mysqlProvider: QueryProvider = {
     input: AgentLogInput | null,
     output: AgentLogOutput | null,
     tokensUsed?: number,
-    error?: string | null
+    error?: string | null,
   ): Promise<void> {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
@@ -378,28 +423,30 @@ export const mysqlProvider: QueryProvider = {
   async getAnalyticsSummary(userId: string, recentLimit: number = 10) {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
-    
-    const summaryRows = await mysqlDb.select({
-      totalRuns: sql<number>`cast(count(*) as unsigned)`,
-      completedRuns: sql<number>`cast(sum(case when status = 'completed' then 1 else 0 end) as unsigned)`,
-      failedRuns: sql<number>`cast(sum(case when status = 'failed' then 1 else 0 end) as unsigned)`,
-      avgSpeedup: sql<number | null>`avg(json_extract(metrics, '$.speedupS'))`,
-      totalTokens: sql<number>`cast(sum(json_extract(metrics, '$.totalTokens')) as unsigned)`,
-      avgLatencyMs: sql<number | null>`avg(json_extract(metrics, '$.totalLatencyMs'))`,
-    })
-    .from(mysqlSchema.mysqlExecutions)
-    .where(eq(mysqlSchema.mysqlExecutions.userId, userId));
 
-    const recentRows = await mysqlDb.select({
-      id: mysqlSchema.mysqlExecutions.id,
-      status: mysqlSchema.mysqlExecutions.status,
-      startedAt: mysqlSchema.mysqlExecutions.startedAt,
-      metrics: mysqlSchema.mysqlExecutions.metrics,
-    })
-    .from(mysqlSchema.mysqlExecutions)
-    .where(eq(mysqlSchema.mysqlExecutions.userId, userId))
-    .orderBy(desc(mysqlSchema.mysqlExecutions.startedAt))
-    .limit(recentLimit);
+    const summaryRows = await mysqlDb
+      .select({
+        totalRuns: sql<number>`cast(count(*) as unsigned)`,
+        completedRuns: sql<number>`cast(sum(case when status = 'completed' then 1 else 0 end) as unsigned)`,
+        failedRuns: sql<number>`cast(sum(case when status = 'failed' then 1 else 0 end) as unsigned)`,
+        avgSpeedup: sql<number | null>`avg(json_extract(metrics, '$.speedupS'))`,
+        totalTokens: sql<number>`cast(sum(json_extract(metrics, '$.totalTokens')) as unsigned)`,
+        avgLatencyMs: sql<number | null>`avg(json_extract(metrics, '$.totalLatencyMs'))`,
+      })
+      .from(mysqlSchema.mysqlExecutions)
+      .where(eq(mysqlSchema.mysqlExecutions.userId, userId));
+
+    const recentRows = await mysqlDb
+      .select({
+        id: mysqlSchema.mysqlExecutions.id,
+        status: mysqlSchema.mysqlExecutions.status,
+        startedAt: mysqlSchema.mysqlExecutions.startedAt,
+        metrics: mysqlSchema.mysqlExecutions.metrics,
+      })
+      .from(mysqlSchema.mysqlExecutions)
+      .where(eq(mysqlSchema.mysqlExecutions.userId, userId))
+      .orderBy(desc(mysqlSchema.mysqlExecutions.startedAt))
+      .limit(recentLimit);
 
     const summary = summaryRows[0];
 
@@ -411,7 +458,7 @@ export const mysqlProvider: QueryProvider = {
       totalTokens: summary?.totalTokens || 0,
       avgLatencyMs: summary?.avgLatencyMs || null,
       runsByModel: {}, // Not currently tracked in metrics
-      recentRuns: recentRows.map(r => ({
+      recentRuns: recentRows.map((r) => ({
         id: r.id,
         status: r.status,
         startedAt: r.startedAt.toISOString(),
@@ -436,9 +483,13 @@ export const mysqlProvider: QueryProvider = {
 
     if (options?.categoryId) conditions.push(eq(s.mysqlTemplates.categoryId, options.categoryId));
     if (options?.featured) conditions.push(eq(s.mysqlTemplates.featured, 1));
-    if (options?.search) conditions.push(sql`${s.mysqlTemplates.name} LIKE ${'%' + options.search + '%'}`);
+    if (options?.search)
+      conditions.push(sql`${s.mysqlTemplates.name} LIKE ${'%' + options.search + '%'}`);
 
-    let query: any = mysqlDb.select().from(s.mysqlTemplates).orderBy(desc(s.mysqlTemplates.downloads));
+    let query: any = mysqlDb
+      .select()
+      .from(s.mysqlTemplates)
+      .orderBy(desc(s.mysqlTemplates.downloads));
     if (conditions.length > 0) query = query.where(and(...conditions));
 
     return await query.limit(options?.limit ?? 50).offset(options?.offset ?? 0);
@@ -452,9 +503,12 @@ export const mysqlProvider: QueryProvider = {
 
     if (options?.categoryId) conditions.push(eq(s.mysqlTemplates.categoryId, options.categoryId));
     if (options?.featured) conditions.push(eq(s.mysqlTemplates.featured, 1));
-    if (options?.search) conditions.push(sql`${s.mysqlTemplates.name} LIKE ${'%' + options.search + '%'}`);
+    if (options?.search)
+      conditions.push(sql`${s.mysqlTemplates.name} LIKE ${'%' + options.search + '%'}`);
 
-    let query: any = mysqlDb.select({ count: sql<number>`cast(count(*) as unsigned)` }).from(s.mysqlTemplates);
+    let query: any = mysqlDb
+      .select({ count: sql<number>`cast(count(*) as unsigned)` })
+      .from(s.mysqlTemplates);
     if (conditions.length > 0) query = query.where(and(...conditions));
 
     const result = await query;
@@ -464,7 +518,11 @@ export const mysqlProvider: QueryProvider = {
   async getTemplate(id: string) {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
-    const rows = await mysqlDb.select().from(mysqlSchema.mysqlTemplates).where(eq(mysqlSchema.mysqlTemplates.id, id)).limit(1);
+    const rows = await mysqlDb
+      .select()
+      .from(mysqlSchema.mysqlTemplates)
+      .where(eq(mysqlSchema.mysqlTemplates.id, id))
+      .limit(1);
     return rows[0] ?? null;
   },
 
@@ -499,7 +557,8 @@ export const mysqlProvider: QueryProvider = {
   async incrementTemplateDownloads(id: string) {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
-    await mysqlDb.update(mysqlSchema.mysqlTemplates)
+    await mysqlDb
+      .update(mysqlSchema.mysqlTemplates)
       .set({ downloads: sql`${mysqlSchema.mysqlTemplates.downloads} + 1` })
       .where(eq(mysqlSchema.mysqlTemplates.id, id));
   },
@@ -507,49 +566,70 @@ export const mysqlProvider: QueryProvider = {
   async listTemplateReviews(templateId: string) {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
-    return await mysqlDb.select()
+    return await mysqlDb
+      .select()
       .from(mysqlSchema.mysqlTemplateReviews)
       .where(eq(mysqlSchema.mysqlTemplateReviews.templateId, templateId))
       .orderBy(desc(mysqlSchema.mysqlTemplateReviews.createdAt));
   },
 
-  async upsertTemplateReview(id: string, templateId: string, userId: string, rating: number, review?: string | null) {
+  async upsertTemplateReview(
+    id: string,
+    templateId: string,
+    userId: string,
+    rating: number,
+    review?: string | null,
+  ) {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
-    const existing = await mysqlDb.select()
+    const existing = await mysqlDb
+      .select()
       .from(mysqlSchema.mysqlTemplateReviews)
-      .where(and(
-        eq(mysqlSchema.mysqlTemplateReviews.templateId, templateId),
-        eq(mysqlSchema.mysqlTemplateReviews.userId, userId),
-      ))
+      .where(
+        and(
+          eq(mysqlSchema.mysqlTemplateReviews.templateId, templateId),
+          eq(mysqlSchema.mysqlTemplateReviews.userId, userId),
+        ),
+      )
       .limit(1);
 
     if (existing.length > 0) {
-      await mysqlDb.update(mysqlSchema.mysqlTemplateReviews)
+      await mysqlDb
+        .update(mysqlSchema.mysqlTemplateReviews)
         .set({ rating, review: review ?? null })
         .where(eq(mysqlSchema.mysqlTemplateReviews.id, existing[0].id));
 
-      const stats = await mysqlDb.select({
-        avg: sql<number>`cast(avg(${mysqlSchema.mysqlTemplateReviews.rating}) as unsigned)`,
-        count: sql<number>`cast(count(*) as unsigned)`,
-      }).from(mysqlSchema.mysqlTemplateReviews)
+      const stats = await mysqlDb
+        .select({
+          avg: sql<number>`cast(avg(${mysqlSchema.mysqlTemplateReviews.rating}) as unsigned)`,
+          count: sql<number>`cast(count(*) as unsigned)`,
+        })
+        .from(mysqlSchema.mysqlTemplateReviews)
         .where(eq(mysqlSchema.mysqlTemplateReviews.templateId, templateId));
 
-      await mysqlDb.update(mysqlSchema.mysqlTemplates)
+      await mysqlDb
+        .update(mysqlSchema.mysqlTemplates)
         .set({ avgRating: stats[0]?.avg ?? 0, ratingCount: stats[0]?.count ?? 0 })
         .where(eq(mysqlSchema.mysqlTemplates.id, templateId));
     } else {
       await mysqlDb.insert(mysqlSchema.mysqlTemplateReviews).values({
-        id, templateId, userId, rating, review: review ?? null,
+        id,
+        templateId,
+        userId,
+        rating,
+        review: review ?? null,
       });
 
-      const stats = await mysqlDb.select({
-        avg: sql<number>`cast(avg(${mysqlSchema.mysqlTemplateReviews.rating}) as unsigned)`,
-        count: sql<number>`cast(count(*) as unsigned)`,
-      }).from(mysqlSchema.mysqlTemplateReviews)
+      const stats = await mysqlDb
+        .select({
+          avg: sql<number>`cast(avg(${mysqlSchema.mysqlTemplateReviews.rating}) as unsigned)`,
+          count: sql<number>`cast(count(*) as unsigned)`,
+        })
+        .from(mysqlSchema.mysqlTemplateReviews)
         .where(eq(mysqlSchema.mysqlTemplateReviews.templateId, templateId));
 
-      await mysqlDb.update(mysqlSchema.mysqlTemplates)
+      await mysqlDb
+        .update(mysqlSchema.mysqlTemplates)
         .set({ avgRating: stats[0]?.avg ?? 0, ratingCount: stats[0]?.count ?? 0 })
         .where(eq(mysqlSchema.mysqlTemplates.id, templateId));
     }
@@ -558,7 +638,8 @@ export const mysqlProvider: QueryProvider = {
   async listTemplateCategories() {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
-    return await mysqlDb.select()
+    return await mysqlDb
+      .select()
       .from(mysqlSchema.mysqlTemplateCategories)
       .orderBy(mysqlSchema.mysqlTemplateCategories.sortOrder);
   },
@@ -581,7 +662,13 @@ export const mysqlProvider: QueryProvider = {
     };
   },
 
-  async grantCredits(userId: string, amount: number, type: string, description?: string, executionId?: string) {
+  async grantCredits(
+    userId: string,
+    amount: number,
+    type: string,
+    description?: string,
+    executionId?: string,
+  ) {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
     const existing = await mysqlDb
@@ -599,7 +686,8 @@ export const mysqlProvider: QueryProvider = {
         updatedAt: new Date(),
       });
     } else {
-      await mysqlDb.update(mysqlSchema.mysqlUserCredits)
+      await mysqlDb
+        .update(mysqlSchema.mysqlUserCredits)
         .set({
           balance: sql`${mysqlSchema.mysqlUserCredits.balance} + ${amount}`,
           lifetimeEarned: sql`${mysqlSchema.mysqlUserCredits.lifetimeEarned} + ${amount}`,
@@ -622,7 +710,8 @@ export const mysqlProvider: QueryProvider = {
   async deductCredits(userId: string, amount: number, description?: string, executionId?: string) {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
-    await mysqlDb.update(mysqlSchema.mysqlUserCredits)
+    await mysqlDb
+      .update(mysqlSchema.mysqlUserCredits)
       .set({
         balance: sql`${mysqlSchema.mysqlUserCredits.balance} - ${amount}`,
         lifetimeSpent: sql`${mysqlSchema.mysqlUserCredits.lifetimeSpent} + ${amount}`,

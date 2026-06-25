@@ -1,11 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Search,
-  X,
-  ArrowLeft,
-  Loader2,
-} from 'lucide-react';
+import { Search, X, ArrowLeft, Loader2 } from 'lucide-react';
 import { useStore } from '../store/index.js';
 import { TemplateCard } from './TemplateCard.js';
 
@@ -32,21 +27,30 @@ export const TemplateGallery = () => {
     fetchTemplates({ categoryId: activeCategory || undefined, search: search || undefined });
   }, [activeCategory, fetchTemplates]);
 
-  const handleSearch = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    fetchTemplates({ categoryId: activeCategory || undefined, search: search || undefined });
-  }, [activeCategory, search, fetchTemplates]);
+  const handleSearch = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      fetchTemplates({ categoryId: activeCategory || undefined, search: search || undefined });
+    },
+    [activeCategory, search, fetchTemplates],
+  );
 
-  const handleSelect = useCallback((id: string) => {
-    navigate(`/templates/${id}`);
-  }, [navigate]);
+  const handleSelect = useCallback(
+    (id: string) => {
+      navigate(`/templates/${id}`);
+    },
+    [navigate],
+  );
 
-  const handleFork = useCallback(async (id: string) => {
-    const ok = await forkTemplate(id);
-    if (ok) {
-      navigate('/workflows/unsaved');
-    }
-  }, [forkTemplate, navigate]);
+  const handleFork = useCallback(
+    async (id: string) => {
+      const ok = await forkTemplate(id);
+      if (ok) {
+        navigate('/workflows/unsaved');
+      }
+    },
+    [forkTemplate, navigate],
+  );
 
   const allCategories = [ALL_CATEGORIES, ...categories];
 
@@ -77,7 +81,14 @@ export const TemplateGallery = () => {
                 className="bg-transparent border-none outline-none text-xs font-mono text-slate-700 placeholder:text-slate-400 w-40"
               />
               {search && (
-                <button type="button" onClick={() => { setSearch(''); fetchTemplates({ categoryId: activeCategory || undefined }); }} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch('');
+                    fetchTemplates({ categoryId: activeCategory || undefined });
+                  }}
+                  className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
                   <X className="w-3 h-3" />
                 </button>
               )}

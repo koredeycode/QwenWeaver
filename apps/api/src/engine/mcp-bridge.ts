@@ -29,7 +29,7 @@ async function getClient(mcpUrl: string, headers?: Record<string, string>): Prom
       await Promise.race([
         pooled.client.listTools(),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('MCP liveness check timed out')), 5000)
+          setTimeout(() => reject(new Error('MCP liveness check timed out')), 5000),
         ),
       ]);
       pooled.lastUsed = Date.now();
@@ -47,7 +47,7 @@ async function getClient(mcpUrl: string, headers?: Record<string, string>): Prom
   const client = await createMCPClient(mcpUrl, { name: 'qwenweaver-engine', headers });
   clientPool.set(poolKey, { client, lastUsed: Date.now() });
   mcp_pool_connections.set(clientPool.size);
-  
+
   return client;
 }
 
@@ -100,19 +100,20 @@ export async function discoverMCPTools(
 
   const { tools } = await Promise.race([
     client.listTools(),
-    new Promise<never>((_, reject) => setTimeout(() => reject(new Error('MCP listTools timed out')), 60000))
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('MCP listTools timed out')), 60000),
+    ),
   ]);
 
-  const discoveredTools: DiscoveredTool[] = tools.map((tool: { name: string; description?: string; inputSchema?: unknown }) => ({
-    name: tool.name,
-    description: tool.description ?? '',
-    inputSchema: (tool.inputSchema as Record<string, unknown>) ?? {},
-  }));
-
-  log.info(
-    { nodeId: node.id, toolCount: discoveredTools.length },
-    'MCP tools discovered',
+  const discoveredTools: DiscoveredTool[] = tools.map(
+    (tool: { name: string; description?: string; inputSchema?: unknown }) => ({
+      name: tool.name,
+      description: tool.description ?? '',
+      inputSchema: (tool.inputSchema as Record<string, unknown>) ?? {},
+    }),
   );
+
+  log.info({ nodeId: node.id, toolCount: discoveredTools.length }, 'MCP tools discovered');
 
   return discoveredTools;
 }
@@ -128,17 +129,16 @@ export async function callMCPTool(
 
     const result = await Promise.race([
       client.callTool({ name: toolName, arguments: args }),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('MCP callTool timed out')), 60000))
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('MCP callTool timed out')), 60000),
+      ),
     ]);
 
     log.info({ mcpUrl, toolName }, 'MCP tool called successfully');
 
     return result;
   } catch (error) {
-    log.error(
-      { mcpUrl, toolName, error: (error as Error).message },
-      'Failed to call MCP tool',
-    );
+    log.error({ mcpUrl, toolName, error: (error as Error).message }, 'Failed to call MCP tool');
     throw error;
   }
 }

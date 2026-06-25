@@ -2,7 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { compileDag } from '../engine/dag-compiler.js';
 import type { NodePayload, EdgePayload } from '@qwenweaver/types';
 
-function node(id: string, type: 'trigger' | 'agent' | 'supervisor' | 'mcp_tool' | 'logic' = 'agent'): NodePayload {
+function node(
+  id: string,
+  type: 'trigger' | 'agent' | 'supervisor' | 'mcp_tool' | 'logic' = 'agent',
+): NodePayload {
   return { id, type, position: { x: 0, y: 0 }, data: {} };
 }
 
@@ -41,12 +44,7 @@ describe('dag-compiler', () => {
   it('compiles a diamond graph with parallel middle layer', () => {
     // A → B, A → C, B → D, C → D
     const nodes = [node('A'), node('B'), node('C'), node('D')];
-    const edges = [
-      edge('A', 'B'),
-      edge('A', 'C'),
-      edge('B', 'D'),
-      edge('C', 'D'),
-    ];
+    const edges = [edge('A', 'B'), edge('A', 'C'), edge('B', 'D'), edge('C', 'D')];
 
     const result = compileDag(nodes, edges);
 
@@ -117,12 +115,7 @@ describe('dag-compiler', () => {
 
   it('handles a wide fan-out (A → B, C, D, E)', () => {
     const nodes = [node('A'), node('B'), node('C'), node('D'), node('E')];
-    const edges = [
-      edge('A', 'B'),
-      edge('A', 'C'),
-      edge('A', 'D'),
-      edge('A', 'E'),
-    ];
+    const edges = [edge('A', 'B'), edge('A', 'C'), edge('A', 'D'), edge('A', 'E')];
 
     const result = compileDag(nodes, edges);
 

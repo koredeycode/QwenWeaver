@@ -1,10 +1,5 @@
 import type { WorkflowPayload, ExecutionMetrics, NodeTiming } from '@qwenweaver/types';
-import type {
-  UpstreamOutputs,
-  ExecutionResult,
-  ExecutionOptions,
-  StreamEmitter,
-} from './types.js';
+import type { UpstreamOutputs, ExecutionResult, ExecutionOptions, StreamEmitter } from './types.js';
 import { compileDag } from './dag-compiler.js';
 import { runAgent } from './agent-runner.js';
 import { getQueryProvider } from '@qwenweaver/database';
@@ -21,7 +16,7 @@ export async function executeWorkflow(
 ): Promise<ExecutionResult> {
   const executionStart = performance.now();
   const provider = getQueryProvider();
-  
+
   // Try fetching to verify execution exists
   const existing = await provider.getExecution(executionId).catch(() => null);
   if (existing) {
@@ -45,7 +40,10 @@ export async function executeWorkflow(
     log.error({ executionId, cycleNodeIds: dagResult.cycleNodeIds }, errorMsg);
 
     await provider.updateExecution(executionId, 'failed').catch((err: Error) => {
-      log.error({ executionId, error: err.message }, 'Failed to set execution status to failed on cycle');
+      log.error(
+        { executionId, error: err.message },
+        'Failed to set execution status to failed on cycle',
+      );
     });
 
     await emitter.emit('error', {
@@ -70,7 +68,7 @@ export async function executeWorkflow(
   const allOutputs: UpstreamOutputs = new Map();
   const nodeTimings: NodeTiming[] = [];
   let totalTokens = 0;
-  let sequentialTime = 0; 
+  let sequentialTime = 0;
   let currentRound = 0;
   const maxNegotiationRounds = options?.maxNegotiationRounds ?? 3;
   const cumulativeFeedback = new Map<string, string>();
@@ -99,10 +97,7 @@ export async function executeWorkflow(
       break;
     }
 
-    log.info(
-      { executionId, batchIdx, batchSize: batch.length, currentRound },
-      'Executing batch',
-    );
+    log.info({ executionId, batchIdx, batchSize: batch.length, currentRound }, 'Executing batch');
 
     for (const node of batch) {
       await emitter.emit('status_update', {
@@ -146,30 +141,38 @@ export async function executeWorkflow(
         const result = await runAgent(nodeToRun, upstream, emitter, executionId);
 
         // Non-blocking log save
-        const logPromise = provider.saveAgentLog(
-          executionId,
-          result.nodeId,
-          result.status,
-          {
-            prompt: nodeToRun.data.label || 'Agent Execution',
-            systemPrompt: nodeToRun.data.systemPrompt || undefined,
-            upstreamOutputs: Object.fromEntries(
-              Array.from(upstream.entries()).map(([k, v]) => [k, { text: v.text, status: v.status }])
-            ),
-          },
-          {
-            text: result.text,
-            outputs: result.outputs,
-            reasoning: result.reasoning,
-            toolCalls: result.toolCalls,
-            toolResults: result.toolResults,
-          },
-          result.tokensUsed,
-          result.error
-        ).catch((err: Error) => {
-          log.error({ executionId, nodeId: result.nodeId, error: err.message }, 'Failed to save agent log');
-        });
-        
+        const logPromise = provider
+          .saveAgentLog(
+            executionId,
+            result.nodeId,
+            result.status,
+            {
+              prompt: nodeToRun.data.label || 'Agent Execution',
+              systemPrompt: nodeToRun.data.systemPrompt || undefined,
+              upstreamOutputs: Object.fromEntries(
+                Array.from(upstream.entries()).map(([k, v]) => [
+                  k,
+                  { text: v.text, status: v.status },
+                ]),
+              ),
+            },
+            {
+              text: result.text,
+              outputs: result.outputs,
+              reasoning: result.reasoning,
+              toolCalls: result.toolCalls,
+              toolResults: result.toolResults,
+            },
+            result.tokensUsed,
+            result.error,
+          )
+          .catch((err: Error) => {
+            log.error(
+              { executionId, nodeId: result.nodeId, error: err.message },
+              'Failed to save agent log',
+            );
+          });
+
         backgroundTasks.push(logPromise);
 
         return result;
@@ -220,10 +223,7 @@ export async function executeWorkflow(
       });
 
       if (result.status === 'failed') {
-        log.error(
-          { executionId, nodeId: result.nodeId, error: result.error },
-          'Agent failed',
-        );
+        log.error({ executionId, nodeId: result.nodeId, error: result.error }, 'Agent failed');
       }
     }
 
@@ -272,7 +272,7 @@ export async function executeWorkflow(
         const existingFeedback = cumulativeFeedback.get(workerId) ?? '';
         cumulativeFeedback.set(
           workerId,
-          existingFeedback + `\n\n[REVISION REQUESTED BY SUPERVISOR]: ${supervisorFeedback}`
+          existingFeedback + `\n\n[REVISION REQUESTED BY SUPERVISOR]: ${supervisorFeedback}`,
         );
       }
 
@@ -297,13 +297,13 @@ export async function executeWorkflow(
 
   const totalLatencyMs = Math.round(performance.now() - executionStart);
 
-  const speedupS = totalLatencyMs > 0
-    ? Math.round((sequentialTime / totalLatencyMs) * 100) / 100
-    : 1;
+  const speedupS =
+    totalLatencyMs > 0 ? Math.round((sequentialTime / totalLatencyMs) * 100) / 100 : 1;
 
-  const parallelEfficiency = dagResult.batches.length > 0
-    ? Math.round((workflow.nodes.length / dagResult.batches.length) * 100) / 100
-    : 1;
+  const parallelEfficiency =
+    dagResult.batches.length > 0
+      ? Math.round((workflow.nodes.length / dagResult.batches.length) * 100) / 100
+      : 1;
 
   const metrics: ExecutionMetrics = {
     speedupS,

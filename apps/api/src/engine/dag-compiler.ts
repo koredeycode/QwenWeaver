@@ -15,10 +15,7 @@ const log = createModuleLogger('engine/dag-compiler');
  * If the graph contains a cycle, `hasCycle` will be `true` and
  * `cycleNodeIds` will list the IDs of the nodes trapped in the cycle.
  */
-export function compileDag(
-  nodes: NodePayload[],
-  edges: EdgePayload[],
-): DagCompilationResult {
+export function compileDag(nodes: NodePayload[], edges: EdgePayload[]): DagCompilationResult {
   if (nodes.length === 0) {
     return { batches: [], hasCycle: false };
   }
@@ -98,9 +95,7 @@ export function compileDag(
 
   // Cycle detection: if we haven't processed all nodes, a cycle exists
   if (processedCount < nodes.length) {
-    const cycleNodeIds = nodes
-      .filter((n) => (inDegree.get(n.id) ?? 0) > 0)
-      .map((n) => n.id);
+    const cycleNodeIds = nodes.filter((n) => (inDegree.get(n.id) ?? 0) > 0).map((n) => n.id);
 
     log.error({ cycleNodeIds }, 'Cycle detected in DAG');
 
@@ -111,10 +106,7 @@ export function compileDag(
     };
   }
 
-  log.info(
-    { totalNodes: nodes.length, totalBatches: batches.length },
-    'DAG compiled successfully',
-  );
+  log.info({ totalNodes: nodes.length, totalBatches: batches.length }, 'DAG compiled successfully');
 
   return { batches, hasCycle: false };
 }

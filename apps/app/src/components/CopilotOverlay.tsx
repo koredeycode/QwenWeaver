@@ -1,11 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { 
-  MessageSquareCode, 
-  Send, 
-  Loader2, 
-  X,
-  Sparkles
-} from 'lucide-react';
+import { MessageSquareCode, Send, Loader2, X, Sparkles } from 'lucide-react';
 import { useStore } from '../store/index.js';
 
 export const CopilotOverlay = () => {
@@ -15,7 +9,7 @@ export const CopilotOverlay = () => {
 
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
-  
+
   // Track button position on the screen
   const [pos, setPos] = useState(() => {
     // Default position: near bottom right corner
@@ -36,12 +30,18 @@ export const CopilotOverlay = () => {
     return { x: window.innerWidth - 180, y: window.innerHeight - 150 };
   });
 
-  const dragRef = useRef<{ isDragging: boolean; startX: number; startY: number; posX: number; posY: number }>({
+  const dragRef = useRef<{
+    isDragging: boolean;
+    startX: number;
+    startY: number;
+    posX: number;
+    posY: number;
+  }>({
     isDragging: false,
     startX: 0,
     startY: 0,
     posX: 0,
-    posY: 0
+    posY: 0,
   });
 
   const chatBottomRef = useRef<HTMLDivElement>(null);
@@ -66,65 +66,74 @@ export const CopilotOverlay = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const startDrag = useCallback((clientX: number, clientY: number) => {
-    dragRef.current = {
-      isDragging: false,
-      startX: clientX,
-      startY: clientY,
-      posX: pos.x,
-      posY: pos.y
-    };
+  const startDrag = useCallback(
+    (clientX: number, clientY: number) => {
+      dragRef.current = {
+        isDragging: false,
+        startX: clientX,
+        startY: clientY,
+        posX: pos.x,
+        posY: pos.y,
+      };
 
-    const handleMove = (moveClientX: number, moveClientY: number) => {
-      const deltaX = moveClientX - dragRef.current.startX;
-      const deltaY = moveClientY - dragRef.current.startY;
+      const handleMove = (moveClientX: number, moveClientY: number) => {
+        const deltaX = moveClientX - dragRef.current.startX;
+        const deltaY = moveClientY - dragRef.current.startY;
 
-      if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
-        dragRef.current.isDragging = true;
-      }
+        if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+          dragRef.current.isDragging = true;
+        }
 
-      const newX = Math.max(10, Math.min(window.innerWidth - 80, dragRef.current.posX + deltaX));
-      const newY = Math.max(10, Math.min(window.innerHeight - 80, dragRef.current.posY + deltaY));
+        const newX = Math.max(10, Math.min(window.innerWidth - 80, dragRef.current.posX + deltaX));
+        const newY = Math.max(10, Math.min(window.innerHeight - 80, dragRef.current.posY + deltaY));
 
-      setPos({ x: newX, y: newY });
-      localStorage.setItem('qwenweaver_copilot_pos', JSON.stringify({ x: newX, y: newY }));
-    };
+        setPos({ x: newX, y: newY });
+        localStorage.setItem('qwenweaver_copilot_pos', JSON.stringify({ x: newX, y: newY }));
+      };
 
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      handleMove(moveEvent.clientX, moveEvent.clientY);
-    };
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        handleMove(moveEvent.clientX, moveEvent.clientY);
+      };
 
-    const handleTouchMove = (moveEvent: TouchEvent) => {
-      const touch = moveEvent.touches[0];
+      const handleTouchMove = (moveEvent: TouchEvent) => {
+        const touch = moveEvent.touches[0];
+        if (touch) {
+          handleMove(touch.clientX, touch.clientY);
+        }
+      };
+
+      const handleEnd = () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleEnd);
+        window.removeEventListener('touchmove', handleTouchMove);
+        window.removeEventListener('touchend', handleEnd);
+      };
+
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleEnd);
+      window.addEventListener('touchmove', handleTouchMove, { passive: false });
+      window.addEventListener('touchend', handleEnd);
+    },
+    [pos],
+  );
+
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.button !== 0) return;
+      startDrag(e.clientX, e.clientY);
+    },
+    [startDrag],
+  );
+
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      const touch = e.touches[0];
       if (touch) {
-        handleMove(touch.clientX, touch.clientY);
+        startDrag(touch.clientX, touch.clientY);
       }
-    };
-
-    const handleEnd = () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleEnd);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleEnd);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleEnd);
-    window.addEventListener('touchmove', handleTouchMove, { passive: false });
-    window.addEventListener('touchend', handleEnd);
-  }, [pos]);
-
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button !== 0) return;
-    startDrag(e.clientX, e.clientY);
-  }, [startDrag]);
-
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    if (touch) {
-      startDrag(touch.clientX, touch.clientY);
-    }
-  }, [startDrag]);
+    },
+    [startDrag],
+  );
 
   const handleButtonClick = () => {
     if (dragRef.current.isDragging) return;
@@ -147,15 +156,18 @@ export const CopilotOverlay = () => {
   // Calculate overlay position (anchored to the button, but clamped within viewport)
   const overlayWidth = 340;
   const overlayHeight = 440;
-  
+
   // Place overlay right above or next to the button
   const overlayLeft = Math.max(20, Math.min(window.innerWidth - overlayWidth - 20, pos.x - 280));
-  const overlayTop = Math.max(20, Math.min(window.innerHeight - overlayHeight - 80, pos.y - overlayHeight - 15));
+  const overlayTop = Math.max(
+    20,
+    Math.min(window.innerHeight - overlayHeight - 80, pos.y - overlayHeight - 15),
+  );
 
   return (
     <>
       {/* Draggable Copilot Button */}
-      <div 
+      <div
         style={{ left: pos.x, top: pos.y }}
         className="fixed z-50 select-none cursor-grab active:cursor-grabbing touch-none"
         onMouseDown={handleMouseDown}
@@ -164,8 +176,8 @@ export const CopilotOverlay = () => {
         <button
           onClick={handleButtonClick}
           className={`flex items-center gap-2 px-4 py-2.5 shadow-lg border border-[#cbd5e1] font-mono text-xs font-bold transition-all rounded-none ${
-            isOpen 
-              ? 'bg-[#ea580c] border-[#ea580c] text-white' 
+            isOpen
+              ? 'bg-[#ea580c] border-[#ea580c] text-white'
               : 'bg-white hover:bg-slate-50 text-slate-700'
           }`}
           title="Drag to reposition, Click to toggle Qwen Copilot chat"
@@ -179,7 +191,7 @@ export const CopilotOverlay = () => {
 
       {/* Floating Chat Overlay */}
       {isOpen && (
-        <div 
+        <div
           style={{ left: overlayLeft, top: overlayTop, width: overlayWidth, height: overlayHeight }}
           className="fixed z-50 bg-white border border-[#cbd5e1] shadow-2xl flex flex-col font-sans text-slate-800 select-none rounded-none overflow-hidden animate-in fade-in zoom-in-95 duration-150"
         >
@@ -204,12 +216,14 @@ export const CopilotOverlay = () => {
               <div className="h-full flex flex-col items-center justify-center text-center p-4 text-slate-400">
                 <Sparkles className="w-8 h-8 text-slate-300 mb-2 animate-bounce" />
                 <p className="text-xs font-bold text-slate-500">Ask Qwen Copilot anything!</p>
-                <p className="text-[10px] mt-1 max-w-[200px]">E.g. "Build a research swarm comparing patent scanners with worker agents."</p>
+                <p className="text-[10px] mt-1 max-w-[200px]">
+                  E.g. "Build a research swarm comparing patent scanners with worker agents."
+                </p>
               </div>
             ) : (
               messages.map((msg, idx) => (
-                <div 
-                  key={idx} 
+                <div
+                  key={idx}
                   className={`p-2.5 border text-xs leading-relaxed ${
                     msg.role === 'user'
                       ? 'bg-slate-50 border-slate-200 text-slate-800 ml-6'
@@ -223,14 +237,14 @@ export const CopilotOverlay = () => {
                 </div>
               ))
             )}
-            
+
             {isTyping && (
               <div className="bg-slate-50 border border-slate-200 p-2.5 text-xs text-slate-500 mr-6 flex items-center gap-2">
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-[#ea580c]" />
                 <span className="font-mono text-[10px]">Copilot compiling swarm...</span>
               </div>
             )}
-            
+
             <div ref={chatBottomRef} />
           </div>
 

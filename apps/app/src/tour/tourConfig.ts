@@ -19,7 +19,7 @@ export const tourConfig: TourStep[] = [
     id: 'inspector-panel',
     title: 'Configure in the Inspector',
     description:
-      'The inspector panel appears when a node is selected. Set the agent\'s name, system prompt, model, and output format.',
+      "The inspector panel appears when a node is selected. Set the agent's name, system prompt, model, and output format.",
     targets: [{ type: 'dom_selector', value: '[data-tour="inspector"]' }],
   },
   {

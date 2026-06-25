@@ -55,7 +55,8 @@ export async function handleCreateTemplate(c: C) {
   const provider = getQueryProvider();
   const raw = await c.req.json();
   const parsed = CreateTemplateBody.safeParse(raw);
-  if (!parsed.success) return c.json({ error: 'Invalid body', details: parsed.error.format() }, 400);
+  if (!parsed.success)
+    return c.json({ error: 'Invalid body', details: parsed.error.format() }, 400);
 
   const body = parsed.data;
   const jwtPayload = c.get('jwtPayload');
@@ -115,14 +116,21 @@ export async function handleRateTemplate(c: C) {
   const id = paramId(c);
   const raw = await c.req.json();
   const parsed = RateTemplateBody.safeParse(raw);
-  if (!parsed.success) return c.json({ error: 'Invalid body', details: parsed.error.format() }, 400);
+  if (!parsed.success)
+    return c.json({ error: 'Invalid body', details: parsed.error.format() }, 400);
 
   const jwtPayload = c.get('jwtPayload');
   const template = await provider.getTemplate(id);
   if (!template) return c.json({ error: 'Template not found' }, 404);
 
   const reviewId = randomUUID();
-  await provider.upsertTemplateReview(reviewId, id, jwtPayload.sub, parsed.data.rating, parsed.data.review ?? null);
+  await provider.upsertTemplateReview(
+    reviewId,
+    id,
+    jwtPayload.sub,
+    parsed.data.rating,
+    parsed.data.review ?? null,
+  );
 
   return c.json({ id: reviewId }, 200);
 }

@@ -7,7 +7,12 @@ interface PublishTemplateDialogProps {
   initialName?: string;
   initialDescription?: string;
   onClose: () => void;
-  onConfirm: (data: { name: string; description: string; categoryId?: string; tags?: string[] }) => Promise<void>;
+  onConfirm: (data: {
+    name: string;
+    description: string;
+    categoryId?: string;
+    tags?: string[];
+  }) => Promise<void>;
 }
 
 interface Category {
@@ -38,7 +43,8 @@ export const PublishTemplateDialog = ({
       setCategoryId('');
       setTagsStr('');
       setLoading(true);
-      client.api.templates.categories.$get({}, { headers: authHeaders() })
+      client.api.templates.categories
+        .$get({}, { headers: authHeaders() })
         .then((r) => r.json())
         .then((data) => setCategories((data as any).categories))
         .catch(() => {})
@@ -55,9 +61,17 @@ export const PublishTemplateDialog = ({
     setSubmitting(true);
     try {
       const tags = tagsStr.trim()
-        ? tagsStr.split(',').map(t => t.trim()).filter(Boolean)
+        ? tagsStr
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean)
         : undefined;
-      await onConfirm({ name: name.trim(), description: description.trim(), categoryId: categoryId || undefined, tags });
+      await onConfirm({
+        name: name.trim(),
+        description: description.trim(),
+        categoryId: categoryId || undefined,
+        tags,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -75,9 +89,14 @@ export const PublishTemplateDialog = ({
         <div className="bg-white text-slate-800 px-6 py-4 flex items-center justify-between border-b border-slate-200">
           <div className="flex items-center gap-2.5">
             <Upload className="w-4 h-4 text-purple-600" />
-            <h2 className="text-sm font-bold font-mono text-slate-800 tracking-tight">PUBLISH AS TEMPLATE</h2>
+            <h2 className="text-sm font-bold font-mono text-slate-800 tracking-tight">
+              PUBLISH AS TEMPLATE
+            </h2>
           </div>
-          <button onClick={onClose} className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer">
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+          >
             <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
@@ -123,7 +142,9 @@ export const PublishTemplateDialog = ({
             >
               <option value="">{loading ? 'Loading...' : '— Select category —'}</option>
               {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>{cat.name}</option>
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
               ))}
             </select>
           </div>
@@ -154,7 +175,11 @@ export const PublishTemplateDialog = ({
             disabled={!name.trim() || submitting}
             className="px-4 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-mono font-bold transition-all rounded-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
           >
-            {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+            {submitting ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Upload className="w-3.5 h-3.5" />
+            )}
             {submitting ? 'PUBLISHING...' : 'PUBLISH TEMPLATE'}
           </button>
         </div>

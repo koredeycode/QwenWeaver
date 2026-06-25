@@ -58,11 +58,14 @@ export const handleGetSetupStatus = async (c: Context<{ Variables: Variables }>)
       }
     : undefined;
 
-  return c.json({
-    complete,
-    ownerExists,
-    runtimeConfig,
-  }, 200);
+  return c.json(
+    {
+      complete,
+      ownerExists,
+      runtimeConfig,
+    },
+    200,
+  );
 };
 
 export const handleSetup = async (c: Context<{ Variables: Variables }>) => {
@@ -140,10 +143,13 @@ export const handleSetup = async (c: Context<{ Variables: Variables }>) => {
   stored.completedAt = new Date().toISOString();
   writeSetupStatus(stored);
 
-  return c.json({
-    success: true,
-    message: 'Setup completed successfully',
-  }, 200);
+  return c.json(
+    {
+      success: true,
+      message: 'Setup completed successfully',
+    },
+    200,
+  );
 };
 
 export const handleReconfigure = async (c: Context<{ Variables: Variables }>) => {
@@ -190,8 +196,11 @@ export const handleReconfigure = async (c: Context<{ Variables: Variables }>) =>
   writeFileSync(envPath, envContent.join('\n'), 'utf-8');
   log.info({ updatedKeys: Object.keys(envVars) }, 'Runtime configuration updated via reconfigure');
 
-  return c.json({
-    success: true,
-    message: 'Configuration updated. Restart the server for changes to take effect.',
-  }, 200);
+  return c.json(
+    {
+      success: true,
+      message: 'Configuration updated. Restart the server for changes to take effect.',
+    },
+    200,
+  );
 };

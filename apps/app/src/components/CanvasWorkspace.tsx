@@ -1,10 +1,4 @@
-import {
-  Background,
-  MiniMap,
-  Panel,
-  ReactFlow,
-  useReactFlow
-} from '@xyflow/react';
+import { Background, MiniMap, Panel, ReactFlow, useReactFlow } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -133,12 +127,15 @@ export const CanvasWorkspace = () => {
               localStorage.removeItem(`forked_wf_${id}`);
               return;
             }
-          } catch { /* ignore invalid JSON */ }
+          } catch {
+            /* ignore invalid JSON */
+          }
         }
 
         // Try to load from API (saved workflow from the server)
-        client.api.workflow.detail[':workflowId'].$get({ param: { workflowId: id } }, { headers: authHeaders() })
-          .then((r: Response) => r.ok ? r.json() : null)
+        client.api.workflow.detail[':workflowId']
+          .$get({ param: { workflowId: id } }, { headers: authHeaders() })
+          .then((r: Response) => (r.ok ? r.json() : null))
           .then((wf: any) => {
             if (!wf || !wf.nodes || !wf.edges) {
               clearGraph();
@@ -147,7 +144,9 @@ export const CanvasWorkspace = () => {
                 try {
                   const { name, description } = JSON.parse(pendingRaw);
                   setWorkflowMeta(name, description || '');
-                } catch { /* ignore invalid JSON */ }
+                } catch {
+                  /* ignore invalid JSON */
+                }
               }
               return;
             }
@@ -180,7 +179,9 @@ export const CanvasWorkspace = () => {
               try {
                 const { name, description } = JSON.parse(pendingRaw);
                 setWorkflowMeta(name, description || '');
-              } catch { /* ignore invalid JSON */ }
+              } catch {
+                /* ignore invalid JSON */
+              }
             }
           });
       }
@@ -217,7 +218,8 @@ export const CanvasWorkspace = () => {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
-      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      const isInput =
+        target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
       if (isInput) return;
 
       // 1. Run Swarm: Ctrl + Enter or Cmd + Enter
@@ -271,7 +273,17 @@ export const CanvasWorkspace = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [status, nodes.length, runWorkflow, rearrangeGraph, clearGraph, selectNode, reactFlowInstance, maximizedNodeId, setMaximizedNodeId]);
+  }, [
+    status,
+    nodes.length,
+    runWorkflow,
+    rearrangeGraph,
+    clearGraph,
+    selectNode,
+    reactFlowInstance,
+    maximizedNodeId,
+    setMaximizedNodeId,
+  ]);
 
   // Handle Drag-and-drop drop trigger
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -279,24 +291,30 @@ export const CanvasWorkspace = () => {
     event.dataTransfer.dropEffect = 'move';
   }, []);
 
-  const onDrop = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    if (isLocked || status === 'running') return;
-    const type = event.dataTransfer.getData('application/reactflow') as NodeType;
-    if (!type) return;
+  const onDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+      if (isLocked || status === 'running') return;
+      const type = event.dataTransfer.getData('application/reactflow') as NodeType;
+      if (!type) return;
 
-    const position = reactFlowInstance.screenToFlowPosition({
-      x: event.clientX,
-      y: event.clientY,
-    });
+      const position = reactFlowInstance.screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
 
-    addNode(type, position);
-  }, [reactFlowInstance, addNode, isLocked, status]);
+      addNode(type, position);
+    },
+    [reactFlowInstance, addNode, isLocked, status],
+  );
 
-  const handleNodeClick = useCallback((_: any, node: any) => {
-    selectNode(node.id);
-    setIsSidebarOpen(true);
-  }, [selectNode]);
+  const handleNodeClick = useCallback(
+    (_: any, node: any) => {
+      selectNode(node.id);
+      setIsSidebarOpen(true);
+    },
+    [selectNode],
+  );
 
   const [isDescOpen, setIsDescOpen] = useState(false);
   const descRef = useRef<HTMLDivElement>(null);
@@ -317,16 +335,13 @@ export const CanvasWorkspace = () => {
 
   return (
     <div className="h-dvh w-screen flex flex-row bg-[#f8fafc] text-slate-800 select-none overflow-x-hidden overflow-y-auto">
-      
       {/* Left Sidebar extends to the top/bottom of viewport */}
       <Sidebar />
 
       {/* Center Column: Header Toolbar, Canvas Workspace, Metrics Panel */}
       <div className="flex-1 h-full flex flex-col min-w-0 bg-[#f8fafc] relative">
-        
         {/* ─── Top Header (Matches screenshots exactly) ────────────────────────── */}
         <header className="h-14 bg-white border-b border-[#cbd5e1] flex items-center justify-between px-6 z-20 flex-shrink-0">
-          
           {/* Left: Workflow name + info */}
           <div className="flex items-center gap-3 h-full">
             {workflowName && (
@@ -354,7 +369,6 @@ export const CanvasWorkspace = () => {
 
           {/* Right: Actions, Deploy, Run, Settings, Profile */}
           <div className="flex items-center gap-4">
-
             {/* Tools Dropdown (secondary actions) */}
             <div className="relative" ref={toolsRef}>
               <button
@@ -369,30 +383,104 @@ export const CanvasWorkspace = () => {
               </button>
 
               {toolsOpen && (
-                <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-slate-200 shadow-lg z-50 flex flex-col" data-tour="more-tools-menu">
-                  <button onClick={() => { rearrangeGraph(); setToolsOpen(false); }} className="flex items-center gap-3 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100" title="Auto-arrange nodes in clean columns">
+                <div
+                  className="absolute right-0 top-full mt-1 w-48 bg-white border border-slate-200 shadow-lg z-50 flex flex-col"
+                  data-tour="more-tools-menu"
+                >
+                  <button
+                    onClick={() => {
+                      rearrangeGraph();
+                      setToolsOpen(false);
+                    }}
+                    className="flex items-center gap-3 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100"
+                    title="Auto-arrange nodes in clean columns"
+                  >
                     <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
                     Smart Arrange
                   </button>
-                  <button onClick={async () => { setToolsOpen(false); if (!canvasRef.current) return; const toHide = canvasRef.current.querySelectorAll<HTMLElement>('[data-export-hide]'); toHide.forEach(el => el.style.display = 'none'); await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); try { const dataUrl = await toPng(canvasRef.current, { backgroundColor: '#ffffff', pixelRatio: 3, cacheBust: true }); toHide.forEach(el => el.style.display = ''); const link = document.createElement('a'); link.download = `qwen-workflow-${Date.now()}.png`; link.href = dataUrl; link.click(); toast.success('Canvas exported as PNG'); } catch { toHide.forEach(el => el.style.display = ''); toast.error('Failed to export image'); } }} disabled={nodes.length === 0} className="flex items-center gap-3 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100" title="Download canvas as PNG image">
+                  <button
+                    onClick={async () => {
+                      setToolsOpen(false);
+                      if (!canvasRef.current) return;
+                      reactFlowInstance.fitView({ duration: 0 });
+                      const toHide =
+                        canvasRef.current.querySelectorAll<HTMLElement>('[data-export-hide]');
+                      toHide.forEach((el) => (el.style.display = 'none'));
+                      await new Promise((r) =>
+                        requestAnimationFrame(() => requestAnimationFrame(r)),
+                      );
+                      try {
+                        const dataUrl = await toPng(canvasRef.current, {
+                          backgroundColor: '#ffffff',
+                          pixelRatio: 3,
+                          cacheBust: true,
+                        });
+                        toHide.forEach((el) => (el.style.display = ''));
+                        const link = document.createElement('a');
+                        link.download = `qwen-workflow-${Date.now()}.png`;
+                        link.href = dataUrl;
+                        link.click();
+                        toast.success('Canvas exported as PNG');
+                      } catch {
+                        toHide.forEach((el) => (el.style.display = ''));
+                        toast.error('Failed to export image');
+                      }
+                    }}
+                    disabled={nodes.length === 0}
+                    className="flex items-center gap-3 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100"
+                    title="Download canvas as PNG image"
+                  >
                     <Image className="w-3.5 h-3.5 text-slate-500" />
                     Export to PNG
                   </button>
-                  <button onClick={() => { setIsImportOpen(true); setToolsOpen(false); }} className="flex items-center gap-3 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100" title="Import a workflow from JSON text or file">
+                  <button
+                    onClick={() => {
+                      setIsImportOpen(true);
+                      setToolsOpen(false);
+                    }}
+                    className="flex items-center gap-3 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100"
+                    title="Import a workflow from JSON text or file"
+                  >
                     <Download className="w-3.5 h-3.5 text-slate-500" />
                     Import
                   </button>
-                  <button onClick={() => { setIsExportOpen(true); setToolsOpen(false); }} className="flex items-center gap-3 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100" title="Export current workflow config">
+                  <button
+                    onClick={() => {
+                      setIsExportOpen(true);
+                      setToolsOpen(false);
+                    }}
+                    className="flex items-center gap-3 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100"
+                    title="Export current workflow config"
+                  >
                     <Upload className="w-3.5 h-3.5 text-slate-500" />
                     Export
                   </button>
                   {workflowId && nodes.length > 0 && (
-                    <button onClick={() => { if (isSelfHosted()) { window.location.href = getSaaSUrl() + '/login?redirect=/templates/new'; } else { setPublishDialogOpen(true); } setToolsOpen(false); }} className="flex items-center gap-3 px-3 py-2 text-xs text-purple-700 hover:bg-purple-50 transition-colors cursor-pointer border-b border-slate-100" title="Publish as template">
+                    <button
+                      onClick={() => {
+                        if (isSelfHosted()) {
+                          window.location.href = getSaaSUrl() + '/login?redirect=/templates/new';
+                        } else {
+                          setPublishDialogOpen(true);
+                        }
+                        setToolsOpen(false);
+                      }}
+                      className="flex items-center gap-3 px-3 py-2 text-xs text-purple-700 hover:bg-purple-50 transition-colors cursor-pointer border-b border-slate-100"
+                      title="Publish as template"
+                    >
                       <Upload className="w-3.5 h-3.5" />
                       Publish
                     </button>
                   )}
-                  <button onClick={() => { setIsClearConfirmOpen(true); setToolsOpen(false); }} disabled={nodes.length === 0} className="flex items-center gap-3 px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer" title="Clear entire canvas">
+                  <button
+                    onClick={() => {
+                      setIsClearConfirmOpen(true);
+                      setToolsOpen(false);
+                    }}
+                    disabled={nodes.length === 0}
+                    className="flex items-center gap-3 px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                    title="Clear entire canvas"
+                  >
                     <Trash2 className="w-3.5 h-3.5" />
                     Clear
                   </button>
@@ -439,7 +527,10 @@ export const CanvasWorkspace = () => {
             <div className="h-6 w-[1px] bg-slate-200" />
 
             {/* Settings cog */}
-            <button className="p-1 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer" title="Settings">
+            <button
+              className="p-1 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+              title="Settings"
+            >
               <Settings className="w-4 h-4" />
             </button>
 
@@ -451,9 +542,13 @@ export const CanvasWorkspace = () => {
                   className="flex items-center gap-1.5 p-1 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
                 >
                   <User className="w-4 h-4" />
-                  <span className="text-xs font-mono max-w-24 truncate hidden md:inline">{user.email}</span>
+                  <span className="text-xs font-mono max-w-24 truncate hidden md:inline">
+                    {user.email}
+                  </span>
                   {credits && (
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-none ${credits.lowBalance ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
+                    <span
+                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded-none ${credits.lowBalance ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}
+                    >
                       {credits.balance}
                     </span>
                   )}
@@ -468,7 +563,11 @@ export const CanvasWorkspace = () => {
                       <div className="px-3 py-2 text-xs border-b border-slate-100 space-y-1">
                         <div className="flex justify-between">
                           <span className="text-slate-400">Credits</span>
-                          <span className={`font-bold ${credits.lowBalance ? 'text-amber-600' : 'text-slate-700'}`}>{credits.balance}</span>
+                          <span
+                            className={`font-bold ${credits.lowBalance ? 'text-amber-600' : 'text-slate-700'}`}
+                          >
+                            {credits.balance}
+                          </span>
                         </div>
                         <div className="flex justify-between text-[10px] text-slate-400">
                           <span>Earned</span>
@@ -500,7 +599,6 @@ export const CanvasWorkspace = () => {
 
         {/* Workspace Layout: Split horizontally into Canvas/Metrics and Inspector */}
         <div className="flex-1 w-full min-h-0 flex flex-row relative bg-[#f8fafc]">
-          
           {/* Main workspace container (Canvas + Gantt) */}
           <div className="flex-1 h-full flex flex-col min-w-0 relative">
             {/* React Flow Workspace Canvas */}
@@ -524,20 +622,18 @@ export const CanvasWorkspace = () => {
                 nodesConnectable={!isLocked && status !== 'running'}
                 elementsSelectable={!isLocked && status !== 'running'}
                 deleteKeyCode={isLocked || status === 'running' ? null : ['Backspace', 'Delete']}
+                proOptions={{ hideAttribution: true }}
               >
-                <Background 
-                  color="#cbd5e1" 
-                  gap={16} 
-                  size={1} 
-                  className="opacity-40"
-                />
+                <Background color="#cbd5e1" gap={16} size={1} className="opacity-40" />
                 {nodes.length === 0 && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="flex flex-col items-center text-center select-none">
                       <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-3">
                         <Wrench className="w-6 h-6 text-slate-300" />
                       </div>
-                      <p className="text-sm font-bold text-slate-400 font-mono mb-1">Empty Canvas</p>
+                      <p className="text-sm font-bold text-slate-400 font-mono mb-1">
+                        Empty Canvas
+                      </p>
                       <p className="text-[10px] text-slate-300 font-mono max-w-[240px] leading-relaxed">
                         Drag nodes from the sidebar or use the MCP Marketplace to add tools.
                       </p>
@@ -545,69 +641,116 @@ export const CanvasWorkspace = () => {
                   </div>
                 )}
                 <div data-export-hide="true">
-                  <CustomZoomControls isLocked={isLocked} onToggleLock={() => setIsLocked(!isLocked)} />
+                  <CustomZoomControls
+                    isLocked={isLocked}
+                    onToggleLock={() => setIsLocked(!isLocked)}
+                  />
                 </div>
                 <div data-export-hide="true">
-                {isShortcutsOpen ? (
-                  <Panel position="bottom-left" className="ml-0 mb-0 bg-white border border-[#cbd5e1] p-2.5 font-mono text-[10px] text-slate-500 shadow-sm flex flex-col gap-1 select-none pointer-events-auto rounded-none w-[270px]">
-                    <div className="flex items-center justify-between font-bold text-slate-700 border-b border-slate-100 pb-1 mb-1">
-                      <span>KEYBOARD SHORTCUTS</span>
-                      <button 
-                        onClick={() => {
-                          setIsShortcutsOpen(false);
-                          localStorage.setItem('qwenweaver_shortcuts_open', 'false');
-                        }}
-                        className="text-slate-400 hover:text-slate-700 transition-colors p-0.5 cursor-pointer"
-                        title="Hide Legend"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                    <div className="flex justify-between gap-6"><span>Run Swarm:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + Enter</kbd></div>
-                    <div className="flex justify-between gap-6"><span>Rearrange:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + L</kbd></div>
-                    <div className="flex justify-between gap-6"><span>Toggle Lock:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + Shift + L</kbd></div>
-                    <div className="flex justify-between gap-6"><span>Zoom In/Out:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + + / -</kbd></div>
-                    <div className="flex justify-between gap-6"><span>Clear Canvas:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Ctrl + Alt + C</kbd></div>
-                    <div className="flex justify-between gap-6"><span>Delete Edge:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Click Edge + Backspace</kbd></div>
-                    <div className="flex justify-between gap-6"><span>Deselect:</span><kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">Esc</kbd></div>
-                  </Panel>
-                ) : (
-                  <div data-export-hide="true">
-                  <Panel position="bottom-left" className="ml-0 mb-0 pointer-events-auto">
-                    <button
-                      onClick={() => {
-                        setIsShortcutsOpen(true);
-                        localStorage.setItem('qwenweaver_shortcuts_open', 'true');
-                      }}
-                      className="bg-white border border-[#cbd5e1] p-1.5 hover:bg-slate-50 text-slate-500 hover:text-slate-700 shadow-sm rounded-none text-[10px] font-mono font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
-                      title="Show Keyboard Shortcuts"
+                  {isShortcutsOpen ? (
+                    <Panel
+                      position="bottom-left"
+                      className="ml-0 mb-0 bg-white border border-[#cbd5e1] p-2.5 font-mono text-[10px] text-slate-500 shadow-sm flex flex-col gap-1 select-none pointer-events-auto rounded-none w-[270px]"
                     >
-                      <Keyboard className="w-3.5 h-3.5 text-slate-400" />
-                      Shortcuts (?)
-                    </button>
-                  </Panel>
-                  </div>
-                )}
+                      <div className="flex items-center justify-between font-bold text-slate-700 border-b border-slate-100 pb-1 mb-1">
+                        <span>KEYBOARD SHORTCUTS</span>
+                        <button
+                          onClick={() => {
+                            setIsShortcutsOpen(false);
+                            localStorage.setItem('qwenweaver_shortcuts_open', 'false');
+                          }}
+                          className="text-slate-400 hover:text-slate-700 transition-colors p-0.5 cursor-pointer"
+                          title="Hide Legend"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <div className="flex justify-between gap-6">
+                        <span>Run Swarm:</span>
+                        <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
+                          Ctrl + Enter
+                        </kbd>
+                      </div>
+                      <div className="flex justify-between gap-6">
+                        <span>Rearrange:</span>
+                        <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
+                          Ctrl + L
+                        </kbd>
+                      </div>
+                      <div className="flex justify-between gap-6">
+                        <span>Toggle Lock:</span>
+                        <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
+                          Ctrl + Shift + L
+                        </kbd>
+                      </div>
+                      <div className="flex justify-between gap-6">
+                        <span>Zoom In/Out:</span>
+                        <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
+                          Ctrl + + / -
+                        </kbd>
+                      </div>
+                      <div className="flex justify-between gap-6">
+                        <span>Clear Canvas:</span>
+                        <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
+                          Ctrl + Alt + C
+                        </kbd>
+                      </div>
+                      <div className="flex justify-between gap-6">
+                        <span>Delete Edge:</span>
+                        <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
+                          Click Edge + Backspace
+                        </kbd>
+                      </div>
+                      <div className="flex justify-between gap-6">
+                        <span>Deselect:</span>
+                        <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
+                          Esc
+                        </kbd>
+                      </div>
+                    </Panel>
+                  ) : (
+                    <div data-export-hide="true">
+                      <Panel position="bottom-left" className="ml-0 mb-0 pointer-events-auto">
+                        <button
+                          onClick={() => {
+                            setIsShortcutsOpen(true);
+                            localStorage.setItem('qwenweaver_shortcuts_open', 'true');
+                          }}
+                          className="bg-white border border-[#cbd5e1] p-1.5 hover:bg-slate-50 text-slate-500 hover:text-slate-700 shadow-sm rounded-none text-[10px] font-mono font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
+                          title="Show Keyboard Shortcuts"
+                        >
+                          <Keyboard className="w-3.5 h-3.5 text-slate-400" />
+                          Shortcuts (?)
+                        </button>
+                      </Panel>
+                    </div>
+                  )}
                 </div>
                 <div data-export-hide="true">
-                <MiniMap 
-                  style={{ height: 100, width: 140, background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: 0 }}
-                  nodeColor={(node) => {
-                    switch (node.type) {
-                      case 'trigger':
-                        return '#10b981'; // Green
-                      case 'agent':
-                        return '#ea580c'; // Orange
-                      case 'supervisor':
-                        return '#2563eb'; // Blue
-                      case 'mcp_tool':
-                        return '#8b5cf6'; // Purple
-                      default:
-                        return '#cbd5e1'; // Slate
-                    }
-                  }}
-                  maskColor="rgba(241, 245, 249, 0.4)"
-                />
+                  <MiniMap
+                    style={{
+                      height: 100,
+                      width: 140,
+                      background: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: 0,
+                    }}
+                    nodeColor={(node) => {
+                      switch (node.type) {
+                        case 'trigger':
+                          return '#10b981'; // Green
+                        case 'agent':
+                          return '#ea580c'; // Orange
+                        case 'supervisor':
+                          return '#2563eb'; // Blue
+                        case 'mcp_tool':
+                          return '#8b5cf6'; // Purple
+                        default:
+                          return '#cbd5e1'; // Slate
+                      }
+                    }}
+                    maskColor="rgba(241, 245, 249, 0.4)"
+                  />
                 </div>
               </ReactFlow>
 
@@ -641,18 +784,15 @@ export const CanvasWorkspace = () => {
       <MaximizedNodeOverlay />
 
       {/* Import Workflow Configuration Modal */}
-      <ImportWorkflowModal 
-        isOpen={isImportOpen} 
-        onClose={() => setIsImportOpen(false)} 
-      />
+      <ImportWorkflowModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
 
       {/* Export Workflow Configuration Modal */}
-      <ExportWorkflowModal 
-        isOpen={isExportOpen} 
-        onClose={() => setIsExportOpen(false)} 
-        nodes={nodes} 
-        edges={edges} 
-        workflowId={id} 
+      <ExportWorkflowModal
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+        nodes={nodes}
+        edges={edges}
+        workflowId={id}
       />
 
       {/* Clear Canvas Confirmation Dialog */}
@@ -666,7 +806,9 @@ export const CanvasWorkspace = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="bg-white text-slate-800 px-6 py-4 flex items-center justify-between border-b border-slate-200">
-              <h2 className="text-sm font-bold font-mono text-slate-800 tracking-tight">CLEAR CANVAS</h2>
+              <h2 className="text-sm font-bold font-mono text-slate-800 tracking-tight">
+                CLEAR CANVAS
+              </h2>
               <button
                 onClick={() => setIsClearConfirmOpen(false)}
                 className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
@@ -727,19 +869,24 @@ export const CanvasWorkspace = () => {
               })),
             };
             const res = await withRefresh(() =>
-              client.api.workflow.$post(
-                { json: payload as any },
-                { headers: authHeaders() }
-              )
+              client.api.workflow.$post({ json: payload as any }, { headers: authHeaders() }),
             );
             if (res.status === 403) {
               const errBody: Record<string, unknown> = await res.json().catch(() => ({}));
-              toast.error(String(errBody.error || 'Workflow limit reached. Delete an existing workflow first.'));
+              toast.error(
+                String(
+                  errBody.error || 'Workflow limit reached. Delete an existing workflow first.',
+                ),
+              );
               return;
             }
             if (!res.ok) throw new Error('Save failed');
             const data = await res.json();
-            useStore.setState({ workflowId: data.workflowId, workflowName: name, workflowDescription: description });
+            useStore.setState({
+              workflowId: data.workflowId,
+              workflowName: name,
+              workflowDescription: description,
+            });
             setSaveDialogOpen(false);
             navigate(`/workflows/${data.workflowId}`, { replace: true });
             toast.success('Workflow saved!');
@@ -788,10 +935,7 @@ export const CanvasWorkspace = () => {
               },
             };
             const res = await withRefresh(() =>
-              client.api.templates.$post(
-                { json: payload as any },
-                { headers: authHeaders() }
-              )
+              client.api.templates.$post({ json: payload as any }, { headers: authHeaders() }),
             );
             if (!res.ok) {
               const err: Record<string, unknown> = await res.json().catch(() => ({}));

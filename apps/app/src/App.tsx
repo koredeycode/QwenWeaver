@@ -50,10 +50,27 @@ function App() {
             <Route path="/login" element={<AuthScreen />} />
             <Route path="/register" element={<AuthScreen />} />
             <Route path="/setup" element={<SetupWizard />} />
-            <Route path="/" element={<ProtectedRoute><WorkflowDashboard /></ProtectedRoute>} />
-            <Route path="/workflows/:id" element={<ProtectedRoute><CanvasWorkspace /></ProtectedRoute>} />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <WorkflowDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/workflows/:id"
+              element={
+                <ProtectedRoute>
+                  <CanvasWorkspace />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/templates" element={<Navigate to={saasUrl + '/templates'} replace />} />
-            <Route path="/templates/:id" element={<Navigate to={saasUrl + '/templates/'} replace />} />
+            <Route
+              path="/templates/:id"
+              element={<Navigate to={saasUrl + '/templates/'} replace />}
+            />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
@@ -70,10 +87,38 @@ function App() {
         <Routes>
           <Route path="/login" element={<AuthScreen />} />
           <Route path="/register" element={<AuthScreen />} />
-          <Route path="/" element={<ProtectedRoute><WorkflowDashboard /></ProtectedRoute>} />
-          <Route path="/workflows/:id" element={<ProtectedRoute><CanvasWorkspace /></ProtectedRoute>} />
-          <Route path="/templates" element={<ProtectedRoute><TemplateGallery /></ProtectedRoute>} />
-          <Route path="/templates/:id" element={<ProtectedRoute><TemplateDetailPage /></ProtectedRoute>} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <WorkflowDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/workflows/:id"
+            element={
+              <ProtectedRoute>
+                <CanvasWorkspace />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/templates"
+            element={
+              <ProtectedRoute>
+                <TemplateGallery />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/templates/:id"
+            element={
+              <ProtectedRoute>
+                <TemplateDetailPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

@@ -1,7 +1,5 @@
 import { StateCreator } from 'zustand';
-import type { 
-  NodeTiming,
-} from '@qwenweaver/types';
+import type { NodeTiming } from '@qwenweaver/types';
 import { StoreState, ExecutionSlice } from './types.js';
 import { toast } from 'sonner';
 
@@ -17,7 +15,10 @@ function delay(ms: number) {
   });
 }
 
-export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSlice> = (set, get) => ({
+export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSlice> = (
+  set,
+  get,
+) => ({
   activeExecutionId: null,
   executionStatus: 'idle',
   nodeStatuses: {},
@@ -143,7 +144,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
             durationMs: Date.now() - nodeStart,
             tokensUsed: tokenCount,
           });
-        })
+        }),
       );
     }
 

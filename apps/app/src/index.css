@@ -1,5 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
   /* QwenWeaver Light Mode System Theme Variables */
@@ -11,23 +11,23 @@
   --color-surface-container-highest: #f1f5f9;
   --color-surface-container-low: #f1f5f9; /* left sidebar light blue-slate */
   --color-surface-container-lowest: #ffffff;
-  
+
   --color-on-surface: #0f172a; /* dark charcoal */
   --color-on-surface-variant: #475569; /* muted slate */
-  
+
   --color-primary: #ea580c; /* active orange */
   --color-primary-container: #9a3412; /* rust-orange CTA */
   --color-on-primary: #ffffff;
-  
+
   --color-secondary: #2563eb; /* active blue */
   --color-secondary-container: #1d4ed8;
   --color-on-secondary: #ffffff;
-  
+
   --color-outline: #cbd5e1; /* light borders */
   --color-outline-variant: #e2e8f0;
-  
-  --font-sans: "Inter", sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+
+  --font-sans: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 }
 
 /* Custom Scrollbars */
@@ -53,23 +53,33 @@
 
 /* Custom glowing and pulsing classes for active execution states */
 @keyframes nodePulse {
-  0%, 100% {
-    box-shadow: 0 0 4px rgba(234, 88, 12, 0.2), inset 0 0 2px rgba(234, 88, 12, 0.1);
+  0%,
+  100% {
+    box-shadow:
+      0 0 4px rgba(234, 88, 12, 0.2),
+      inset 0 0 2px rgba(234, 88, 12, 0.1);
     border-color: #ea580c;
   }
   50% {
-    box-shadow: 0 0 12px rgba(234, 88, 12, 0.6), inset 0 0 4px rgba(234, 88, 12, 0.3);
+    box-shadow:
+      0 0 12px rgba(234, 88, 12, 0.6),
+      inset 0 0 4px rgba(234, 88, 12, 0.3);
     border-color: #f97316;
   }
 }
 
 @keyframes supervisorPulse {
-  0%, 100% {
-    box-shadow: 0 0 4px rgba(37, 99, 235, 0.2), inset 0 0 2px rgba(37, 99, 235, 0.1);
+  0%,
+  100% {
+    box-shadow:
+      0 0 4px rgba(37, 99, 235, 0.2),
+      inset 0 0 2px rgba(37, 99, 235, 0.1);
     border-color: #2563eb;
   }
   50% {
-    box-shadow: 0 0 12px rgba(37, 99, 235, 0.6), inset 0 0 4px rgba(37, 99, 235, 0.3);
+    box-shadow:
+      0 0 12px rgba(37, 99, 235, 0.6),
+      inset 0 0 4px rgba(37, 99, 235, 0.3);
     border-color: #3b82f6;
   }
 }
@@ -97,10 +107,12 @@
   animation: dash 1s linear infinite;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   background-color: #f8fafc; /* canvas background */
   color: #0f172a;
-  font-family: "Inter", sans-serif;
+  font-family: 'Inter', sans-serif;
   margin: 0;
   padding: 0;
   width: 100%;

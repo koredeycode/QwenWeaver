@@ -33,13 +33,16 @@ export type Variables = {
 const app = new Hono<{ Variables: Variables }>();
 
 // Lock down CORS to configured origins instead of wildcard
-app.use('/api/*', cors({
-  origin: CORS_ORIGINS,
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization'],
-  exposeHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
-  maxAge: 600,
-}));
+app.use(
+  '/api/*',
+  cors({
+    origin: CORS_ORIGINS,
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+    exposeHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
+    maxAge: 600,
+  }),
+);
 app.use('/public/*', serveStatic({ root: './' }));
 app.use('*', requestLogger());
 
@@ -50,7 +53,7 @@ app.use(
     onError: (c) => {
       return c.json({ error: 'Payload too large' }, 413);
     },
-  })
+  }),
 );
 
 // Rate limiting on auth endpoints (brute-force protection)
@@ -65,31 +68,28 @@ app.use('/api/*', rateLimiter('api', RATE_LIMIT.api));
 // Public template routes — mounted before JWT middleware (removed; now in routes chain below)
 
 // Auth middleware using centralized JWT_SECRET from config
-app.use(
-  '/api/*',
-  (c, next) => {
-    // Exclude health, docs, and auth from JWT validation
-    const path = c.req.path;
-    if (
-      path.startsWith('/api/health') ||
-      path.startsWith('/api/docs') ||
-      path.startsWith('/api/openapi.json') ||
-      path.startsWith('/api/auth') ||
-      path === '/api/mcp/registry/search' ||
-      (path.startsWith('/api/setup') && !path.startsWith('/api/setup/reconfigure')) ||
-      path.startsWith('/api/metrics')
-    ) {
-      return next();
-    }
-    const jwtMiddleware = jwt({
-      secret: JWT_SECRET,
-      alg: 'HS256',
-    });
-    return jwtMiddleware(c, async () => {
-      await next();
-    });
+app.use('/api/*', (c, next) => {
+  // Exclude health, docs, and auth from JWT validation
+  const path = c.req.path;
+  if (
+    path.startsWith('/api/health') ||
+    path.startsWith('/api/docs') ||
+    path.startsWith('/api/openapi.json') ||
+    path.startsWith('/api/auth') ||
+    path === '/api/mcp/registry/search' ||
+    (path.startsWith('/api/setup') && !path.startsWith('/api/setup/reconfigure')) ||
+    path.startsWith('/api/metrics')
+  ) {
+    return next();
   }
-);
+  const jwtMiddleware = jwt({
+    secret: JWT_SECRET,
+    alg: 'HS256',
+  });
+  return jwtMiddleware(c, async () => {
+    await next();
+  });
+});
 
 // ─── Mount route modules ───
 // Split into two chains to avoid TS depth limit with 11 MergeSchemaPath entries.
@@ -165,8 +165,6 @@ if (process.env.NODE_ENV !== 'test') {
 
   const server = serve({ fetch: app.fetch, port }, async (info) => {
     logger.info({ port: info.port }, 'API started');
-
-
   });
 
   const gracefulShutdown = () => {
@@ -175,7 +173,7 @@ if (process.env.NODE_ENV !== 'test') {
       logger.info('Server closed');
       process.exit(0);
     });
-    
+
     // Force close after 10s
     setTimeout(() => {
       logger.error('Could not close connections in time, forcefully shutting down');

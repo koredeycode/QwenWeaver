@@ -37,8 +37,11 @@ export const handleGetExecutionLogs = async (c: Context<{ Variables: Variables }
 
   const logs = await provider.getAgentLogs(executionId);
 
-  return c.json({
-    executionId,
-    logs,
-  }, 200);
+  return c.json(
+    {
+      executionId,
+      logs,
+    },
+    200,
+  );
 };

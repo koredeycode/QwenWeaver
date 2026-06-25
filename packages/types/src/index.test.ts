@@ -1,11 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  NodePayload,
-  WorkflowPayload,
-  SSEEvent,
-  ExecutionStatus,
-  NodeType,
-} from './graph.js';
+import { NodePayload, WorkflowPayload, SSEEvent, ExecutionStatus, NodeType } from './graph.js';
 import { MCPToolDefinition, MCPConnectionConfig } from './mcp.js';
 
 describe('graph schemas', () => {
@@ -23,9 +17,7 @@ describe('graph schemas', () => {
     const result = WorkflowPayload.safeParse({
       id: 'wf-1',
       name: 'Test Workflow',
-      nodes: [
-        { id: 'n1', type: 'supervisor', position: { x: 0, y: 0 }, data: {} },
-      ],
+      nodes: [{ id: 'n1', type: 'supervisor', position: { x: 0, y: 0 }, data: {} }],
       edges: [],
     });
     expect(result.success).toBe(true);
@@ -66,13 +58,13 @@ describe('graph schemas', () => {
         { id: 'mcp-1', type: 'mcp_tool', position: { x: 0, y: 0 }, data: {} },
         { id: 'mcp-2', type: 'mcp_tool', position: { x: 100, y: 0 }, data: {} },
       ],
-      edges: [
-        { id: 'e1', source: 'mcp-1', target: 'mcp-2' },
-      ],
+      edges: [{ id: 'e1', source: 'mcp-1', target: 'mcp-2' }],
     });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.errors[0].message).toContain('MCP tools cannot be connected directly to each other');
+      expect(result.error.errors[0].message).toContain(
+        'MCP tools cannot be connected directly to each other',
+      );
     }
   });
 });

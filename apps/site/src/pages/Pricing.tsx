@@ -24,7 +24,8 @@ export function Pricing() {
         <div className="mx-auto max-w-2xl text-center">
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Free While in Beta</h1>
           <p className="mt-4 text-lg text-on-surface-variant">
-            No credit card required. Use credits to execute workflows, or self-host for unlimited usage.
+            No credit card required. Use credits to execute workflows, or self-host for unlimited
+            usage.
           </p>
         </div>
 

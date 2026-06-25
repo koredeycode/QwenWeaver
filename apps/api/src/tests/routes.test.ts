@@ -17,9 +17,14 @@ vi.mock('@qwenweaver/database', () => {
     getExecution: vi.fn().mockResolvedValue(null),
     getAgentLogs: vi.fn().mockResolvedValue([]),
     getAnalyticsSummary: vi.fn().mockResolvedValue({
-      totalRuns: 0, completedRuns: 0, failedRuns: 0,
-      avgSpeedup: null, totalTokens: 0, avgLatencyMs: null,
-      runsByModel: {}, recentRuns: [],
+      totalRuns: 0,
+      completedRuns: 0,
+      failedRuns: 0,
+      avgSpeedup: null,
+      totalTokens: 0,
+      avgLatencyMs: null,
+      runsByModel: {},
+      recentRuns: [],
     }),
     healthCheck: vi.fn(),
   };
@@ -41,7 +46,7 @@ describe('route-level integration tests', () => {
     it('returns 200 when database is healthy', async () => {
       const res = await app.request('/api/health');
       expect(res.status).toBe(200);
-      const body = await res.json() as any;
+      const body = (await res.json()) as any;
       expect(body.status).toBe('ok');
       expect(body.service).toBe('qwenweaver-api');
       expect(body.database).toBe('connected');

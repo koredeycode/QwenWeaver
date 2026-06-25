@@ -6,11 +6,10 @@ export function SelfHosted() {
       <section className="py-24">
         <div className="mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-2xl text-center">
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Self-Host {SITE.name}
-            </h1>
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Self-Host {SITE.name}</h1>
             <p className="mt-4 text-lg text-on-surface-variant">
-              Run the full platform on your own infrastructure. Your data, your API keys, your rules.
+              Run the full platform on your own infrastructure. Your data, your API keys, your
+              rules.
             </p>
           </div>
 
@@ -25,13 +24,21 @@ export function SelfHosted() {
             </pre>
             <p className="mt-3 text-xs text-on-surface-variant">
               Prompts for install mode (npm CLI, Docker, or Git). Or pre-select with
-              <code className="ml-1 rounded bg-surface-dim px-1.5 py-0.5 font-mono text-[10px]">QWENWEAVER_INSTALL_MODE=docker</code>.
+              <code className="ml-1 rounded bg-surface-dim px-1.5 py-0.5 font-mono text-[10px]">
+                QWENWEAVER_INSTALL_MODE=docker
+              </code>
+              .
             </p>
           </div>
 
           <div className="grid gap-8 lg:grid-cols-3">
             <div className="rounded-xl border border-outline/40 bg-surface-bright p-8">
-              <h2 className="text-xl font-bold">npm CLI <span className="rounded bg-primary/20 px-2 py-0.5 text-xs font-normal text-primary">Default</span></h2>
+              <h2 className="text-xl font-bold">
+                npm CLI{' '}
+                <span className="rounded bg-primary/20 px-2 py-0.5 text-xs font-normal text-primary">
+                  Default
+                </span>
+              </h2>
               <p className="mt-2 text-sm text-on-surface-variant">
                 Run directly with Node.js via the global CLI.
               </p>
@@ -94,12 +101,30 @@ ${SITE.name.toLowerCase()} start`}</code>
 }
 
 const benefits = [
-  { title: 'Full Data Control', desc: 'All data stays on your infrastructure. No telemetry unless you opt in.' },
-  { title: 'Your Own API Keys', desc: 'Bring your DashScope, OpenAI, or any LLM provider keys. No per-token markup.' },
-  { title: 'Any Database', desc: 'SQLite for zero-config local use. PostgreSQL or MySQL for production deployments.' },
-  { title: 'Offline Capable', desc: 'No internet dependency after initial setup. Run air-gapped if needed.' },
-  { title: 'Custom Extensions', desc: 'Extend with custom MCP servers, private tools, and internal APIs.' },
-  { title: 'Community Templates', desc: 'Browse and download templates from our community library.' },
+  {
+    title: 'Full Data Control',
+    desc: 'All data stays on your infrastructure. No telemetry unless you opt in.',
+  },
+  {
+    title: 'Your Own API Keys',
+    desc: 'Bring your DashScope, OpenAI, or any LLM provider keys. No per-token markup.',
+  },
+  {
+    title: 'Any Database',
+    desc: 'SQLite for zero-config local use. PostgreSQL or MySQL for production deployments.',
+  },
+  {
+    title: 'Offline Capable',
+    desc: 'No internet dependency after initial setup. Run air-gapped if needed.',
+  },
+  {
+    title: 'Custom Extensions',
+    desc: 'Extend with custom MCP servers, private tools, and internal APIs.',
+  },
+  {
+    title: 'Community Templates',
+    desc: 'Browse and download templates from our community library.',
+  },
 ];
 
 function Benefits() {
@@ -111,7 +136,10 @@ function Benefits() {
         </h2>
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {benefits.map((b) => (
-            <div key={b.title} className="rounded-xl border border-outline/40 bg-surface-bright p-6">
+            <div
+              key={b.title}
+              className="rounded-xl border border-outline/40 bg-surface-bright p-6"
+            >
               <h3 className="font-semibold">{b.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">{b.desc}</p>
             </div>
@@ -124,12 +152,24 @@ function Benefits() {
 
 const envVars = [
   { key: 'DASHSCOPE_API_KEY', desc: 'Your Alibaba Cloud DashScope API key for LLM access.' },
-  { key: 'JWT_SECRET', desc: 'Random string used to sign auth tokens. Generate with `openssl rand -hex 32`.' },
-  { key: 'DATABASE_URL', desc: 'Path to SQLite file (default: ./data/qwenweaver.db) or PostgreSQL connection URI.' },
+  {
+    key: 'JWT_SECRET',
+    desc: 'Random string used to sign auth tokens. Generate with `openssl rand -hex 32`.',
+  },
+  {
+    key: 'DATABASE_URL',
+    desc: 'Path to SQLite file (default: ./data/qwenweaver.db) or PostgreSQL connection URI.',
+  },
   { key: 'PORT', desc: 'HTTP port to listen on (default: 3001).' },
-  { key: 'QWENWEAVER_MODE', desc: 'Set to "cloud" for SaaS features (credits, analytics). Default: self-hosted.' },
+  {
+    key: 'QWENWEAVER_MODE',
+    desc: 'Set to "cloud" for SaaS features (credits, analytics). Default: self-hosted.',
+  },
   { key: 'DISABLE_ANALYTICS', desc: 'Set to "true" to disable all PostHog telemetry.' },
-  { key: 'MAX_FREE_WORKFLOWS', desc: 'Workflow limit per user. 0 = unlimited (default for self-hosted).' },
+  {
+    key: 'MAX_FREE_WORKFLOWS',
+    desc: 'Workflow limit per user. 0 = unlimited (default for self-hosted).',
+  },
 ];
 
 function EnvironmentVars() {
@@ -151,7 +191,9 @@ function EnvironmentVars() {
               {envVars.map((v) => (
                 <tr key={v.key} className="border-b border-outline/20">
                   <td className="py-3 pr-6">
-                    <code className="rounded bg-surface-dim px-2 py-0.5 font-mono text-xs text-primary">{v.key}</code>
+                    <code className="rounded bg-surface-dim px-2 py-0.5 font-mono text-xs text-primary">
+                      {v.key}
+                    </code>
                   </td>
                   <td className="py-3 text-on-surface-variant">{v.desc}</td>
                 </tr>

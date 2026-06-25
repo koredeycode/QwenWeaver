@@ -55,7 +55,10 @@ function readCommitSha(): string | null {
   return null;
 }
 
-async function runCommand(cmd: string, args: string[]): Promise<{ code: number | null; stdout: string; stderr: string }> {
+async function runCommand(
+  cmd: string,
+  args: string[],
+): Promise<{ code: number | null; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
     const child = spawn(cmd, args, {
       env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' },
@@ -63,8 +66,12 @@ async function runCommand(cmd: string, args: string[]): Promise<{ code: number |
     });
     let stdout = '';
     let stderr = '';
-    child.stdout?.on('data', (chunk) => { stdout += String(chunk); });
-    child.stderr?.on('data', (chunk) => { stderr += String(chunk); });
+    child.stdout?.on('data', (chunk) => {
+      stdout += String(chunk);
+    });
+    child.stderr?.on('data', (chunk) => {
+      stderr += String(chunk);
+    });
     child.on('error', (err) => resolve({ code: 1, stdout, stderr: err.message }));
     child.on('close', (code) => resolve({ code, stdout, stderr }));
   });
@@ -95,9 +102,12 @@ async function checkNpmVersion(): Promise<UpdateInfo> {
     installMode: 'npm',
     currentVersion,
     remoteVersion,
-    status: remoteVersion && currentVersion
-      ? (currentVersion === remoteVersion ? 'current' : 'available')
-      : 'unknown',
+    status:
+      remoteVersion && currentVersion
+        ? currentVersion === remoteVersion
+          ? 'current'
+          : 'available'
+        : 'unknown',
     error: result.code !== 0 ? result.stderr.trim() || 'npm view failed' : null,
     updateLogs: [],
     updateRunning: false,
@@ -123,7 +133,9 @@ async function checkDockerVersion(): Promise<UpdateInfo> {
   }
 
   const inspectResult = await runCommand('docker', [
-    'inspect', '--format', '{{index .Config.Labels "org.opencontainers.image.revision"}}',
+    'inspect',
+    '--format',
+    '{{index .Config.Labels "org.opencontainers.image.revision"}}',
     'ghcr.io/qwenweaver/qwenweaver:latest',
   ]);
   const remoteSha = inspectResult.code === 0 ? inspectResult.stdout.trim() : null;
@@ -132,9 +144,8 @@ async function checkDockerVersion(): Promise<UpdateInfo> {
     installMode: 'docker',
     currentVersion: currentSha,
     remoteVersion: remoteSha,
-    status: currentSha && remoteSha
-      ? (currentSha === remoteSha ? 'current' : 'available')
-      : 'unknown',
+    status:
+      currentSha && remoteSha ? (currentSha === remoteSha ? 'current' : 'available') : 'unknown',
     error: null,
     updateLogs: [],
     updateRunning: false,
@@ -170,9 +181,8 @@ async function checkGitVersion(): Promise<UpdateInfo> {
     installMode: 'git',
     currentVersion: currentSha,
     remoteVersion: remoteSha,
-    status: currentSha && remoteSha
-      ? (currentSha === remoteSha ? 'current' : 'available')
-      : 'unknown',
+    status:
+      currentSha && remoteSha ? (currentSha === remoteSha ? 'current' : 'available') : 'unknown',
     error: null,
     updateLogs: [],
     updateRunning: false,
@@ -236,12 +246,16 @@ async function runDockerUpdate(): Promise<void> {
   appendLog('Pulling latest image...');
   const pullResult = await runCommand('docker', ['compose', 'pull', 'qwenweaver']);
   if (pullResult.code !== 0) {
-    throw new Error(`docker compose pull failed: ${pullResult.stderr.trim() || pullResult.stdout.trim()}`);
+    throw new Error(
+      `docker compose pull failed: ${pullResult.stderr.trim() || pullResult.stdout.trim()}`,
+    );
   }
   appendLog('Image pulled. Recreating container...');
   const upResult = await runCommand('docker', ['compose', 'up', '-d', '--no-deps', 'qwenweaver']);
   if (upResult.code !== 0) {
-    throw new Error(`docker compose up failed: ${upResult.stderr.trim() || upResult.stdout.trim()}`);
+    throw new Error(
+      `docker compose up failed: ${upResult.stderr.trim() || upResult.stdout.trim()}`,
+    );
   }
   appendLog('Container updated. QwenWeaver will restart with the new image.');
 }
@@ -262,7 +276,9 @@ async function runGitUpdate(): Promise<void> {
   appendLog('Installing dependencies...');
   const installResult = await runCommand('pnpm', ['install', '--frozen-lockfile']);
   if (installResult.code !== 0) {
-    throw new Error(`pnpm install failed: ${installResult.stderr.trim() || installResult.stdout.trim()}`);
+    throw new Error(
+      `pnpm install failed: ${installResult.stderr.trim() || installResult.stdout.trim()}`,
+    );
   }
 
   appendLog('Building...');

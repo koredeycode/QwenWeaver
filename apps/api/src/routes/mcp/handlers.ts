@@ -3,8 +3,12 @@ import { getQueryProvider } from '@qwenweaver/database';
 import { discoverMCPTools, buildHeadersFromAuthConfig } from '../../engine/mcp-bridge.js';
 import { createModuleLogger } from '../../logger.js';
 import type { Variables } from '../../index.js';
-import { SaveServerBody, DiscoverToolsBody, AdoptRegistryBody, UpdateServerAuthBody } from './schema.js';
-
+import {
+  SaveServerBody,
+  DiscoverToolsBody,
+  AdoptRegistryBody,
+  UpdateServerAuthBody,
+} from './schema.js';
 
 const log = createModuleLogger('routes/mcp.handlers');
 
@@ -24,16 +28,20 @@ async function fetchRegistryPage(cursor?: string, limit = 100) {
 
 /** Normalize a registry server entry into our SavedMCPServer shape */
 function normalizeRegistryEntry(entry: any): {
-  registryId: string; name: string; description: string;
-  transport: string; url: string | null; iconUrl: string | null;
+  registryId: string;
+  name: string;
+  description: string;
+  transport: string;
+  url: string | null;
+  iconUrl: string | null;
   registryMetadata: any;
 } {
   const server = entry.server || entry;
   const remotes = server.remotes || [];
   const packages = server.packages || [];
   const transports = [
-    ...remotes.map((r: any) => r.type === 'streamable-http' ? 'http' : r.type),
-    ...packages.map((p: any) => p.transport?.type === 'stdio' ? 'stdio' : p.transport?.type),
+    ...remotes.map((r: any) => (r.type === 'streamable-http' ? 'http' : r.type)),
+    ...packages.map((p: any) => (p.transport?.type === 'stdio' ? 'stdio' : p.transport?.type)),
   ].filter(Boolean);
   const firstRemote = remotes[0] || {};
   return {
@@ -59,7 +67,9 @@ export const handleDiscoverTools = async (c: Context<{ Variables: Variables }>) 
   log.info({ serverId }, 'MCP tool discovery requested');
 
   // Build auth headers from request body using shared helper
-  const headers: Record<string, string> | undefined = auth ? buildHeadersFromAuthConfig(auth) : undefined;
+  const headers: Record<string, string> | undefined = auth
+    ? buildHeadersFromAuthConfig(auth)
+    : undefined;
 
   let mcpUrl: string | null = serverUrlOverride || null;
 
@@ -138,7 +148,7 @@ export const handleDeleteServer = async (c: Context<{ Variables: Variables }>) =
     return c.json({ error: 'Missing server id parameter' }, 400);
   }
   const userId = c.get('jwtPayload').sub;
-  
+
   const provider = getQueryProvider();
   const deleted = await provider.deleteMcpServer(id, userId);
 
@@ -166,7 +176,10 @@ export const handleRegistryAdopt = async (c: Context<{ Variables: Variables }>) 
   for (let page = 0; page < 10; page++) {
     const data = await fetchRegistryPage(cursor);
     const match = data.servers?.find((entry: any) => entry.server?.name === registryId);
-    if (match) { found = match; break; }
+    if (match) {
+      found = match;
+      break;
+    }
     cursor = data.metadata?.nextCursor;
     if (!cursor) break;
   }
@@ -218,8 +231,6 @@ export const handleUpdateServerAuth = async (c: Context<{ Variables: Variables }
   }
 };
 
-
-
 /**
  * Parse registry metadata to detect which auth types a server supports.
  * Examines required headers on remotes and environment variables on packages.
@@ -241,7 +252,7 @@ function deriveAuthTypes(metadata: unknown): string[] {
         const name = h.name.toLowerCase();
         if (name === 'authorization') {
           // Check if the description hints at basic vs bearer
-          const desc = (h.description as string || '').toLowerCase();
+          const desc = ((h.description as string) || '').toLowerCase();
           if (desc.includes('basic')) {
             types.add('basic');
           } else {
@@ -258,7 +269,8 @@ function deriveAuthTypes(metadata: unknown): string[] {
   const packages = (server.packages as Array<Record<string, unknown>>) || [];
   for (const pkg of packages) {
     const envVars = (pkg.environmentVariables as Array<Record<string, unknown>>) || [];
-    let hasUser = false, hasPass = false;
+    let hasUser = false,
+      hasPass = false;
     for (const env of envVars) {
       if (!env.isRequired || typeof env.name !== 'string') continue;
       const name = env.name.toLowerCase();
@@ -333,11 +345,14 @@ export const handleRegistrySearch = async (c: Context<{ Variables: Variables }>)
     };
   });
 
-  return c.json({
-    servers,
-    cursor: nextCursor || null,
-    hasMore: !!nextCursor,
-    limit,
-    count: servers.length,
-  }, 200);
+  return c.json(
+    {
+      servers,
+      cursor: nextCursor || null,
+      hasMore: !!nextCursor,
+      limit,
+      count: servers.length,
+    },
+    200,
+  );
 };

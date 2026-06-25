@@ -28,7 +28,9 @@ async function checkDockerVersion(): Promise<string | null> {
   return new Promise((resolve) => {
     const child = spawn('docker', ['--version'], { stdio: ['ignore', 'pipe', 'pipe'] });
     let out = '';
-    child.stdout?.on('data', (chunk) => { out += String(chunk); });
+    child.stdout?.on('data', (chunk) => {
+      out += String(chunk);
+    });
     child.on('close', (code) => {
       resolve(code === 0 ? out.trim() : null);
     });
@@ -58,18 +60,18 @@ async function readDbStatus(): Promise<{ type: string; reachable: boolean }> {
 }
 
 export const handleSystemHealth = async (c: Context<{ Variables: Variables }>) => {
-  const [dockerVersion, db] = await Promise.all([
-    checkDockerVersion(),
-    readDbStatus(),
-  ]);
+  const [dockerVersion, db] = await Promise.all([checkDockerVersion(), readDbStatus()]);
 
-  return c.json({
-    node: process.version,
-    database: db,
-    docker: { available: dockerVersion !== null, version: dockerVersion },
-    installMode: process.env.INSTALL_MODE || 'npm',
-    version: readAppVersion(),
-  }, 200);
+  return c.json(
+    {
+      node: process.version,
+      database: db,
+      docker: { available: dockerVersion !== null, version: dockerVersion },
+      installMode: process.env.INSTALL_MODE || 'npm',
+      version: readAppVersion(),
+    },
+    200,
+  );
 };
 
 export const handleUpdateStream = async (c: Context<{ Variables: Variables }>) => {
@@ -78,19 +80,43 @@ export const handleUpdateStream = async (c: Context<{ Variables: Variables }>) =
 
   return streamSSE(c, async (stream) => {
     for (const logLine of info.updateLogs) {
-      await stream.writeSSE({ data: JSON.stringify({ type: 'log', message: logLine }), id: String(eventId++), event: 'log' });
+      await stream.writeSSE({
+        data: JSON.stringify({ type: 'log', message: logLine }),
+        id: String(eventId++),
+        event: 'log',
+      });
     }
 
     if (info.updateRunning) {
-      await stream.writeSSE({ data: JSON.stringify({ type: 'status', updateRunning: true }), id: String(eventId++), event: 'status' });
+      await stream.writeSSE({
+        data: JSON.stringify({ type: 'status', updateRunning: true }),
+        id: String(eventId++),
+        event: 'status',
+      });
     }
 
     const onLog = (line: string) => {
-      stream.writeSSE({ data: JSON.stringify({ type: 'log', message: line }), id: String(eventId++), event: 'log' }).catch(() => {});
+      stream
+        .writeSSE({
+          data: JSON.stringify({ type: 'log', message: line }),
+          id: String(eventId++),
+          event: 'log',
+        })
+        .catch(() => {});
     };
 
-    const onStatus = (status: { updateRunning: boolean; updateFinishedAt: string | null; error: string | null }) => {
-      stream.writeSSE({ data: JSON.stringify({ type: 'status', ...status }), id: String(eventId++), event: 'status' }).catch(() => {});
+    const onStatus = (status: {
+      updateRunning: boolean;
+      updateFinishedAt: string | null;
+      error: string | null;
+    }) => {
+      stream
+        .writeSSE({
+          data: JSON.stringify({ type: 'status', ...status }),
+          id: String(eventId++),
+          event: 'status',
+        })
+        .catch(() => {});
     };
 
     updateEvents.on('log', onLog);

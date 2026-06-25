@@ -1,7 +1,7 @@
-import { PostHog } from "posthog-node";
+import { PostHog } from 'posthog-node';
 
-const POSTHOG_API_KEY = process.env.POSTHOG_API_KEY || "";
-const POSTHOG_HOST = process.env.POSTHOG_HOST || "https://us.i.posthog.com";
+const POSTHOG_API_KEY = process.env.POSTHOG_API_KEY || '';
+const POSTHOG_HOST = process.env.POSTHOG_HOST || 'https://us.i.posthog.com';
 
 let client = null;
 
@@ -20,12 +20,13 @@ export function captureInstallerRequest(req, url) {
   const ph = getClient();
   if (!ph) return;
 
-  const userAgent = req.headers["user-agent"] || "unknown";
-  const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
+  const userAgent = req.headers['user-agent'] || 'unknown';
+  const ip =
+    req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
 
   ph.capture({
     distinctId: ip,
-    event: "installer_request",
+    event: 'installer_request',
     properties: {
       userAgent,
       path: url.pathname,
