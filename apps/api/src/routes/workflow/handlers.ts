@@ -103,6 +103,26 @@ export const handleDeleteWorkflow = async (c: Context<{ Variables: Variables }>)
   return c.json({ success: true }, 200);
 };
 
+export const handleUpdateWorkflow = async (c: Context<{ Variables: Variables }>) => {
+  const jwtPayload = c.get('jwtPayload');
+  const workflowId = c.req.param('workflowId');
+  if (!workflowId) {
+    return c.json({ error: 'Missing workflowId parameter' }, 400);
+  }
+  const raw = await c.req.json();
+  const parsed = WorkflowPayload.safeParse(raw);
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid workflow', details: parsed.error.format() }, 400);
+  }
+  const provider = getQueryProvider();
+  const existing = await provider.getWorkflow(workflowId, jwtPayload.sub);
+  if (!existing) {
+    return c.json({ error: 'Workflow not found' }, 404);
+  }
+  await provider.updateWorkflow(workflowId, jwtPayload.sub, parsed.data);
+  return c.json({ workflowId }, 200);
+};
+
 export const handleSaveWorkflow = async (c: Context<{ Variables: Variables }>) => {
   const jwtPayload = c.get('jwtPayload');
   const raw = await c.req.json();

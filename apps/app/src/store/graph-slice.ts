@@ -64,13 +64,48 @@ const RESEARCH_SWARM_TEMPLATE = {
       },
     },
   ] as Node<NodeData>[],
-    edges: [
-      { id: 'e-t-a1', source: 'node-trigger', target: 'node-agent-1', sourceHandle: 'source', targetHandle: 'target-left', type: 'animated' },
-      { id: 'e-t-a2', source: 'node-trigger', target: 'node-agent-2', sourceHandle: 'source', targetHandle: 'target-left', type: 'animated' },
-      { id: 'e-a1-s', source: 'node-agent-1', target: 'node-supervisor', sourceHandle: 'source-right', targetHandle: 'target-left', type: 'animated' },
-      { id: 'e-a2-s', source: 'node-agent-2', target: 'node-supervisor', sourceHandle: 'source-right', targetHandle: 'target-left', type: 'animated' },
-      { id: 'e-s-m', source: 'node-supervisor', target: 'node-mcp-tool', sourceHandle: 'source-bottom', targetHandle: 'target', type: 'animated' },
-    ] as Edge[],
+  edges: [
+    {
+      id: 'e-t-a1',
+      source: 'node-trigger',
+      target: 'node-agent-1',
+      sourceHandle: 'source',
+      targetHandle: 'target-left',
+      type: 'animated',
+    },
+    {
+      id: 'e-t-a2',
+      source: 'node-trigger',
+      target: 'node-agent-2',
+      sourceHandle: 'source',
+      targetHandle: 'target-left',
+      type: 'animated',
+    },
+    {
+      id: 'e-a1-s',
+      source: 'node-agent-1',
+      target: 'node-supervisor',
+      sourceHandle: 'source-right',
+      targetHandle: 'target-left',
+      type: 'animated',
+    },
+    {
+      id: 'e-a2-s',
+      source: 'node-agent-2',
+      target: 'node-supervisor',
+      sourceHandle: 'source-right',
+      targetHandle: 'target-left',
+      type: 'animated',
+    },
+    {
+      id: 'e-s-m',
+      source: 'node-supervisor',
+      target: 'node-mcp-tool',
+      sourceHandle: 'source-bottom',
+      targetHandle: 'target',
+      type: 'animated',
+    },
+  ] as Edge[],
 };
 
 let _updateNodeDataTimer: ReturnType<typeof setTimeout> | undefined;
@@ -134,7 +169,9 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
 
       // Source to a tool must be agent or supervisor
       if (targetNode.type === 'mcp_tool' && !isAgent(sourceNode.type)) {
-        toast.error('Error: MCP Tools can only receive connections from Agent or Supervisor nodes.');
+        toast.error(
+          'Error: MCP Tools can only receive connections from Agent or Supervisor nodes.',
+        );
         return {};
       }
 
@@ -142,7 +179,9 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
       if (targetNode.type === 'mcp_tool') {
         const existingEdge = state.edges.find((e) => e.target === connection.target);
         if (existingEdge) {
-          toast.error('This MCP Tool already has a connection from another agent. Duplicate the tool to attach it to a different agent.');
+          toast.error(
+            'This MCP Tool already has a connection from another agent. Duplicate the tool to attach it to a different agent.',
+          );
           return {};
         }
       }
@@ -261,7 +300,9 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
   updateNodeData: (id, data) => {
     if (!_updateNodeDataTimer) get().pushHistory();
     clearTimeout(_updateNodeDataTimer);
-    _updateNodeDataTimer = setTimeout(() => { _updateNodeDataTimer = undefined; }, 800);
+    _updateNodeDataTimer = setTimeout(() => {
+      _updateNodeDataTimer = undefined;
+    }, 800);
     set((state) => ({
       nodes: state.nodes.map((node) => {
         if (node.id === id) {
@@ -446,9 +487,7 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
       if (parentId && positionMap.has(parentId)) {
         const parentNode = nodes.find((n) => n.id === parentId);
         const parentPos = positionMap.get(parentId)!;
-        const siblingTools = toolNodes.filter(
-          (t) => toolParentMap.get(t.id) === parentId,
-        );
+        const siblingTools = toolNodes.filter((t) => toolParentMap.get(t.id) === parentId);
         const count = siblingTools.length;
         const pw = nodeWidth(parentNode?.type);
         const totalWidth = count * TOOL_WIDTH + (count - 1) * TOOL_GAP;

@@ -11,7 +11,7 @@ export const MaximizedNodeOverlay = () => {
   const maximizedNodeOutput = useStore((s) => s.nodeOutputs[maximizedNodeId || ''] || '');
   const maximizedNodeStatus = useStore((s) => s.nodeStatuses[maximizedNodeId || ''] || 'pending');
 
-  const [showOverlayLeft, setShowOverlayLeft] = useState(true);
+  const [showOverlayLeft, setShowOverlayLeft] = useState(false);
   const [showOverlayRight, setShowOverlayRight] = useState(true);
 
   if (!maximizedNodeId) return null;
@@ -264,7 +264,6 @@ export const MaximizedNodeOverlay = () => {
             <kbd className="bg-white px-1 border border-slate-350 text-slate-600 rounded-sm">
               ESC
             </kbd>{' '}
-            or click backdrop to close
           </span>
           <button
             onClick={() => setMaximizedNodeId(null)}

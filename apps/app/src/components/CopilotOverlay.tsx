@@ -33,7 +33,7 @@ export const CopilotOverlay = () => {
   };
 
   return (
-    <div className="fixed bottom-14 left-3 z-50 flex flex-col items-start gap-2 pointer-events-none">
+    <div className="fixed bottom-14 right-3 z-50 flex flex-col items-end gap-2 pointer-events-none">
       {isOpen && (
         <div className="pointer-events-auto bg-white border border-[#cbd5e1] shadow-2xl flex flex-col font-sans text-slate-800 select-none rounded-none overflow-hidden animate-in fade-in zoom-in-95 duration-150 w-[340px] h-[440px] mb-1">
           {/* Header */}

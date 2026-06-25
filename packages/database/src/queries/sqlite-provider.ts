@@ -240,6 +240,65 @@ export const sqliteProvider: QueryProvider = {
     return workflowId;
   },
 
+  async updateWorkflow(
+    workflowId: string,
+    userId: string,
+    workflow: WorkflowPayload,
+  ): Promise<string> {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+
+    await sqliteDb.transaction(async (tx) => {
+      await tx
+        .update(sqliteSchema.sqliteWorkflows)
+        .set({
+          name: workflow.name,
+          description: workflow.description || null,
+        })
+        .where(
+          and(
+            eq(sqliteSchema.sqliteWorkflows.id, workflowId),
+            eq(sqliteSchema.sqliteWorkflows.userId, userId),
+          ),
+        );
+
+      await tx
+        .delete(sqliteSchema.sqliteNodes)
+        .where(eq(sqliteSchema.sqliteNodes.workflowId, workflowId));
+      await tx
+        .delete(sqliteSchema.sqliteEdges)
+        .where(eq(sqliteSchema.sqliteEdges.workflowId, workflowId));
+
+      if (workflow.nodes.length > 0) {
+        await tx.insert(sqliteSchema.sqliteNodes).values(
+          workflow.nodes.map((node) => ({
+            id: `${workflowId}_${node.id}`,
+            workflowId,
+            type: node.type,
+            data: node.data,
+            positionX: node.position.x,
+            positionY: node.position.y,
+          })),
+        );
+      }
+
+      if (workflow.edges.length > 0) {
+        await tx.insert(sqliteSchema.sqliteEdges).values(
+          workflow.edges.map((edge) => ({
+            id: `${workflowId}_${edge.id}`,
+            workflowId,
+            source: `${workflowId}_${edge.source}`,
+            target: `${workflowId}_${edge.target}`,
+            sourceHandle: edge.sourceHandle || null,
+            targetHandle: edge.targetHandle || null,
+          })),
+        );
+      }
+    });
+
+    return workflowId;
+  },
+
   async listUserWorkflows(userId: string): Promise<WorkflowRow[]> {
     const { db } = getConnection();
     const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;

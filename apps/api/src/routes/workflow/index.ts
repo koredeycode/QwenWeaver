@@ -5,6 +5,7 @@ import {
   handleGetWorkflow,
   handleDeleteWorkflow,
   handleSaveWorkflow,
+  handleUpdateWorkflow,
   handleExecute,
   handleStream,
   handleGetStatus,
@@ -14,6 +15,7 @@ export const workflowRoutes = new Hono<{ Variables: Variables }>()
   .get('/', handleListWorkflows)
   .get('/detail/:workflowId', handleGetWorkflow)
   .delete('/detail/:workflowId', handleDeleteWorkflow)
+  .put('/detail/:workflowId', handleUpdateWorkflow)
   .post('/', handleSaveWorkflow)
   .post('/execute', handleExecute)
   .get('/:executionId/stream', handleStream)

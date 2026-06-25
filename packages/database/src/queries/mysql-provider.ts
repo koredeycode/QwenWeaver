@@ -227,6 +227,65 @@ export const mysqlProvider: QueryProvider = {
     return workflowId;
   },
 
+  async updateWorkflow(
+    workflowId: string,
+    userId: string,
+    workflow: WorkflowPayload,
+  ): Promise<string> {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+
+    await mysqlDb.transaction(async (tx) => {
+      await tx
+        .update(mysqlSchema.mysqlWorkflows)
+        .set({
+          name: workflow.name,
+          description: workflow.description || null,
+        })
+        .where(
+          and(
+            eq(mysqlSchema.mysqlWorkflows.id, workflowId),
+            eq(mysqlSchema.mysqlWorkflows.userId, userId),
+          ),
+        );
+
+      await tx
+        .delete(mysqlSchema.mysqlNodes)
+        .where(eq(mysqlSchema.mysqlNodes.workflowId, workflowId));
+      await tx
+        .delete(mysqlSchema.mysqlEdges)
+        .where(eq(mysqlSchema.mysqlEdges.workflowId, workflowId));
+
+      if (workflow.nodes.length > 0) {
+        await tx.insert(mysqlSchema.mysqlNodes).values(
+          workflow.nodes.map((node) => ({
+            id: `${workflowId}_${node.id}`,
+            workflowId,
+            type: node.type,
+            data: node.data,
+            positionX: node.position.x,
+            positionY: node.position.y,
+          })),
+        );
+      }
+
+      if (workflow.edges.length > 0) {
+        await tx.insert(mysqlSchema.mysqlEdges).values(
+          workflow.edges.map((edge) => ({
+            id: `${workflowId}_${edge.id}`,
+            workflowId,
+            source: `${workflowId}_${edge.source}`,
+            target: `${workflowId}_${edge.target}`,
+            sourceHandle: edge.sourceHandle || null,
+            targetHandle: edge.targetHandle || null,
+          })),
+        );
+      }
+    });
+
+    return workflowId;
+  },
+
   async listUserWorkflows(userId: string): Promise<WorkflowRow[]> {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;

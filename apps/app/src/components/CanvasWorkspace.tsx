@@ -20,16 +20,20 @@ import { Sidebar } from './Sidebar.js';
 import {
   ChevronDown,
   ChevronLeft,
+  ChevronUp,
   Download,
   Image,
   Info,
   Keyboard,
+  LoaderCircle,
   Play,
+  Redo2,
   RefreshCw,
   Save,
   Settings,
   Square,
   Trash2,
+  Undo2,
   Upload,
   User,
   Wrench,
@@ -66,6 +70,8 @@ export const CanvasWorkspace = () => {
 
   const isDirty = useStore((s) => s.isDirty);
   const pushHistory = useStore((s) => s.pushHistory);
+  const canUndo = useStore((s) => s.canUndo);
+  const canRedo = useStore((s) => s.canRedo);
 
   const status = useStore((s) => s.executionStatus);
   const runWorkflow = useStore((s) => s.runWorkflow);
@@ -218,6 +224,11 @@ export const CanvasWorkspace = () => {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isMinimapVisible, setIsMinimapVisible] = useState(() => {
+    const saved = localStorage.getItem('qwenweaver_minimap_visible');
+    return saved !== 'false';
+  });
 
   // Keyboard Shortcuts Bindings Listener
   useEffect(() => {
@@ -316,7 +327,7 @@ export const CanvasWorkspace = () => {
     setMaximizedNodeId,
   ]);
 
-  // Auto-save: debounced 2s after any graph change
+  // Auto-save: debounced 10s after any graph change
   useEffect(() => {
     if (status === 'running') return;
     const timer = setTimeout(() => {
@@ -328,7 +339,45 @@ export const CanvasWorkspace = () => {
         workflowDescription: state.workflowDescription,
         timestamp: Date.now(),
       });
-    }, 2000);
+
+      // Also persist to backend if user is authenticated and has a saved workflowId
+      if (state.workflowId && state.token) {
+        setIsSaving(true);
+        const payload = {
+          id: state.workflowId,
+          name: state.workflowName,
+          description: state.workflowDescription,
+          nodes: state.nodes.map((n: any) => ({
+            id: n.id,
+            type: n.type,
+            position: n.position,
+            data: n.data,
+          })),
+          edges: state.edges.map((e: any) => ({
+            id: e.id,
+            source: e.source,
+            target: e.target,
+            sourceHandle: e.sourceHandle,
+            targetHandle: e.targetHandle,
+            type: e.type,
+          })),
+        };
+        withRefresh(() =>
+          client.api.workflow.detail[':workflowId'].$put(
+            {
+              param: { workflowId: state.workflowId! },
+              json: payload as any,
+            } as any,
+            { headers: authHeaders() },
+          ),
+        )
+          .then(() => setIsSaving(false))
+          .catch((err) => {
+            setIsSaving(false);
+            console.warn('Auto-save to backend failed:', err);
+          });
+      }
+    }, 10000);
     return () => clearTimeout(timer);
   }, [nodes, edges, workflowName, workflowDescription, status]);
 
@@ -342,12 +391,14 @@ export const CanvasWorkspace = () => {
           action: {
             label: 'Restore',
             onClick: () => {
-              useStore.getState().loadUnsavedWorkflow(
-                draft.nodes,
-                draft.edges,
-                draft.workflowName,
-                draft.workflowDescription,
-              );
+              useStore
+                .getState()
+                .loadUnsavedWorkflow(
+                  draft.nodes,
+                  draft.edges,
+                  draft.workflowName,
+                  draft.workflowDescription,
+                );
               toast.success('Draft restored.');
             },
           },
@@ -396,8 +447,14 @@ export const CanvasWorkspace = () => {
       // Proximity snap: if not directly on a node, find nearest within snap distance
       if (!nodeElement) {
         const snapPx = 40;
-        const clientX = 'touches' in event ? (event as TouchEvent).changedTouches[0]!.clientX : (event as MouseEvent).clientX;
-        const clientY = 'touches' in event ? (event as TouchEvent).changedTouches[0]!.clientY : (event as MouseEvent).clientY;
+        const clientX =
+          'touches' in event
+            ? (event as TouchEvent).changedTouches[0]!.clientX
+            : (event as MouseEvent).clientX;
+        const clientY =
+          'touches' in event
+            ? (event as TouchEvent).changedTouches[0]!.clientY
+            : (event as MouseEvent).clientY;
         const sourceId = connectionStartRef.current.source;
         const flowEl = document.querySelector('.react-flow');
         if (flowEl) {
@@ -532,7 +589,12 @@ export const CanvasWorkspace = () => {
             {workflowName && (
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold text-slate-900">{workflowName}</span>
-                {isDirty && <span className="w-2 h-2 rounded-full bg-orange-500 inline-block flex-shrink-0" title="Unsaved changes" />}
+                {isDirty && (
+                  <span
+                    className="w-2 h-2 rounded-full bg-orange-500 inline-block flex-shrink-0"
+                    title="Unsaved changes"
+                  />
+                )}
                 {workflowDescription && (
                   <div className="relative" ref={descRef}>
                     <button
@@ -688,6 +750,34 @@ export const CanvasWorkspace = () => {
                 <span className="hidden md:inline">Save</span>
               </button>
             )}
+
+            {/* Saving indicator */}
+            {isSaving && (
+              <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono">
+                <LoaderCircle className="w-3 h-3 animate-spin" />
+                Saving...
+              </div>
+            )}
+
+            {/* Undo / Redo buttons */}
+            <div className="flex items-center gap-0.5">
+              <button
+                onClick={() => useStore.getState().undo()}
+                disabled={!canUndo}
+                className="p-1.5 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed"
+                title="Undo (Ctrl+Z)"
+              >
+                <Undo2 className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => useStore.getState().redo()}
+                disabled={!canRedo}
+                className="p-1.5 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed"
+                title="Redo (Ctrl+Shift+Z)"
+              >
+                <Redo2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
 
             {/* Run Workflow / Kill Button (Solid Rust-Orange) */}
             {status === 'running' ? (
@@ -904,6 +994,18 @@ export const CanvasWorkspace = () => {
                         </kbd>
                       </div>
                       <div className="flex justify-between gap-6">
+                        <span>Undo:</span>
+                        <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
+                          Ctrl + Z
+                        </kbd>
+                      </div>
+                      <div className="flex justify-between gap-6">
+                        <span>Redo:</span>
+                        <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
+                          Ctrl + Shift + Z
+                        </kbd>
+                      </div>
+                      <div className="flex justify-between gap-6">
                         <span>Duplicate Node:</span>
                         <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
                           Ctrl + D
@@ -934,32 +1036,57 @@ export const CanvasWorkspace = () => {
                     </div>
                   )}
                 </div>
-                <div data-export-hide="true">
-                  <MiniMap
-                    style={{
-                      height: 100,
-                      width: 140,
-                      background: '#ffffff',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: 0,
-                    }}
-                    nodeColor={(node) => {
-                      switch (node.type) {
-                        case 'trigger':
-                          return '#10b981'; // Green
-                        case 'agent':
-                          return '#ea580c'; // Orange
-                        case 'supervisor':
-                          return '#2563eb'; // Blue
-                        case 'mcp_tool':
-                          return '#8b5cf6'; // Purple
-                        default:
-                          return '#cbd5e1'; // Slate
-                      }
-                    }}
-                    maskColor="rgba(241, 245, 249, 0.4)"
-                  />
-                </div>
+                <Panel position="bottom-right" className="pointer-events-auto">
+                  {isMinimapVisible ? (
+                    <div className="relative" style={{ height: 100, width: 140 }}>
+                      <button
+                        onClick={() => {
+                          setIsMinimapVisible(false);
+                          localStorage.setItem('qwenweaver_minimap_visible', 'false');
+                        }}
+                        className="absolute -top-2.5 right-0 z-10 bg-white border border-[#cbd5e1] p-0.5 hover:bg-slate-50 text-slate-400 hover:text-slate-700 shadow-sm transition-colors cursor-pointer"
+                        title="Collapse minimap"
+                      >
+                        <ChevronDown className="w-3 h-3" />
+                      </button>
+                      <MiniMap
+                        style={{
+                          height: 100,
+                          width: 140,
+                          background: '#ffffff',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: 0,
+                        }}
+                        nodeColor={(node) => {
+                          switch (node.type) {
+                            case 'trigger':
+                              return '#10b981'; // Green
+                            case 'agent':
+                              return '#ea580c'; // Orange
+                            case 'supervisor':
+                              return '#2563eb'; // Blue
+                            case 'mcp_tool':
+                              return '#8b5cf6'; // Purple
+                            default:
+                              return '#cbd5e1'; // Slate
+                          }
+                        }}
+                        maskColor="rgba(241, 245, 249, 0.4)"
+                      />
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setIsMinimapVisible(true);
+                        localStorage.setItem('qwenweaver_minimap_visible', 'true');
+                      }}
+                      className="bg-white border border-[#cbd5e1] p-1 hover:bg-slate-50 text-slate-400 hover:text-slate-700 shadow-sm transition-colors cursor-pointer"
+                      title="Expand minimap"
+                    >
+                      <ChevronUp className="w-3 h-3" />
+                    </button>
+                  )}
+                </Panel>
               </ReactFlow>
 
               {/* Floating Sidebar Toggle Button (when collapsed) */}

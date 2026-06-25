@@ -221,6 +221,58 @@ export const pgProvider: QueryProvider = {
     return workflowId;
   },
 
+  async updateWorkflow(
+    workflowId: string,
+    userId: string,
+    workflow: WorkflowPayload,
+  ): Promise<string> {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+
+    await pgDb.transaction(async (tx) => {
+      await tx
+        .update(pgSchema.pgWorkflows)
+        .set({
+          name: workflow.name,
+          description: workflow.description || null,
+        })
+        .where(
+          and(eq(pgSchema.pgWorkflows.id, workflowId), eq(pgSchema.pgWorkflows.userId, userId)),
+        );
+
+      await tx.delete(pgSchema.pgNodes).where(eq(pgSchema.pgNodes.workflowId, workflowId));
+      await tx.delete(pgSchema.pgEdges).where(eq(pgSchema.pgEdges.workflowId, workflowId));
+
+      if (workflow.nodes.length > 0) {
+        await tx.insert(pgSchema.pgNodes).values(
+          workflow.nodes.map((node) => ({
+            id: `${workflowId}_${node.id}`,
+            workflowId,
+            type: node.type,
+            data: node.data,
+            positionX: node.position.x,
+            positionY: node.position.y,
+          })),
+        );
+      }
+
+      if (workflow.edges.length > 0) {
+        await tx.insert(pgSchema.pgEdges).values(
+          workflow.edges.map((edge) => ({
+            id: `${workflowId}_${edge.id}`,
+            workflowId,
+            source: `${workflowId}_${edge.source}`,
+            target: `${workflowId}_${edge.target}`,
+            sourceHandle: edge.sourceHandle || null,
+            targetHandle: edge.targetHandle || null,
+          })),
+        );
+      }
+    });
+
+    return workflowId;
+  },
+
   async listUserWorkflows(userId: string): Promise<WorkflowRow[]> {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;

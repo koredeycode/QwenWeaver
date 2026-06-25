@@ -49,9 +49,7 @@ export interface WorkflowDetail {
 export interface QueryProvider {
   // Auth
   createUser(id: string, email: string, passwordHash: string): Promise<void>;
-  getUserByEmail(
-    email: string,
-  ): Promise<{
+  getUserByEmail(email: string): Promise<{
     id: string;
     email: string;
     passwordHash: string;
@@ -72,6 +70,7 @@ export interface QueryProvider {
   ): Promise<SavedMCPServer>;
 
   saveWorkflow(userId: string, workflow: WorkflowPayload): Promise<string>;
+  updateWorkflow(workflowId: string, userId: string, workflow: WorkflowPayload): Promise<string>;
   listUserWorkflows(userId: string): Promise<WorkflowRow[]>;
   getWorkflow(id: string, userId: string): Promise<WorkflowDetail | null>;
   deleteWorkflow(id: string, userId: string): Promise<boolean>;

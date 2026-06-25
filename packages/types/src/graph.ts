@@ -103,12 +103,20 @@ export const WorkflowPayload = z
         }
 
         // Tool can only receive from agent or supervisor
-        if (targetNode.type === 'mcp_tool' && sourceNode.type !== 'agent' && sourceNode.type !== 'supervisor') {
+        if (
+          targetNode.type === 'mcp_tool' &&
+          sourceNode.type !== 'agent' &&
+          sourceNode.type !== 'supervisor'
+        ) {
           return false;
         }
 
         // Tool can only connect to agent or supervisor
-        if (sourceNode.type === 'mcp_tool' && targetNode.type !== 'agent' && targetNode.type !== 'supervisor') {
+        if (
+          sourceNode.type === 'mcp_tool' &&
+          targetNode.type !== 'agent' &&
+          targetNode.type !== 'supervisor'
+        ) {
           return false;
         }
 
