@@ -8,7 +8,7 @@ import {
   index,
   varchar,
 } from 'drizzle-orm/pg-core';
-import type { NodeData, ExecutionMetrics, AgentLogInput, AgentLogOutput } from '@qwenweaver/types';
+import type { NodeData, ExecutionMetrics, AgentLogInput, AgentLogOutput, WorkflowPayload } from '@qwenweaver/types';
 import type { MCPAuthConfig } from '@qwenweaver/types';
 
 export const pgUsers = pgTable('users', {
@@ -26,6 +26,7 @@ export const pgWorkflows = pgTable(
     name: text('name').notNull(),
     description: text('description'),
     isActive: integer('is_active').default(1).notNull(),
+    nodesEdges: jsonb('nodes_edges').$type<WorkflowPayload>(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => [index('workflows_user_id_idx').on(table.userId)],

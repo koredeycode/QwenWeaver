@@ -1,5 +1,5 @@
 import { type MySql2Database } from 'drizzle-orm/mysql2';
-import { eq, and, sql, desc, count, inArray } from 'drizzle-orm';
+import { eq, and, sql, desc } from 'drizzle-orm';
 import { getConnection, mysqlSchema } from '../index.js';
 import type { QueryProvider, WorkflowRow, WorkflowDetail } from './provider.js';
 import type { SavedMCPServerInput, SavedMCPServer } from './mcp.js';
@@ -189,40 +189,21 @@ export const mysqlProvider: QueryProvider = {
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
     const workflowId = workflow.id || crypto.randomUUID();
 
+    const payload: WorkflowPayload = {
+      ...workflow,
+      nodes: workflow.nodes.map((n) => ({ ...n, id: n.id })),
+      edges: workflow.edges.map((e) => ({ ...e, id: e.id })),
+    };
+
     await mysqlDb.insert(mysqlSchema.mysqlWorkflows).values({
       id: workflowId,
       userId,
       name: workflow.name,
       description: workflow.description || null,
       isActive: 1,
+      nodesEdges: payload,
       createdAt: new Date(),
     });
-
-    if (workflow.nodes.length > 0) {
-      await mysqlDb.insert(mysqlSchema.mysqlNodes).values(
-        workflow.nodes.map((node) => ({
-          id: `${workflowId}_${node.id}`,
-          workflowId,
-          type: node.type,
-          data: node.data,
-          positionX: node.position.x,
-          positionY: node.position.y,
-        })),
-      );
-    }
-
-    if (workflow.edges.length > 0) {
-      await mysqlDb.insert(mysqlSchema.mysqlEdges).values(
-        workflow.edges.map((edge) => ({
-          id: `${workflowId}_${edge.id}`,
-          workflowId,
-          source: `${workflowId}_${edge.source}`,
-          target: `${workflowId}_${edge.target}`,
-          sourceHandle: edge.sourceHandle || null,
-          targetHandle: edge.targetHandle || null,
-        })),
-      );
-    }
 
     return workflowId;
   },
@@ -235,53 +216,25 @@ export const mysqlProvider: QueryProvider = {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
 
-    await mysqlDb.transaction(async (tx) => {
-      await tx
-        .update(mysqlSchema.mysqlWorkflows)
-        .set({
-          name: workflow.name,
-          description: workflow.description || null,
-        })
-        .where(
-          and(
-            eq(mysqlSchema.mysqlWorkflows.id, workflowId),
-            eq(mysqlSchema.mysqlWorkflows.userId, userId),
-          ),
-        );
+    const payload: WorkflowPayload = {
+      ...workflow,
+      nodes: workflow.nodes.map((n) => ({ ...n, id: n.id })),
+      edges: workflow.edges.map((e) => ({ ...e, id: e.id })),
+    };
 
-      await tx
-        .delete(mysqlSchema.mysqlNodes)
-        .where(eq(mysqlSchema.mysqlNodes.workflowId, workflowId));
-      await tx
-        .delete(mysqlSchema.mysqlEdges)
-        .where(eq(mysqlSchema.mysqlEdges.workflowId, workflowId));
-
-      if (workflow.nodes.length > 0) {
-        await tx.insert(mysqlSchema.mysqlNodes).values(
-          workflow.nodes.map((node) => ({
-            id: `${workflowId}_${node.id}`,
-            workflowId,
-            type: node.type,
-            data: node.data,
-            positionX: node.position.x,
-            positionY: node.position.y,
-          })),
-        );
-      }
-
-      if (workflow.edges.length > 0) {
-        await tx.insert(mysqlSchema.mysqlEdges).values(
-          workflow.edges.map((edge) => ({
-            id: `${workflowId}_${edge.id}`,
-            workflowId,
-            source: `${workflowId}_${edge.source}`,
-            target: `${workflowId}_${edge.target}`,
-            sourceHandle: edge.sourceHandle || null,
-            targetHandle: edge.targetHandle || null,
-          })),
-        );
-      }
-    });
+    await mysqlDb
+      .update(mysqlSchema.mysqlWorkflows)
+      .set({
+        name: workflow.name,
+        description: workflow.description || null,
+        nodesEdges: payload,
+      })
+      .where(
+        and(
+          eq(mysqlSchema.mysqlWorkflows.id, workflowId),
+          eq(mysqlSchema.mysqlWorkflows.userId, userId),
+        ),
+      );
 
     return workflowId;
   },
@@ -295,35 +248,21 @@ export const mysqlProvider: QueryProvider = {
         name: mysqlSchema.mysqlWorkflows.name,
         description: mysqlSchema.mysqlWorkflows.description,
         createdAt: mysqlSchema.mysqlWorkflows.createdAt,
+        nodesEdges: mysqlSchema.mysqlWorkflows.nodesEdges,
       })
       .from(mysqlSchema.mysqlWorkflows)
       .where(eq(mysqlSchema.mysqlWorkflows.userId, userId))
       .orderBy(desc(mysqlSchema.mysqlWorkflows.createdAt));
 
-    if (workflows.length === 0) return workflows;
-
-    const wfIds = workflows.map((w) => w.id);
-    const counts = await mysqlDb
-      .select({
-        workflowId: mysqlSchema.mysqlNodes.workflowId,
-        type: mysqlSchema.mysqlNodes.type,
-        count: count(),
-      })
-      .from(mysqlSchema.mysqlNodes)
-      .where(inArray(mysqlSchema.mysqlNodes.workflowId, wfIds as any[]))
-      .groupBy(mysqlSchema.mysqlNodes.workflowId, mysqlSchema.mysqlNodes.type);
-
-    const countsByWf: Record<string, Record<string, number>> = {};
-    for (const row of counts) {
-      if (!row.workflowId) continue;
-      if (!countsByWf[row.workflowId]) countsByWf[row.workflowId] = {};
-      countsByWf[row.workflowId][row.type] = row.count;
-    }
-
-    return workflows.map((w) => ({
-      ...w,
-      nodeCounts: countsByWf[w.id] ?? {},
-    }));
+    return workflows.map((w) => {
+      const nodeCounts: Record<string, number> = {};
+      if (w.nodesEdges?.nodes) {
+        for (const node of w.nodesEdges.nodes) {
+          nodeCounts[node.type] = (nodeCounts[node.type] || 0) + 1;
+        }
+      }
+      return { id: w.id, name: w.name, description: w.description, createdAt: w.createdAt, nodeCounts };
+    });
   },
 
   async getWorkflow(id: string, userId: string): Promise<WorkflowDetail | null> {
@@ -335,37 +274,16 @@ export const mysqlProvider: QueryProvider = {
         name: mysqlSchema.mysqlWorkflows.name,
         description: mysqlSchema.mysqlWorkflows.description,
         createdAt: mysqlSchema.mysqlWorkflows.createdAt,
+        nodesEdges: mysqlSchema.mysqlWorkflows.nodesEdges,
       })
       .from(mysqlSchema.mysqlWorkflows)
       .where(
         and(eq(mysqlSchema.mysqlWorkflows.id, id), eq(mysqlSchema.mysqlWorkflows.userId, userId)),
       )
       .limit(1);
-    if (wf.length === 0) return null;
+    if (wf.length === 0 || !wf[0].nodesEdges) return null;
 
-    const nodes = await mysqlDb
-      .select({
-        id: mysqlSchema.mysqlNodes.id,
-        type: mysqlSchema.mysqlNodes.type,
-        data: mysqlSchema.mysqlNodes.data,
-        positionX: mysqlSchema.mysqlNodes.positionX,
-        positionY: mysqlSchema.mysqlNodes.positionY,
-      })
-      .from(mysqlSchema.mysqlNodes)
-      .where(eq(mysqlSchema.mysqlNodes.workflowId, id));
-
-    const edges = await mysqlDb
-      .select({
-        id: mysqlSchema.mysqlEdges.id,
-        sourceNode: mysqlSchema.mysqlEdges.source,
-        targetNode: mysqlSchema.mysqlEdges.target,
-        sourceHandle: mysqlSchema.mysqlEdges.sourceHandle,
-        targetHandle: mysqlSchema.mysqlEdges.targetHandle,
-      })
-      .from(mysqlSchema.mysqlEdges)
-      .where(eq(mysqlSchema.mysqlEdges.workflowId, id));
-
-    return { ...wf[0], nodes, edges };
+    return wf[0] as WorkflowDetail;
   },
 
   async deleteWorkflow(id: string, userId: string): Promise<boolean> {

@@ -1,8 +1,6 @@
 import { relations } from 'drizzle-orm';
 import {
   pgWorkflows,
-  pgNodes,
-  pgEdges,
   pgExecutions,
   pgAgentLogs,
   pgMcpServers,
@@ -12,8 +10,6 @@ import {
 } from './pg.js';
 import {
   sqliteWorkflows,
-  sqliteNodes,
-  sqliteEdges,
   sqliteExecutions,
   sqliteAgentLogs,
   sqliteMcpServers,
@@ -23,23 +19,7 @@ import {
 } from './sqlite.js';
 
 export const pgWorkflowsRelations = relations(pgWorkflows, ({ many }) => ({
-  nodes: many(pgNodes),
-  edges: many(pgEdges),
   executions: many(pgExecutions),
-}));
-
-export const pgNodesRelations = relations(pgNodes, ({ one }) => ({
-  workflow: one(pgWorkflows, {
-    fields: [pgNodes.workflowId],
-    references: [pgWorkflows.id],
-  }),
-}));
-
-export const pgEdgesRelations = relations(pgEdges, ({ one }) => ({
-  workflow: one(pgWorkflows, {
-    fields: [pgEdges.workflowId],
-    references: [pgWorkflows.id],
-  }),
 }));
 
 export const pgExecutionsRelations = relations(pgExecutions, ({ one, many }) => ({
@@ -79,23 +59,7 @@ export const pgTemplateReviewsRelations = relations(pgTemplateReviews, ({ one })
 }));
 
 export const sqliteWorkflowsRelations = relations(sqliteWorkflows, ({ many }) => ({
-  nodes: many(sqliteNodes),
-  edges: many(sqliteEdges),
   executions: many(sqliteExecutions),
-}));
-
-export const sqliteNodesRelations = relations(sqliteNodes, ({ one }) => ({
-  workflow: one(sqliteWorkflows, {
-    fields: [sqliteNodes.workflowId],
-    references: [sqliteWorkflows.id],
-  }),
-}));
-
-export const sqliteEdgesRelations = relations(sqliteEdges, ({ one }) => ({
-  workflow: one(sqliteWorkflows, {
-    fields: [sqliteEdges.workflowId],
-    references: [sqliteWorkflows.id],
-  }),
 }));
 
 export const sqliteExecutionsRelations = relations(sqliteExecutions, ({ one, many }) => ({

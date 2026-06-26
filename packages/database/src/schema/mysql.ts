@@ -1,5 +1,5 @@
 import { mysqlTable, text, int, timestamp, json, index, varchar } from 'drizzle-orm/mysql-core';
-import type { NodeData, ExecutionMetrics, AgentLogInput, AgentLogOutput } from '@qwenweaver/types';
+import type { NodeData, ExecutionMetrics, AgentLogInput, AgentLogOutput, WorkflowPayload } from '@qwenweaver/types';
 import type { MCPAuthConfig } from '@qwenweaver/types';
 
 export const mysqlUsers = mysqlTable('users', {
@@ -19,6 +19,7 @@ export const mysqlWorkflows = mysqlTable(
     name: text('name').notNull(),
     description: text('description'),
     isActive: int('is_active').default(1).notNull(),
+    nodesEdges: json('nodes_edges').$type<WorkflowPayload>(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => [index('workflows_user_id_idx').on(table.userId)],

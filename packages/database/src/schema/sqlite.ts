@@ -1,5 +1,5 @@
 import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
-import type { NodeData, ExecutionMetrics, AgentLogInput, AgentLogOutput } from '@qwenweaver/types';
+import type { NodeData, ExecutionMetrics, AgentLogInput, AgentLogOutput, WorkflowPayload } from '@qwenweaver/types';
 import type { MCPAuthConfig } from '@qwenweaver/types';
 
 export const sqliteUsers = sqliteTable('users', {
@@ -17,6 +17,7 @@ export const sqliteWorkflows = sqliteTable(
     name: text('name').notNull(),
     description: text('description'),
     isActive: integer('is_active').default(1).notNull(),
+    nodesEdges: text('nodes_edges', { mode: 'json' }).$type<WorkflowPayload>(),
     createdAt: integer('created_at').notNull(),
   },
   (table) => [index('workflows_user_id_idx').on(table.userId)],

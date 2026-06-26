@@ -151,7 +151,7 @@ export const CanvasWorkspace = () => {
           .$get({ param: { workflowId: id } }, { headers: authHeaders() })
           .then((r: Response) => (r.ok ? r.json() : null))
           .then((wf: any) => {
-            if (!wf || !wf.nodes || !wf.edges) {
+            if (!wf || !wf.nodesEdges || !wf.nodesEdges.nodes) {
               clearGraph();
               const pendingRaw = sessionStorage.getItem(`pending_wf_${id}`);
               if (pendingRaw) {
@@ -165,16 +165,16 @@ export const CanvasWorkspace = () => {
               return;
             }
             useStore.setState({
-              nodes: wf.nodes.map((n: any) => ({
+              nodes: wf.nodesEdges.nodes.map((n: any) => ({
                 id: n.id,
                 type: n.type,
-                position: { x: n.positionX, y: n.positionY },
+                position: n.position,
                 data: n.data,
               })),
-              edges: wf.edges.map((e: any) => ({
+              edges: wf.nodesEdges.edges.map((e: any) => ({
                 id: e.id,
-                source: e.sourceNode,
-                target: e.targetNode,
+                source: e.source,
+                target: e.target,
                 sourceHandle: e.sourceHandle ?? undefined,
                 targetHandle: e.targetHandle ?? undefined,
                 type: 'animated',

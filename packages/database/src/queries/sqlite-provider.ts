@@ -1,5 +1,5 @@
 import { type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import { eq, and, sql, desc, count, inArray } from 'drizzle-orm';
+import { eq, and, sql, desc } from 'drizzle-orm';
 import { getConnection, sqliteSchema } from '../index.js';
 import type { QueryProvider, WorkflowRow, WorkflowDetail } from './provider.js';
 import type { SavedMCPServerInput, SavedMCPServer } from './mcp.js';
@@ -202,40 +202,21 @@ export const sqliteProvider: QueryProvider = {
     const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
     const workflowId = workflow.id || crypto.randomUUID();
 
+    const payload: WorkflowPayload = {
+      ...workflow,
+      nodes: workflow.nodes.map((n) => ({ ...n, id: n.id })),
+      edges: workflow.edges.map((e) => ({ ...e, id: e.id })),
+    };
+
     await sqliteDb.insert(sqliteSchema.sqliteWorkflows).values({
       id: workflowId,
       userId,
       name: workflow.name,
       description: workflow.description || null,
       isActive: 1,
+      nodesEdges: payload,
       createdAt: Date.now(),
     });
-
-    if (workflow.nodes.length > 0) {
-      await sqliteDb.insert(sqliteSchema.sqliteNodes).values(
-        workflow.nodes.map((node) => ({
-          id: `${workflowId}_${node.id}`,
-          workflowId,
-          type: node.type,
-          data: node.data,
-          positionX: node.position.x,
-          positionY: node.position.y,
-        })),
-      );
-    }
-
-    if (workflow.edges.length > 0) {
-      await sqliteDb.insert(sqliteSchema.sqliteEdges).values(
-        workflow.edges.map((edge) => ({
-          id: `${workflowId}_${edge.id}`,
-          workflowId,
-          source: `${workflowId}_${edge.source}`,
-          target: `${workflowId}_${edge.target}`,
-          sourceHandle: edge.sourceHandle || null,
-          targetHandle: edge.targetHandle || null,
-        })),
-      );
-    }
 
     return workflowId;
   },
@@ -248,53 +229,25 @@ export const sqliteProvider: QueryProvider = {
     const { db } = getConnection();
     const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
 
-    await sqliteDb.transaction(async (tx) => {
-      await tx
-        .update(sqliteSchema.sqliteWorkflows)
-        .set({
-          name: workflow.name,
-          description: workflow.description || null,
-        })
-        .where(
-          and(
-            eq(sqliteSchema.sqliteWorkflows.id, workflowId),
-            eq(sqliteSchema.sqliteWorkflows.userId, userId),
-          ),
-        );
+    const payload: WorkflowPayload = {
+      ...workflow,
+      nodes: workflow.nodes.map((n) => ({ ...n, id: n.id })),
+      edges: workflow.edges.map((e) => ({ ...e, id: e.id })),
+    };
 
-      await tx
-        .delete(sqliteSchema.sqliteNodes)
-        .where(eq(sqliteSchema.sqliteNodes.workflowId, workflowId));
-      await tx
-        .delete(sqliteSchema.sqliteEdges)
-        .where(eq(sqliteSchema.sqliteEdges.workflowId, workflowId));
-
-      if (workflow.nodes.length > 0) {
-        await tx.insert(sqliteSchema.sqliteNodes).values(
-          workflow.nodes.map((node) => ({
-            id: `${workflowId}_${node.id}`,
-            workflowId,
-            type: node.type,
-            data: node.data,
-            positionX: node.position.x,
-            positionY: node.position.y,
-          })),
-        );
-      }
-
-      if (workflow.edges.length > 0) {
-        await tx.insert(sqliteSchema.sqliteEdges).values(
-          workflow.edges.map((edge) => ({
-            id: `${workflowId}_${edge.id}`,
-            workflowId,
-            source: `${workflowId}_${edge.source}`,
-            target: `${workflowId}_${edge.target}`,
-            sourceHandle: edge.sourceHandle || null,
-            targetHandle: edge.targetHandle || null,
-          })),
-        );
-      }
-    });
+    await sqliteDb
+      .update(sqliteSchema.sqliteWorkflows)
+      .set({
+        name: workflow.name,
+        description: workflow.description || null,
+        nodesEdges: payload,
+      })
+      .where(
+        and(
+          eq(sqliteSchema.sqliteWorkflows.id, workflowId),
+          eq(sqliteSchema.sqliteWorkflows.userId, userId),
+        ),
+      );
 
     return workflowId;
   },
@@ -308,37 +261,21 @@ export const sqliteProvider: QueryProvider = {
         name: sqliteSchema.sqliteWorkflows.name,
         description: sqliteSchema.sqliteWorkflows.description,
         createdAt: sqliteSchema.sqliteWorkflows.createdAt,
+        nodesEdges: sqliteSchema.sqliteWorkflows.nodesEdges,
       })
       .from(sqliteSchema.sqliteWorkflows)
       .where(eq(sqliteSchema.sqliteWorkflows.userId, userId))
       .orderBy(desc(sqliteSchema.sqliteWorkflows.createdAt));
 
-    if (workflows.length === 0) return workflows;
-
-    // Fetch node type counts for all returned workflows
-    const wfIds = workflows.map((w) => w.id);
-    const counts = await sqliteDb
-      .select({
-        workflowId: sqliteSchema.sqliteNodes.workflowId,
-        type: sqliteSchema.sqliteNodes.type,
-        count: count(),
-      })
-      .from(sqliteSchema.sqliteNodes)
-      .where(inArray(sqliteSchema.sqliteNodes.workflowId, wfIds as any[]))
-      .groupBy(sqliteSchema.sqliteNodes.workflowId, sqliteSchema.sqliteNodes.type);
-
-    // Build a lookup: workflowId -> { type: count }
-    const countsByWf: Record<string, Record<string, number>> = {};
-    for (const row of counts) {
-      if (!row.workflowId) continue;
-      if (!countsByWf[row.workflowId]) countsByWf[row.workflowId] = {};
-      countsByWf[row.workflowId][row.type] = row.count;
-    }
-
-    return workflows.map((w) => ({
-      ...w,
-      nodeCounts: countsByWf[w.id] ?? {},
-    }));
+    return workflows.map((w) => {
+      const nodeCounts: Record<string, number> = {};
+      if (w.nodesEdges?.nodes) {
+        for (const node of w.nodesEdges.nodes) {
+          nodeCounts[node.type] = (nodeCounts[node.type] || 0) + 1;
+        }
+      }
+      return { id: w.id, name: w.name, description: w.description, createdAt: w.createdAt, nodeCounts };
+    });
   },
 
   async getWorkflow(id: string, userId: string): Promise<WorkflowDetail | null> {
@@ -350,6 +287,7 @@ export const sqliteProvider: QueryProvider = {
         name: sqliteSchema.sqliteWorkflows.name,
         description: sqliteSchema.sqliteWorkflows.description,
         createdAt: sqliteSchema.sqliteWorkflows.createdAt,
+        nodesEdges: sqliteSchema.sqliteWorkflows.nodesEdges,
       })
       .from(sqliteSchema.sqliteWorkflows)
       .where(
@@ -359,31 +297,9 @@ export const sqliteProvider: QueryProvider = {
         ),
       )
       .limit(1);
-    if (wf.length === 0) return null;
+    if (wf.length === 0 || !wf[0].nodesEdges) return null;
 
-    const nodes = await sqliteDb
-      .select({
-        id: sqliteSchema.sqliteNodes.id,
-        type: sqliteSchema.sqliteNodes.type,
-        data: sqliteSchema.sqliteNodes.data,
-        positionX: sqliteSchema.sqliteNodes.positionX,
-        positionY: sqliteSchema.sqliteNodes.positionY,
-      })
-      .from(sqliteSchema.sqliteNodes)
-      .where(eq(sqliteSchema.sqliteNodes.workflowId, id));
-
-    const edges = await sqliteDb
-      .select({
-        id: sqliteSchema.sqliteEdges.id,
-        sourceNode: sqliteSchema.sqliteEdges.source,
-        targetNode: sqliteSchema.sqliteEdges.target,
-        sourceHandle: sqliteSchema.sqliteEdges.sourceHandle,
-        targetHandle: sqliteSchema.sqliteEdges.targetHandle,
-      })
-      .from(sqliteSchema.sqliteEdges)
-      .where(eq(sqliteSchema.sqliteEdges.workflowId, id));
-
-    return { ...wf[0], nodes, edges };
+    return wf[0] as WorkflowDetail;
   },
 
   async deleteWorkflow(id: string, userId: string): Promise<boolean> {

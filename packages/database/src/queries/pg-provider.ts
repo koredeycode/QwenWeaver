@@ -1,5 +1,5 @@
 import { type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import { eq, and, sql, desc, count, inArray } from 'drizzle-orm';
+import { eq, and, sql, desc } from 'drizzle-orm';
 import { getConnection, pgSchema } from '../index.js';
 import type { QueryProvider, WorkflowRow, WorkflowDetail } from './provider.js';
 import type { SavedMCPServerInput, SavedMCPServer } from './mcp.js';
@@ -183,40 +183,21 @@ export const pgProvider: QueryProvider = {
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
     const workflowId = workflow.id || crypto.randomUUID();
 
+    const payload: WorkflowPayload = {
+      ...workflow,
+      nodes: workflow.nodes.map((n) => ({ ...n, id: n.id })),
+      edges: workflow.edges.map((e) => ({ ...e, id: e.id })),
+    };
+
     await pgDb.insert(pgSchema.pgWorkflows).values({
       id: workflowId,
       userId,
       name: workflow.name,
       description: workflow.description || null,
       isActive: 1,
+      nodesEdges: payload,
       createdAt: new Date(),
     });
-
-    if (workflow.nodes.length > 0) {
-      await pgDb.insert(pgSchema.pgNodes).values(
-        workflow.nodes.map((node) => ({
-          id: `${workflowId}_${node.id}`,
-          workflowId,
-          type: node.type,
-          data: node.data,
-          positionX: node.position.x,
-          positionY: node.position.y,
-        })),
-      );
-    }
-
-    if (workflow.edges.length > 0) {
-      await pgDb.insert(pgSchema.pgEdges).values(
-        workflow.edges.map((edge) => ({
-          id: `${workflowId}_${edge.id}`,
-          workflowId,
-          source: `${workflowId}_${edge.source}`,
-          target: `${workflowId}_${edge.target}`,
-          sourceHandle: edge.sourceHandle || null,
-          targetHandle: edge.targetHandle || null,
-        })),
-      );
-    }
 
     return workflowId;
   },
@@ -229,46 +210,22 @@ export const pgProvider: QueryProvider = {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
 
-    await pgDb.transaction(async (tx) => {
-      await tx
-        .update(pgSchema.pgWorkflows)
-        .set({
-          name: workflow.name,
-          description: workflow.description || null,
-        })
-        .where(
-          and(eq(pgSchema.pgWorkflows.id, workflowId), eq(pgSchema.pgWorkflows.userId, userId)),
-        );
+    const payload: WorkflowPayload = {
+      ...workflow,
+      nodes: workflow.nodes.map((n) => ({ ...n, id: n.id })),
+      edges: workflow.edges.map((e) => ({ ...e, id: e.id })),
+    };
 
-      await tx.delete(pgSchema.pgNodes).where(eq(pgSchema.pgNodes.workflowId, workflowId));
-      await tx.delete(pgSchema.pgEdges).where(eq(pgSchema.pgEdges.workflowId, workflowId));
-
-      if (workflow.nodes.length > 0) {
-        await tx.insert(pgSchema.pgNodes).values(
-          workflow.nodes.map((node) => ({
-            id: `${workflowId}_${node.id}`,
-            workflowId,
-            type: node.type,
-            data: node.data,
-            positionX: node.position.x,
-            positionY: node.position.y,
-          })),
-        );
-      }
-
-      if (workflow.edges.length > 0) {
-        await tx.insert(pgSchema.pgEdges).values(
-          workflow.edges.map((edge) => ({
-            id: `${workflowId}_${edge.id}`,
-            workflowId,
-            source: `${workflowId}_${edge.source}`,
-            target: `${workflowId}_${edge.target}`,
-            sourceHandle: edge.sourceHandle || null,
-            targetHandle: edge.targetHandle || null,
-          })),
-        );
-      }
-    });
+    await pgDb
+      .update(pgSchema.pgWorkflows)
+      .set({
+        name: workflow.name,
+        description: workflow.description || null,
+        nodesEdges: payload,
+      })
+      .where(
+        and(eq(pgSchema.pgWorkflows.id, workflowId), eq(pgSchema.pgWorkflows.userId, userId)),
+      );
 
     return workflowId;
   },
@@ -282,35 +239,21 @@ export const pgProvider: QueryProvider = {
         name: pgSchema.pgWorkflows.name,
         description: pgSchema.pgWorkflows.description,
         createdAt: pgSchema.pgWorkflows.createdAt,
+        nodesEdges: pgSchema.pgWorkflows.nodesEdges,
       })
       .from(pgSchema.pgWorkflows)
       .where(eq(pgSchema.pgWorkflows.userId, userId))
       .orderBy(desc(pgSchema.pgWorkflows.createdAt));
 
-    if (workflows.length === 0) return workflows;
-
-    const wfIds = workflows.map((w) => w.id);
-    const counts = await pgDb
-      .select({
-        workflowId: pgSchema.pgNodes.workflowId,
-        type: pgSchema.pgNodes.type,
-        count: count(),
-      })
-      .from(pgSchema.pgNodes)
-      .where(inArray(pgSchema.pgNodes.workflowId, wfIds as any[]))
-      .groupBy(pgSchema.pgNodes.workflowId, pgSchema.pgNodes.type);
-
-    const countsByWf: Record<string, Record<string, number>> = {};
-    for (const row of counts) {
-      if (!row.workflowId) continue;
-      if (!countsByWf[row.workflowId]) countsByWf[row.workflowId] = {};
-      countsByWf[row.workflowId][row.type] = row.count;
-    }
-
-    return workflows.map((w) => ({
-      ...w,
-      nodeCounts: countsByWf[w.id] ?? {},
-    }));
+    return workflows.map((w) => {
+      const nodeCounts: Record<string, number> = {};
+      if (w.nodesEdges?.nodes) {
+        for (const node of w.nodesEdges.nodes) {
+          nodeCounts[node.type] = (nodeCounts[node.type] || 0) + 1;
+        }
+      }
+      return { id: w.id, name: w.name, description: w.description, createdAt: w.createdAt, nodeCounts };
+    });
   },
 
   async getWorkflow(id: string, userId: string): Promise<WorkflowDetail | null> {
@@ -322,35 +265,14 @@ export const pgProvider: QueryProvider = {
         name: pgSchema.pgWorkflows.name,
         description: pgSchema.pgWorkflows.description,
         createdAt: pgSchema.pgWorkflows.createdAt,
+        nodesEdges: pgSchema.pgWorkflows.nodesEdges,
       })
       .from(pgSchema.pgWorkflows)
       .where(and(eq(pgSchema.pgWorkflows.id, id), eq(pgSchema.pgWorkflows.userId, userId)))
       .limit(1);
-    if (wf.length === 0) return null;
+    if (wf.length === 0 || !wf[0].nodesEdges) return null;
 
-    const nodes = await pgDb
-      .select({
-        id: pgSchema.pgNodes.id,
-        type: pgSchema.pgNodes.type,
-        data: pgSchema.pgNodes.data,
-        positionX: pgSchema.pgNodes.positionX,
-        positionY: pgSchema.pgNodes.positionY,
-      })
-      .from(pgSchema.pgNodes)
-      .where(eq(pgSchema.pgNodes.workflowId, id));
-
-    const edges = await pgDb
-      .select({
-        id: pgSchema.pgEdges.id,
-        sourceNode: pgSchema.pgEdges.source,
-        targetNode: pgSchema.pgEdges.target,
-        sourceHandle: pgSchema.pgEdges.sourceHandle,
-        targetHandle: pgSchema.pgEdges.targetHandle,
-      })
-      .from(pgSchema.pgEdges)
-      .where(eq(pgSchema.pgEdges.workflowId, id));
-
-    return { ...wf[0], nodes, edges };
+    return wf[0] as WorkflowDetail;
   },
 
   async deleteWorkflow(id: string, userId: string): Promise<boolean> {

@@ -21,29 +21,12 @@ export interface WorkflowRow {
   nodeCounts?: Record<string, number>;
 }
 
-export interface WorkflowNodeRow {
-  id: string;
-  type: string;
-  data: unknown;
-  positionX: number;
-  positionY: number;
-}
-
-export interface WorkflowEdgeRow {
-  id: string;
-  sourceNode: string;
-  targetNode: string;
-  sourceHandle: string | null;
-  targetHandle: string | null;
-}
-
 export interface WorkflowDetail {
   id: string;
   name: string;
   description: string | null;
   createdAt: number | Date | string;
-  nodes: WorkflowNodeRow[];
-  edges: WorkflowEdgeRow[];
+  nodesEdges: WorkflowPayload;
 }
 
 export interface QueryProvider {
