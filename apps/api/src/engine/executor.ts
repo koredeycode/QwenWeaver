@@ -13,6 +13,7 @@ export async function executeWorkflow(
   executionId: string,
   emitter: StreamEmitter,
   options: ExecutionOptions = { maxNegotiationRounds: 3, persistLogs: true },
+  userId?: string,
 ): Promise<ExecutionResult> {
   const executionStart = performance.now();
   const provider = getQueryProvider();
@@ -138,7 +139,7 @@ export async function executeWorkflow(
           };
         }
 
-        const result = await runAgent(nodeToRun, upstream, emitter, executionId);
+        const result = await runAgent(nodeToRun, upstream, emitter, executionId, userId);
 
         // Non-blocking log save
         const logPromise = provider

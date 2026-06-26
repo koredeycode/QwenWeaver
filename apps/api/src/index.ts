@@ -13,6 +13,7 @@ import { mcpRoutes, registryRoutes } from './routes/mcp/index.js';
 import { authRoutes } from './routes/auth/index.js';
 import { analyticsRoutes } from './routes/analytics/index.js';
 import { creditsRoutes } from './routes/credits/index.js';
+import { credentialsRoutes } from './routes/credentials/index.js';
 import { templateRoutes } from './routes/templates/index.js';
 import { setupRoutes } from './routes/setup/index.js';
 import { updateRoutes } from './routes/update/index.js';
@@ -108,6 +109,7 @@ app
   .route('/api/mcp/registry', registryRoutes)
   .route('/api/analytics', analyticsRoutes)
   .route('/api/credits', creditsRoutes)
+  .route('/api/credentials', credentialsRoutes)
   .route('/api/setup', setupRoutes)
   .route('/api/system/update', updateRoutes);
 
@@ -116,6 +118,7 @@ const altRoutes = new Hono<{ Variables: Variables }>()
   .route('/api/mcp/registry', registryRoutes)
   .route('/api/analytics', analyticsRoutes)
   .route('/api/credits', creditsRoutes)
+  .route('/api/credentials', credentialsRoutes)
   .route('/api/setup', setupRoutes)
   .route('/api/system/update', updateRoutes);
 

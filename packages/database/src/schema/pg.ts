@@ -8,7 +8,13 @@ import {
   index,
   varchar,
 } from 'drizzle-orm/pg-core';
-import type { NodeData, ExecutionMetrics, AgentLogInput, AgentLogOutput, WorkflowPayload } from '@qwenweaver/types';
+import type {
+  NodeData,
+  ExecutionMetrics,
+  AgentLogInput,
+  AgentLogOutput,
+  WorkflowPayload,
+} from '@qwenweaver/types';
 import type { MCPAuthConfig } from '@qwenweaver/types';
 
 export const pgUsers = pgTable('users', {
@@ -183,6 +189,23 @@ export const pgUserCredits = pgTable('user_credits', {
   lifetimeSpent: integer('lifetime_spent').notNull().default(0),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+export const pgCredentials = pgTable(
+  'credentials',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => pgUsers.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    type: text('type').notNull(),
+    encryptedData: text('encrypted_data').notNull(),
+    description: text('description'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [index('credentials_user_id_idx').on(table.userId)],
+);
 
 export const pgCreditTransactions = pgTable(
   'credit_transactions',

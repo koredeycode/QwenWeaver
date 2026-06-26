@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import type { Context } from 'hono';
 import type { Variables } from '../../index.js';
 import { getQueryProvider } from '@qwenweaver/database';
+import { CredentialInput } from '@qwenweaver/types';
 import { createModuleLogger } from '../../logger.js';
 
 const log = createModuleLogger('routes/setup.handlers');
@@ -80,6 +81,7 @@ export const handleSetup = async (c: Context<{ Variables: Variables }>) => {
   const stored = readSetupStatus();
 
   // Create owner account
+  let ownerUserId: string | undefined;
   if (body.owner) {
     const ownerExists = await checkOwnerExists();
     if (ownerExists) {
@@ -87,15 +89,32 @@ export const handleSetup = async (c: Context<{ Variables: Variables }>) => {
     }
 
     try {
-      const id = crypto.randomUUID();
+      ownerUserId = crypto.randomUUID();
       const passwordHash = await bcrypt.hash(body.owner.password, 10);
       const provider = getQueryProvider();
-      await provider.createUser(id, body.owner.email, passwordHash);
+      await provider.createUser(ownerUserId, body.owner.email, passwordHash);
       stored.ownerCreated = true;
-      log.info({ userId: id, email: body.owner.email }, 'Owner account created');
+      log.info({ userId: ownerUserId, email: body.owner.email }, 'Owner account created');
     } catch (err) {
       log.error({ error: (err as Error).message }, 'Failed to create owner');
       return c.json({ error: 'Failed to create owner account' }, 400);
+    }
+  }
+
+  // Auto-create dashscope_api_key credential if an API key was provided
+  const dashscopeKey = body.runtime?.dashscopeApiKey;
+  if (dashscopeKey && ownerUserId) {
+    try {
+      const provider = getQueryProvider();
+      await provider.createCredential(ownerUserId, {
+        name: 'DashScope API Key',
+        type: 'dashscope_api_key',
+        value: dashscopeKey,
+        description: 'Auto-created during initial setup',
+      });
+      log.info('DashScope API key credential auto-created for owner');
+    } catch (err) {
+      log.error({ error: (err as Error).message }, 'Failed to auto-create DashScope credential');
     }
   }
 

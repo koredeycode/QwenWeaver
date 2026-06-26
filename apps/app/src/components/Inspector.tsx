@@ -11,9 +11,13 @@ import {
   Play,
   Puzzle,
   ChevronDown,
+  Key,
+  Plus,
+  Check,
+  AlertTriangle,
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
-import { client, authHeaders } from '../lib/api-client.js';
+import { client, authHeaders, fetchApi } from '../lib/api-client.js';
 import type { OutputFormat } from '@qwenweaver/types';
 
 export const Inspector = ({ onClose }: { onClose: () => void }) => {
@@ -35,6 +39,13 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
   const [mcpError, setMcpError] = useState('');
   // MCP credential secrets stored in local state only (never persisted to graph)
   const [mcpSecrets, setMcpSecrets] = useState<Record<string, string>>({});
+  // Credentials from server
+  const [credentials, setCredentials] = useState<any[]>([]);
+  const [loadingCreds, setLoadingCreds] = useState(false);
+  const [showCreateCredential, setShowCreateCredential] = useState(false);
+  const [newCredName, setNewCredName] = useState('');
+  const [newCredValue, setNewCredValue] = useState('');
+  const [newCredDesc, setNewCredDesc] = useState('');
 
   const fetchDiscoveredTools = async (serverId: string, serverUrl?: string) => {
     try {
@@ -84,12 +95,13 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
         if (
           authType &&
           authType !== 'none' &&
+          !selectedNode.data.mcpAuthConfig?.credentialId &&
           !mcpSecrets.token &&
           !mcpSecrets.apiKey &&
           !mcpSecrets.username
         ) {
           setMcpStatus('disconnected');
-          setMcpError('Enter credentials and click Connect');
+          setMcpError('Configure credentials and click Connect');
         } else {
           fetchDiscoveredTools(selectedNode.data.mcpServerId, selectedNode.data.mcpServerUrl);
         }
@@ -97,6 +109,20 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
         setMcpStatus('disconnected');
         setDiscoveredTools([]);
       }
+    }
+  }, [selectedNodeId]);
+
+  // Fetch credentials for credential selector
+  useEffect(() => {
+    if (selectedNode?.type === 'mcp_tool') {
+      setLoadingCreds(true);
+      fetchApi('/api/credentials')
+        .then((res) => res.json())
+        .then((data: any) => {
+          setCredentials(data.credentials || []);
+        })
+        .catch(() => {})
+        .finally(() => setLoadingCreds(false));
     }
   }, [selectedNodeId]);
 
@@ -285,75 +311,134 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                   />
                 </div>
 
-                {/* MCP Auth Configuration */}
-                <div className="border-t border-slate-100 pt-3">
-                  <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-2">
-                    Authentication
-                  </label>
-                  {selectedNode.data.mcpAuthConfig?.type &&
-                    selectedNode.data.mcpAuthConfig.type !== 'none' &&
-                    !mcpSecrets.token &&
-                    !mcpSecrets.apiKey &&
-                    !mcpSecrets.username && (
-                      <p className="text-[9px] text-amber-600 font-mono mb-2">
-                        Enter credentials below, then click Connect.
-                      </p>
-                    )}
-                  <AuthTypeSelect
-                    value={selectedNode.data.mcpAuthConfig?.type || 'none'}
-                    supportedTypes={
-                      (selectedNode.data as any).mcpSupportedAuthTypes as string[] | undefined
-                    }
-                    onChange={(type) => {
-                      if (selectedNodeId)
-                        updateNodeData(selectedNodeId, {
-                          mcpAuthConfig: {
-                            ...selectedNode.data.mcpAuthConfig,
-                            type: type as 'none' | 'api_key' | 'bearer' | 'basic',
-                          },
-                        });
-                    }}
-                  />
+                {/* Credential Selector */}
+                <CredentialSelector
+                  authConfig={selectedNode.data.mcpAuthConfig || {}}
+                  credentials={credentials}
+                  loadingCreds={loadingCreds}
+                  showCreate={showCreateCredential}
+                  newCredName={newCredName}
+                  newCredValue={newCredValue}
+                  newCredDesc={newCredDesc}
+                  onAuthTypeChange={(type) => {
+                    if (selectedNodeId)
+                      updateNodeData(selectedNodeId, {
+                        mcpAuthConfig: {
+                          ...selectedNode.data.mcpAuthConfig,
+                          type: type as 'none' | 'api_key' | 'bearer' | 'basic',
+                          credentialId: type === 'none' ? undefined : selectedNode.data.mcpAuthConfig?.credentialId,
+                        },
+                      });
+                  }}
+                  onCredentialSelect={(credentialId) => {
+                    if (selectedNodeId)
+                      updateNodeData(selectedNodeId, {
+                        mcpAuthConfig: {
+                          ...selectedNode.data.mcpAuthConfig,
+                          credentialId,
+                        },
+                      });
+                  }}
+                  onClearCredential={() => {
+                    if (selectedNodeId)
+                      updateNodeData(selectedNodeId, {
+                        mcpAuthConfig: {
+                          ...selectedNode.data.mcpAuthConfig,
+                          credentialId: undefined,
+                        },
+                      });
+                  }}
+                  onShowCreate={(show) => setShowCreateCredential(show)}
+                  onNewCredNameChange={setNewCredName}
+                  onNewCredValueChange={setNewCredValue}
+                  onNewCredDescChange={setNewCredDesc}
+                  onCreateCredential={async () => {
+                    if (!newCredValue || !newCredName) return;
+                    try {
+                      const authType = selectedNode?.data.mcpAuthConfig?.type;
+                      const typeMap: Record<string, string> = {
+                        bearer: 'mcp_bearer_token',
+                        api_key: 'mcp_api_key',
+                        basic: 'mcp_basic_auth',
+                      };
+                      const res = await fetchApi('/api/credentials', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                          name: newCredName,
+                          type: typeMap[authType || ''] || 'custom',
+                          value: newCredValue,
+                          description: newCredDesc || undefined,
+                        }),
+                      });
+                      const data: any = await res.json();
+                      if (res.ok && data.credential) {
+                        setCredentials((prev) => [...prev, data.credential]);
+                        if (selectedNodeId)
+                          updateNodeData(selectedNodeId, {
+                            mcpAuthConfig: {
+                              ...selectedNode?.data.mcpAuthConfig,
+                              credentialId: data.credential.id,
+                            },
+                          });
+                        setShowCreateCredential(false);
+                        setNewCredName('');
+                        setNewCredValue('');
+                        setNewCredDesc('');
+                      }
+                    } catch { /* noop */ }
+                  }}
+                />
 
-                  {selectedNode.data.mcpAuthConfig?.type === 'bearer' && (
-                    <input
-                      type="password"
-                      value={mcpSecrets.token || ''}
-                      onChange={(e) => setMcpSecrets((s) => ({ ...s, token: e.target.value }))}
-                      className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
-                      placeholder="Bearer token..."
-                    />
-                  )}
-
-                  {selectedNode.data.mcpAuthConfig?.type === 'api_key' && (
-                    <input
-                      type="password"
-                      value={mcpSecrets.apiKey || ''}
-                      onChange={(e) => setMcpSecrets((s) => ({ ...s, apiKey: e.target.value }))}
-                      className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
-                      placeholder="API key..."
-                    />
-                  )}
-
-                  {selectedNode.data.mcpAuthConfig?.type === 'basic' && (
-                    <div className="space-y-2">
-                      <input
-                        type="text"
-                        value={mcpSecrets.username || ''}
-                        onChange={(e) => setMcpSecrets((s) => ({ ...s, username: e.target.value }))}
-                        className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
-                        placeholder="Username..."
-                      />
+                {/* Inline fallback for manual credential entry */}
+                {(selectedNode.data.mcpAuthConfig?.type &&
+                  selectedNode.data.mcpAuthConfig.type !== 'none' &&
+                  !selectedNode.data.mcpAuthConfig?.credentialId) && (
+                  <div className="border-t border-slate-100 pt-3 mt-2">
+                    <label className="block text-[10px] font-mono font-bold text-amber-600 uppercase tracking-wider mb-2 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" />
+                      Manual Credentials (Legacy)
+                    </label>
+                    {selectedNode.data.mcpAuthConfig?.type === 'bearer' && (
                       <input
                         type="password"
-                        value={mcpSecrets.password || ''}
-                        onChange={(e) => setMcpSecrets((s) => ({ ...s, password: e.target.value }))}
+                        value={mcpSecrets.token || ''}
+                        onChange={(e) => setMcpSecrets((s) => ({ ...s, token: e.target.value }))}
                         className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
-                        placeholder="Password..."
+                        placeholder="Bearer token..."
                       />
-                    </div>
-                  )}
-                </div>
+                    )}
+                    {selectedNode.data.mcpAuthConfig?.type === 'api_key' && (
+                      <input
+                        type="password"
+                        value={mcpSecrets.apiKey || ''}
+                        onChange={(e) => setMcpSecrets((s) => ({ ...s, apiKey: e.target.value }))}
+                        className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
+                        placeholder="API key..."
+                      />
+                    )}
+                    {selectedNode.data.mcpAuthConfig?.type === 'basic' && (
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          value={mcpSecrets.username || ''}
+                          onChange={(e) => setMcpSecrets((s) => ({ ...s, username: e.target.value }))}
+                          className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
+                          placeholder="Username..."
+                        />
+                        <input
+                          type="password"
+                          value={mcpSecrets.password || ''}
+                          onChange={(e) => setMcpSecrets((s) => ({ ...s, password: e.target.value }))}
+                          className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
+                          placeholder="Password..."
+                        />
+                      </div>
+                    )}
+                    <p className="text-[9px] text-amber-500 font-mono mt-1">
+                      Credentials entered here are sent inline. Use the credential selector above for encrypted storage.
+                    </p>
+                  </div>
+                )}
 
                 {/* MCP Action Connect button */}
                 <div className="pt-2">
@@ -654,6 +739,208 @@ function AuthTypeSelect({
               {AUTH_LABELS[type] || type}
             </button>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CredentialSelector({
+  authConfig,
+  credentials,
+  loadingCreds,
+  showCreate,
+  newCredName,
+  newCredValue,
+  newCredDesc,
+  onAuthTypeChange,
+  onCredentialSelect,
+  onClearCredential,
+  onShowCreate,
+  onNewCredNameChange,
+  onNewCredValueChange,
+  onNewCredDescChange,
+  onCreateCredential,
+}: {
+  authConfig: any;
+  credentials: any[];
+  loadingCreds: boolean;
+  showCreate: boolean;
+  newCredName: string;
+  newCredValue: string;
+  newCredDesc: string;
+  onAuthTypeChange: (type: string) => void;
+  onCredentialSelect: (id: string) => void;
+  onClearCredential: () => void;
+  onShowCreate: (show: boolean) => void;
+  onNewCredNameChange: (v: string) => void;
+  onNewCredValueChange: (v: string) => void;
+  onNewCredDescChange: (v: string) => void;
+  onCreateCredential: () => void;
+}) {
+  const [credentialOpen, setCredentialOpen] = useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setCredentialOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedCred = credentials.find((c) => c.id === authConfig.credentialId);
+
+  // Filter credentials by matching auth type
+  const typeMap: Record<string, string[]> = {
+    bearer: ['mcp_bearer_token'],
+    api_key: ['mcp_api_key'],
+    basic: ['mcp_basic_auth'],
+  };
+  const matchingCreds = authConfig.type
+    ? credentials.filter((c) => (typeMap[authConfig.type] || []).includes(c.type) || c.type === 'custom')
+    : [];
+
+  const needsCredential =
+    authConfig.type && authConfig.type !== 'none' && !authConfig.credentialId;
+
+  return (
+    <div className="border-t border-slate-100 pt-3">
+      <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+        <Key className="w-3 h-3" />
+        Authentication
+      </label>
+
+      {needsCredential && (
+        <p className="text-[9px] text-amber-600 font-mono mb-2 flex items-center gap-1">
+          <AlertTriangle className="w-3 h-3" />
+          Select or create a credential below, then click Connect.
+        </p>
+      )}
+
+      <AuthTypeSelect
+        value={authConfig.type || 'none'}
+        onChange={onAuthTypeChange}
+      />
+
+      {authConfig.type && authConfig.type !== 'none' && (
+        <div className="relative" ref={ref}>
+          <button
+            type="button"
+            onClick={() => setCredentialOpen(!credentialOpen)}
+            className="w-full flex items-center justify-between text-xs border border-[#cbd5e1] px-2 py-1.5 font-mono bg-white focus:outline-none focus:border-purple-500"
+          >
+            <span className={selectedCred ? 'text-slate-800' : 'text-slate-400'}>
+              {selectedCred ? selectedCred.name : 'Select a saved credential...'}
+            </span>
+            <ChevronDown
+              className={`w-3 h-3 text-slate-400 transition-transform ${credentialOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
+
+          {credentialOpen && (
+            <div className="absolute z-10 top-full left-0 right-0 mt-0.5 border border-[#cbd5e1] bg-white shadow-md max-h-40 overflow-y-auto">
+              {loadingCreds ? (
+                <div className="px-2 py-3 text-[10px] text-slate-400 font-mono text-center">
+                  Loading...
+                </div>
+              ) : matchingCreds.length === 0 ? (
+                <div className="px-2 py-3 text-[10px] text-slate-400 font-mono text-center">
+                  No saved credentials
+                </div>
+              ) : (
+                matchingCreds.map((cred) => (
+                  <button
+                    key={cred.id}
+                    type="button"
+                    onClick={() => {
+                      onCredentialSelect(cred.id);
+                      setCredentialOpen(false);
+                    }}
+                    className={`w-full text-left px-2 py-1.5 text-xs font-mono hover:bg-slate-50 transition-colors flex items-center justify-between ${
+                      authConfig.credentialId === cred.id ? 'bg-slate-100 font-bold' : ''
+                    }`}
+                  >
+                    <span className="truncate">{cred.name}</span>
+                    {authConfig.credentialId === cred.id && (
+                      <Check className="w-3 h-3 text-emerald-600 shrink-0" />
+                    )}
+                  </button>
+                ))
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setCredentialOpen(false);
+                  onShowCreate(true);
+                }}
+                className="w-full text-left px-2 py-1.5 text-[10px] font-mono text-purple-600 hover:bg-purple-50 border-t border-slate-100 flex items-center gap-1"
+              >
+                <Plus className="w-3 h-3" />
+                Create new credential
+              </button>
+              {authConfig.credentialId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClearCredential();
+                    setCredentialOpen(false);
+                  }}
+                  className="w-full text-left px-2 py-1.5 text-[10px] font-mono text-rose-600 hover:bg-rose-50 border-t border-slate-100"
+                >
+                  Clear selection
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {showCreate && authConfig.type && authConfig.type !== 'none' && (
+        <div className="mt-2 p-2 border border-purple-200 bg-purple-50 space-y-2">
+          <label className="block text-[9px] font-mono font-bold text-purple-700 uppercase tracking-wider">
+            New Credential
+          </label>
+          <input
+            type="text"
+            value={newCredName}
+            onChange={(e) => onNewCredNameChange(e.target.value)}
+            className="w-full bg-white border border-purple-200 p-1.5 text-xs font-mono outline-none rounded-none"
+            placeholder="Credential name..."
+          />
+          <input
+            type="password"
+            value={newCredValue}
+            onChange={(e) => onNewCredValueChange(e.target.value)}
+            className="w-full bg-white border border-purple-200 p-1.5 text-xs font-mono outline-none rounded-none"
+            placeholder="Secret value..."
+          />
+          <input
+            type="text"
+            value={newCredDesc}
+            onChange={(e) => onNewCredDescChange(e.target.value)}
+            className="w-full bg-white border border-purple-200 p-1.5 text-xs font-mono outline-none rounded-none"
+            placeholder="Description (optional)..."
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onCreateCredential}
+              disabled={!newCredName || !newCredValue}
+              className="flex-1 py-1 text-[10px] font-bold font-mono bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-40 transition-colors"
+            >
+              Save & Select
+            </button>
+            <button
+              type="button"
+              onClick={() => onShowCreate(false)}
+              className="py-1 px-2 text-[10px] font-mono text-slate-500 hover:text-slate-700"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
     </div>

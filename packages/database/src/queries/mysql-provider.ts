@@ -9,7 +9,11 @@ import type {
   AgentLogInput,
   AgentLogOutput,
   MCPAuthConfig,
+  CredentialResponse,
+  CredentialInput,
+  CredentialUpdate,
 } from '@qwenweaver/types';
+import { encrypt, decrypt } from '@qwenweaver/encryption';
 
 const log = {
   info: (data: Record<string, unknown>, message: string) => {
@@ -184,6 +188,129 @@ export const mysqlProvider: QueryProvider = {
     };
   },
 
+  // ─── Credentials ─────────────────────────────────────────────────────────────
+
+  async listCredentials(userId: string): Promise<CredentialResponse[]> {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const s = mysqlSchema;
+    const rows = await mysqlDb
+      .select({
+        id: s.mysqlCredentials.id,
+        userId: s.mysqlCredentials.userId,
+        name: s.mysqlCredentials.name,
+        type: s.mysqlCredentials.type,
+        description: s.mysqlCredentials.description,
+        createdAt: s.mysqlCredentials.createdAt,
+        updatedAt: s.mysqlCredentials.updatedAt,
+      })
+      .from(s.mysqlCredentials)
+      .where(eq(s.mysqlCredentials.userId, userId));
+    return rows.map((r) => ({
+      id: r.id,
+      userId: r.userId,
+      name: r.name,
+      type: r.type as CredentialResponse['type'],
+      description: r.description ?? null,
+      createdAt: r.createdAt instanceof Date ? r.createdAt.getTime() : Number(r.createdAt),
+      updatedAt: r.updatedAt instanceof Date ? r.updatedAt.getTime() : Number(r.updatedAt),
+    }));
+  },
+
+  async getCredential(id: string, userId: string): Promise<CredentialResponse | null> {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const s = mysqlSchema;
+    const rows = await mysqlDb
+      .select()
+      .from(s.mysqlCredentials)
+      .where(and(eq(s.mysqlCredentials.id, id), eq(s.mysqlCredentials.userId, userId)))
+      .limit(1);
+    if (rows.length === 0) return null;
+    const r = rows[0];
+    return {
+      id: r.id,
+      userId: r.userId,
+      name: r.name,
+      type: r.type as CredentialResponse['type'],
+      value: decrypt(r.encryptedData),
+      description: r.description ?? null,
+      createdAt: r.createdAt instanceof Date ? r.createdAt.getTime() : Number(r.createdAt),
+      updatedAt: r.updatedAt instanceof Date ? r.updatedAt.getTime() : Number(r.updatedAt),
+    };
+  },
+
+  async createCredential(userId: string, input: CredentialInput): Promise<CredentialResponse> {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const s = mysqlSchema;
+    const id = crypto.randomUUID();
+    await mysqlDb.insert(s.mysqlCredentials).values({
+      id,
+      userId,
+      name: input.name,
+      type: input.type,
+      encryptedData: encrypt(input.value),
+      description: input.description ?? null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    return {
+      id,
+      userId,
+      name: input.name,
+      type: input.type,
+      value: input.value,
+      description: input.description ?? null,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+  },
+
+  async updateCredential(
+    id: string,
+    userId: string,
+    input: CredentialUpdate,
+  ): Promise<CredentialResponse> {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const s = mysqlSchema;
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
+    if (input.name !== undefined) updateData.name = input.name;
+    if (input.description !== undefined) updateData.description = input.description;
+    if (input.value !== undefined) updateData.encryptedData = encrypt(input.value);
+    await mysqlDb
+      .update(s.mysqlCredentials)
+      .set(updateData)
+      .where(and(eq(s.mysqlCredentials.id, id), eq(s.mysqlCredentials.userId, userId)));
+    const [r] = await mysqlDb
+      .select()
+      .from(s.mysqlCredentials)
+      .where(and(eq(s.mysqlCredentials.id, id), eq(s.mysqlCredentials.userId, userId)))
+      .limit(1);
+    return {
+      id: r.id,
+      userId: r.userId,
+      name: r.name,
+      type: r.type as CredentialResponse['type'],
+      value: r.encryptedData ? decrypt(r.encryptedData) : undefined,
+      description: r.description ?? null,
+      createdAt: r.createdAt instanceof Date ? r.createdAt.getTime() : Number(r.createdAt),
+      updatedAt: r.updatedAt instanceof Date ? r.updatedAt.getTime() : Number(r.updatedAt),
+    };
+  },
+
+  async deleteCredential(id: string, userId: string): Promise<boolean> {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const s = mysqlSchema;
+    const result = await mysqlDb
+      .delete(s.mysqlCredentials)
+      .where(and(eq(s.mysqlCredentials.id, id), eq(s.mysqlCredentials.userId, userId)));
+    const affectedRows = (result as unknown as { affectedRows: number }).affectedRows;
+    return (affectedRows ?? 0) > 0;
+  },
+
   async saveWorkflow(userId: string, workflow: WorkflowPayload): Promise<string> {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
@@ -261,7 +388,13 @@ export const mysqlProvider: QueryProvider = {
           nodeCounts[node.type] = (nodeCounts[node.type] || 0) + 1;
         }
       }
-      return { id: w.id, name: w.name, description: w.description, createdAt: w.createdAt, nodeCounts };
+      return {
+        id: w.id,
+        name: w.name,
+        description: w.description,
+        createdAt: w.createdAt,
+        nodeCounts,
+      };
     });
   },
 

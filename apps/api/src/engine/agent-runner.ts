@@ -1,9 +1,10 @@
 import { z } from 'zod';
 import { streamText, jsonSchema, tool, type Tool } from 'ai';
-import type { NodePayload } from '@qwenweaver/types';
+import type { NodePayload, MCPAuthConfig } from '@qwenweaver/types';
 import type { AgentResult, UpstreamOutputs, StreamEmitter } from './types.js';
 import { getModelForNode, getModelIdForNode } from './model-router.js';
-import { discoverMCPTools, callMCPTool } from './mcp-bridge.js';
+import { discoverMCPTools, callMCPTool, buildHeadersFromAuthConfig } from './mcp-bridge.js';
+import { getQueryProvider } from '@qwenweaver/database';
 import { createModuleLogger } from '../logger.js';
 import { llm_tokens_total, agent_duration_ms } from '../metrics.js';
 import * as fs from 'node:fs/promises';
@@ -16,6 +17,7 @@ export async function runAgent(
   upstreamOutputs: UpstreamOutputs,
   emitter?: StreamEmitter,
   executionId?: string,
+  userId?: string,
 ): Promise<AgentResult> {
   const startTime = performance.now();
 
@@ -40,7 +42,38 @@ export async function runAgent(
   }
 
   try {
-    const apiKey = process.env.DASHSCOPE_API_KEY;
+    // Resolve DashScope API key: check user credential first, then env var
+    let apiKey = process.env.DASHSCOPE_API_KEY;
+    if (userId && !apiKey) {
+      try {
+        const provider = getQueryProvider();
+        const creds = await provider.listCredentials(userId);
+        const dashscopeCred = creds.find((c) => c.type === 'dashscope_api_key');
+        if (dashscopeCred) {
+          const full = await provider.getCredential(dashscopeCred.id, userId);
+          if (full?.value) {
+            apiKey = full.value;
+          }
+        }
+      } catch (err) {
+        log.warn({ error: (err as Error).message }, 'Failed to resolve DashScope credential');
+      }
+    }
+
+    // Resolve MCP auth headers if credentialId is set
+    let mcpAuthHeaders: Record<string, string> | undefined;
+    if (node.data.mcpAuthConfig?.credentialId && userId) {
+      try {
+        const provider = getQueryProvider();
+        const resolved = await resolveCredentialAuth(node.data.mcpAuthConfig, userId, provider);
+        mcpAuthHeaders = buildHeadersFromAuthConfig(resolved);
+      } catch (err) {
+        log.warn(
+          { nodeId: node.id, error: (err as Error).message },
+          'Failed to resolve MCP credential, proceeding with inline auth',
+        );
+      }
+    }
 
     // Handle Image Generation (Wanx)
     if (node.data.outputFormat === 'image') {
@@ -169,7 +202,7 @@ export async function runAgent(
 
     if (node.type === 'mcp_tool' && node.data.mcpServerUrl) {
       try {
-        const mcpTools = await discoverMCPTools(node);
+        const mcpTools = await discoverMCPTools(node, mcpAuthHeaders);
         mcpToolCount = mcpTools.length;
         for (const t of mcpTools) {
           tools[t.name] = tool({
@@ -178,7 +211,7 @@ export async function runAgent(
             execute: async (args: any) => {
               log.info({ nodeId: node.id, toolName: t.name, args }, 'Executing MCP tool call');
               const typedArgs = args as Record<string, unknown>;
-              return await callMCPTool(node.data.mcpServerUrl!, t.name, typedArgs);
+              return await callMCPTool(node.data.mcpServerUrl!, t.name, typedArgs, mcpAuthHeaders);
             },
           } as any);
         }
@@ -520,6 +553,33 @@ async function generateCosyVoiceAudio(text: string, apiKey: string): Promise<Buf
   }
 
   return Buffer.from(await response.arrayBuffer());
+}
+
+async function resolveCredentialAuth(
+  authConfig: NonNullable<NodePayload['data']['mcpAuthConfig']>,
+  userId: string,
+  provider: ReturnType<typeof getQueryProvider>,
+): Promise<MCPAuthConfig> {
+  if (!authConfig.credentialId) {
+    return authConfig as MCPAuthConfig;
+  }
+
+  const credential = await provider.getCredential(authConfig.credentialId, userId);
+  if (!credential?.value) {
+    log.warn(
+      { credentialId: authConfig.credentialId },
+      'Credential not found for MCP auth, falling back to inline config',
+    );
+    return authConfig as MCPAuthConfig;
+  }
+
+  return {
+    ...authConfig,
+    apiKey: credential.value,
+    token: credential.value,
+    username: authConfig.username,
+    password: authConfig.password,
+  } as MCPAuthConfig;
 }
 
 async function generateWanxVideo(

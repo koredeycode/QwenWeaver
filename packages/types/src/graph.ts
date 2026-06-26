@@ -46,6 +46,7 @@ export const NodeData = z.object({
   mcpAuthConfig: z
     .object({
       type: z.enum(['none', 'api_key', 'bearer', 'basic']).optional(),
+      credentialId: z.string().optional(),
       apiKey: z.string().optional(),
       token: z.string().optional(),
       username: z.string().optional(),

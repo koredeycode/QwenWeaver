@@ -852,6 +852,7 @@ async function seed() {
   sqliteDb.delete(s.sqliteExecutions).run();
   sqliteDb.delete(s.sqliteEdges).run();
   sqliteDb.delete(s.sqliteNodes).run();
+  sqliteDb.delete(s.sqliteCredentials).run();
   sqliteDb.delete(s.sqliteWorkflows).run();
   sqliteDb.delete(s.sqliteMcpServers).run();
   sqliteDb.delete(s.sqliteUsers).run();

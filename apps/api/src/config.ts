@@ -16,6 +16,15 @@ if (!process.env.API_SECRET && !isDev) {
 
 export const JWT_SECRET = process.env.API_SECRET || (isDev ? 'dev-only-insecure-secret' : '');
 
+// ─── Credential Encryption (C-6) ──────────────────────────────────────────────
+if (!process.env.CREDENTIALS_ENCRYPTION_KEY && !isDev && !process.env.API_SECRET) {
+  throw new Error(
+    'FATAL: CREDENTIALS_ENCRYPTION_KEY or API_SECRET environment variable is required in production. ' +
+      'Set it to a strong random string (e.g. `openssl rand -hex 32`).',
+  );
+}
+export const CREDENTIALS_ENCRYPTION_KEY = process.env.CREDENTIALS_ENCRYPTION_KEY;
+
 // ─── CORS Origins (C-2) ─────────────────────────────────────────────────────
 export const CORS_ORIGINS: string[] = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())

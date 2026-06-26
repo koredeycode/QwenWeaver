@@ -7,6 +7,8 @@ import {
   pgTemplates,
   pgTemplateCategories,
   pgTemplateReviews,
+  pgCredentials,
+  pgUsers,
 } from './pg.js';
 import {
   sqliteWorkflows,
@@ -16,6 +18,8 @@ import {
   sqliteTemplates,
   sqliteTemplateCategories,
   sqliteTemplateReviews,
+  sqliteCredentials,
+  sqliteUsers,
 } from './sqlite.js';
 
 export const pgWorkflowsRelations = relations(pgWorkflows, ({ many }) => ({
@@ -38,6 +42,17 @@ export const pgAgentLogsRelations = relations(pgAgentLogs, ({ one }) => ({
 }));
 
 export const pgMcpServersRelations = relations(pgMcpServers, () => ({}));
+
+export const pgCredentialsRelations = relations(pgCredentials, ({ one }) => ({
+  user: one(pgUsers, {
+    fields: [pgCredentials.userId],
+    references: [pgUsers.id],
+  }),
+}));
+
+export const pgUsersRelations = relations(pgUsers, ({ many }) => ({
+  credentials: many(pgCredentials),
+}));
 
 export const pgTemplateCategoriesRelations = relations(pgTemplateCategories, ({ many }) => ({
   templates: many(pgTemplates),
@@ -78,6 +93,17 @@ export const sqliteAgentLogsRelations = relations(sqliteAgentLogs, ({ one }) => 
 }));
 
 export const sqliteMcpServersRelations = relations(sqliteMcpServers, () => ({}));
+
+export const sqliteCredentialsRelations = relations(sqliteCredentials, ({ one }) => ({
+  user: one(sqliteUsers, {
+    fields: [sqliteCredentials.userId],
+    references: [sqliteUsers.id],
+  }),
+}));
+
+export const sqliteUsersRelations = relations(sqliteUsers, ({ many }) => ({
+  credentials: many(sqliteCredentials),
+}));
 
 export const sqliteTemplateCategoriesRelations = relations(
   sqliteTemplateCategories,

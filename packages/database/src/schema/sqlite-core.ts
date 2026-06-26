@@ -1,5 +1,11 @@
 import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
-import type { NodeData, ExecutionMetrics, AgentLogInput, AgentLogOutput, WorkflowPayload } from '@qwenweaver/types';
+import type {
+  NodeData,
+  ExecutionMetrics,
+  AgentLogInput,
+  AgentLogOutput,
+  WorkflowPayload,
+} from '@qwenweaver/types';
 import type { MCPAuthConfig } from '@qwenweaver/types';
 
 export const sqliteUsers = sqliteTable('users', {
@@ -109,6 +115,23 @@ export const sqliteMcpServers = sqliteTable(
     createdAt: integer('created_at').notNull(),
   },
   (table) => [index('mcp_servers_user_id_idx').on(table.userId)],
+);
+
+export const sqliteCredentials = sqliteTable(
+  'credentials',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => sqliteUsers.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    type: text('type').notNull(),
+    encryptedData: text('encrypted_data').notNull(),
+    description: text('description'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => [index('credentials_user_id_idx').on(table.userId)],
 );
 
 export const sqliteTemplateCategories = sqliteTable('template_categories', {

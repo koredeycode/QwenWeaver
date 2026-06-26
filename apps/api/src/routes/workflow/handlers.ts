@@ -29,6 +29,7 @@ export interface ActiveExecution {
   promise?: Promise<void>;
   resolve?: () => void;
   createdAt: number; // Track creation time for TTL sweep
+  userId?: string;
 }
 
 export const activeExecutions = new Map<string, ActiveExecution>();
@@ -168,6 +169,24 @@ export const handleExecute = async (c: Context<{ Variables: Variables }>) => {
   const workflowId = await provider.saveWorkflow(userId, workflow);
   await provider.createExecution(executionId, workflowId, userId);
 
+  // ─── MCP auth validation ──────────────────────────────────────────────
+  const mcpNodes = workflow.nodes.filter((n) => n.type === 'mcp_tool');
+  for (const node of mcpNodes) {
+    const auth = node.data.mcpAuthConfig;
+    if (!auth || !auth.type || auth.type === 'none') continue;
+
+    if (auth.credentialId) {
+      const credential = await provider.getCredential(auth.credentialId, userId);
+      if (!credential) {
+        const msg = `Node "${node.data.label || node.id}" references credential "${auth.credentialId}" that does not exist`;
+        return c.json({ error: msg }, 400);
+      }
+    } else if (!auth.apiKey && !auth.token && !(auth.username && auth.password)) {
+      const msg = `Node "${node.data.label || node.id}" has auth type "${auth.type}" but no credential or inline auth configured`;
+      return c.json({ error: msg }, 400);
+    }
+  }
+
   // ─── Credit check ──────────────────────────────────────────────────────
   if (!IS_SELF_HOSTED) {
     const { balance } = await provider.getUserCredits(userId);
@@ -189,6 +208,7 @@ export const handleExecute = async (c: Context<{ Variables: Variables }>) => {
     promise,
     resolve: resolveExecution!,
     createdAt: Date.now(),
+    userId,
   });
 
   log.info(
@@ -202,7 +222,7 @@ export const handleExecute = async (c: Context<{ Variables: Variables }>) => {
     'Workflow execution created in database',
   );
 
-  runExecutionAsync(executionId, workflow).catch((error) => {
+  runExecutionAsync(executionId, workflow, userId).catch((error) => {
     log.error({ executionId, error: (error as Error).message }, 'Execution crashed');
   });
 
@@ -370,7 +390,11 @@ function calculateFinalCost(
 
 // ─── Async execution runner ─────────────────────────────────────────────────
 
-async function runExecutionAsync(executionId: string, workflow: WorkflowPayload): Promise<void> {
+async function runExecutionAsync(
+  executionId: string,
+  workflow: WorkflowPayload,
+  userId?: string,
+): Promise<void> {
   const execution = activeExecutions.get(executionId);
   if (!execution) return;
 
@@ -392,7 +416,13 @@ async function runExecutionAsync(executionId: string, workflow: WorkflowPayload)
       isClosed: () => execution.emitters.size === 0,
     };
 
-    const result = await executeWorkflow(workflow, executionId, broadcastEmitter);
+    const result = await executeWorkflow(
+      workflow,
+      executionId,
+      broadcastEmitter,
+      undefined,
+      userId,
+    );
 
     execution.status = result.status;
     execution.result = result;

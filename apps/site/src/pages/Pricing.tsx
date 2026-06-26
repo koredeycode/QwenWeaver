@@ -32,8 +32,12 @@ export function Pricing() {
           <h1 className="mt-6 text-3xl font-bold tracking-tight sm:text-4xl animate-slide-up">
             Free while in <span className="text-primary">beta</span>
           </h1>
-          <p className="mt-4 text-lg text-on-surface-variant animate-fade-in" style={{ animationDelay: '0.1s' }}>
-            No credit card required. Use credits to execute workflows, or self-host for unlimited usage.
+          <p
+            className="mt-4 text-lg text-on-surface-variant animate-fade-in"
+            style={{ animationDelay: '0.1s' }}
+          >
+            No credit card required. Use credits to execute workflows, or self-host for unlimited
+            usage.
           </p>
         </div>
 
@@ -49,7 +53,13 @@ export function Pricing() {
             <ul className="mt-8 space-y-3" role="list">
               {features.map((f) => (
                 <li key={f} className="flex items-center gap-2 text-sm">
-                  <svg className="h-4 w-4 shrink-0 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <svg
+                    className="h-4 w-4 shrink-0 text-primary"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2.5}
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                   {f}

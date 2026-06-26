@@ -209,10 +209,14 @@ function getHandlePos(
   const def = demoNodeDefs.find((n) => n.id === id);
   const sz = NODE_SIZES[def?.type ?? 'agent'];
   switch (handle) {
-    case 'right': return { x: pos.x + sz.w, y: pos.y + sz.h / 2 };
-    case 'left': return { x: pos.x, y: pos.y + sz.h / 2 };
-    case 'bottom': return { x: pos.x + sz.w / 2, y: pos.y + sz.h };
-    case 'top': return { x: pos.x + sz.w / 2, y: pos.y };
+    case 'right':
+      return { x: pos.x + sz.w, y: pos.y + sz.h / 2 };
+    case 'left':
+      return { x: pos.x, y: pos.y + sz.h / 2 };
+    case 'bottom':
+      return { x: pos.x + sz.w / 2, y: pos.y + sz.h };
+    case 'top':
+      return { x: pos.x + sz.w / 2, y: pos.y };
   }
 }
 
@@ -230,9 +234,16 @@ function buildEdgePath(
   let srcHandle: 'right' | 'left' | 'bottom' | 'top' = 'right';
   let tgtHandle: 'right' | 'left' | 'bottom' | 'top' = 'left';
 
-  if (srcType === 'trigger') { srcHandle = 'right'; tgtHandle = 'left'; }
-  else if (tgtType === 'supervisor') { srcHandle = 'right'; tgtHandle = 'left'; }
-  else if (tgtType === 'tool') { srcHandle = 'bottom'; tgtHandle = 'top'; }
+  if (srcType === 'trigger') {
+    srcHandle = 'right';
+    tgtHandle = 'left';
+  } else if (tgtType === 'supervisor') {
+    srcHandle = 'right';
+    tgtHandle = 'left';
+  } else if (tgtType === 'tool') {
+    srcHandle = 'bottom';
+    tgtHandle = 'top';
+  }
 
   const p1 = getHandlePos(srcId, srcPos, srcHandle);
   const p2 = getHandlePos(tgtId, tgtPos, tgtHandle);
@@ -300,11 +311,26 @@ function DemoStatusBadge({ status }: { status: 'pending' | 'running' | 'complete
 function DemoCompactStatus({ status }: { status: 'pending' | 'running' | 'completed' }) {
   switch (status) {
     case 'running':
-      return <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse border border-white" title="RUNNING" />;
+      return (
+        <span
+          className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse border border-white"
+          title="RUNNING"
+        />
+      );
     case 'completed':
-      return <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white shadow-[0_0_6px_#10b981]" title="COMPLETED" />;
+      return (
+        <span
+          className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white shadow-[0_0_6px_#10b981]"
+          title="COMPLETED"
+        />
+      );
     default:
-      return <span className="w-2.5 h-2.5 rounded-full bg-slate-400 border border-white" title="PENDING" />;
+      return (
+        <span
+          className="w-2.5 h-2.5 rounded-full bg-slate-400 border border-white"
+          title="PENDING"
+        />
+      );
   }
 }
 
@@ -312,11 +338,15 @@ function DemoCompactStatus({ status }: { status: 'pending' | 'running' | 'comple
 
 function DemoTriggerNode({ status }: { status: 'pending' | 'running' | 'completed' }) {
   return (
-    <div className={`w-full h-full bg-white border-2 ${status === 'running' ? 'border-primary-container animate-[nodePulse_2s_ease-in-out_infinite]' : status === 'completed' ? 'border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.15)]' : 'border-emerald-500'} text-slate-800 font-sans shadow-sm flex flex-col rounded-none`}>
+    <div
+      className={`w-full h-full bg-white border-2 ${status === 'running' ? 'border-primary-container animate-[nodePulse_2s_ease-in-out_infinite]' : status === 'completed' ? 'border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.15)]' : 'border-emerald-500'} text-slate-800 font-sans shadow-sm flex flex-col rounded-none`}
+    >
       <div className="flex items-center justify-between border-b border-outline-variant px-2.5 py-1.5">
         <div className="flex items-center gap-2">
           <Play className="w-4 h-4 text-emerald-600 fill-emerald-600/10" />
-          <span className="text-[10px] font-mono font-bold tracking-wider text-emerald-600">TRIGGER</span>
+          <span className="text-[10px] font-mono font-bold tracking-wider text-emerald-600">
+            TRIGGER
+          </span>
         </div>
         <DemoStatusBadge status={status} />
       </div>
@@ -327,11 +357,15 @@ function DemoTriggerNode({ status }: { status: 'pending' | 'running' | 'complete
 
 function DemoAgentNode({ status }: { status: 'pending' | 'running' | 'completed' }) {
   return (
-    <div className={`w-full h-full bg-white border-2 ${status === 'completed' ? 'border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.15)]' : status === 'running' ? 'border-primary-container animate-[nodePulse_2s_ease-in-out_infinite]' : 'border-outline'} text-slate-800 font-sans shadow-sm flex flex-col rounded-none`}>
+    <div
+      className={`w-full h-full bg-white border-2 ${status === 'completed' ? 'border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.15)]' : status === 'running' ? 'border-primary-container animate-[nodePulse_2s_ease-in-out_infinite]' : 'border-outline'} text-slate-800 font-sans shadow-sm flex flex-col rounded-none`}
+    >
       <div className="flex items-center justify-between border-b border-outline-variant px-2.5 py-1.5">
         <div className="flex items-center gap-2">
           <Bot className="w-4 h-4 text-[#ea580c]" />
-          <span className="text-[10px] font-mono font-bold tracking-wider text-primary">AGENT (qwen-plus)</span>
+          <span className="text-[10px] font-mono font-bold tracking-wider text-primary">
+            AGENT (qwen-plus)
+          </span>
         </div>
         <DemoStatusBadge status={status} />
       </div>
@@ -341,11 +375,15 @@ function DemoAgentNode({ status }: { status: 'pending' | 'running' | 'completed'
 
 function DemoSupervisorNode({ status }: { status: 'pending' | 'running' | 'completed' }) {
   return (
-    <div className={`w-full h-full bg-white border-2 ${status === 'completed' ? 'border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.15)]' : status === 'running' ? 'border-secondary-container animate-[supervisorPulse_2s_ease-in-out_infinite]' : 'border-outline'} text-slate-800 font-sans shadow-sm flex flex-col rounded-none`}>
+    <div
+      className={`w-full h-full bg-white border-2 ${status === 'completed' ? 'border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.15)]' : status === 'running' ? 'border-secondary-container animate-[supervisorPulse_2s_ease-in-out_infinite]' : 'border-outline'} text-slate-800 font-sans shadow-sm flex flex-col rounded-none`}
+    >
       <div className="flex items-center justify-between border-b border-outline px-2.5 py-1.5">
         <div className="flex items-center gap-2">
           <Brain className="w-4 h-4 text-[#2563eb]" />
-          <span className="text-[10px] font-mono font-bold tracking-wider text-secondary">SUPERVISOR (qwen3-max)</span>
+          <span className="text-[10px] font-mono font-bold tracking-wider text-secondary">
+            SUPERVISOR (qwen3-max)
+          </span>
         </div>
         <DemoStatusBadge status={status} />
       </div>
@@ -355,7 +393,9 @@ function DemoSupervisorNode({ status }: { status: 'pending' | 'running' | 'compl
 
 function DemoToolNode({ status }: { status: 'pending' | 'running' | 'completed' }) {
   return (
-    <div className={`w-full h-full bg-white border-2 ${status === 'completed' ? 'border-emerald-500 shadow-[0_2px_6px_rgba(16,185,129,0.12)]' : status === 'running' ? 'border-purple-500 shadow-[0_2px_8px_rgba(168,85,247,0.15)]' : 'border-purple-200'} text-slate-800 font-sans shadow-sm flex flex-col rounded-none`}>
+    <div
+      className={`w-full h-full bg-white border-2 ${status === 'completed' ? 'border-emerald-500 shadow-[0_2px_6px_rgba(16,185,129,0.12)]' : status === 'running' ? 'border-purple-500 shadow-[0_2px_8px_rgba(168,85,247,0.15)]' : 'border-purple-200'} text-slate-800 font-sans shadow-sm flex flex-col rounded-none`}
+    >
       <div className="flex items-center justify-between px-1.5 py-1 border-b border-outline-variant">
         <div className="flex items-center gap-1">
           <Wrench className="w-2.5 h-2.5 text-purple-600" />
@@ -376,7 +416,7 @@ function DemoToolNode({ status }: { status: 'pending' | 'running' | 'completed' 
 
 type Phase = { at: number; statuses: Record<string, 'pending' | 'running' | 'completed'> };
 const phases: Phase[] = [
-  { at: 0,    statuses: { trigger: 'running' } },
+  { at: 0, statuses: { trigger: 'running' } },
   { at: 1200, statuses: { trigger: 'completed', agent1: 'running', agent2: 'running' } },
   { at: 3000, statuses: { agent1: 'completed', agent2: 'completed', supervisor: 'running' } },
   { at: 4500, statuses: { supervisor: 'completed', tool: 'running' } },
@@ -390,15 +430,18 @@ const nodeIds = ['trigger', 'agent1', 'agent2', 'supervisor', 'tool'];
 function CanvasDemo() {
   const [mounted, setMounted] = useState(false);
   const [execution, setExecution] = useState<'idle' | 'running' | 'completed'>('idle');
-  const [nodeStatuses, setNodeStatuses] = useState<Record<string, 'pending' | 'running' | 'completed'>>(
-    Object.fromEntries(nodeIds.map((id) => [id, 'pending' as const])),
-  );
-  const [positions, setPositions] = useState<Record<string, { x: number; y: number }>>(INITIAL_POSITIONS);
+  const [nodeStatuses, setNodeStatuses] = useState<
+    Record<string, 'pending' | 'running' | 'completed'>
+  >(Object.fromEntries(nodeIds.map((id) => [id, 'pending' as const])));
+  const [positions, setPositions] =
+    useState<Record<string, { x: number; y: number }>>(INITIAL_POSITIONS);
   const [dragging, setDragging] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!dragging) return;
@@ -475,14 +518,21 @@ function CanvasDemo() {
           }`}
         >
           {execution === 'running' ? (
-            <><Square className="w-2.5 h-2.5 fill-rose-700 text-rose-700" /> Stop</>
+            <>
+              <Square className="w-2.5 h-2.5 fill-rose-700 text-rose-700" /> Stop
+            </>
           ) : (
-            <><Play className="w-2.5 h-2.5 fill-emerald-700 text-emerald-700" /> Run All</>
+            <>
+              <Play className="w-2.5 h-2.5 fill-emerald-700 text-emerald-700" /> Run All
+            </>
           )}
         </button>
       </div>
 
-      <div className="relative w-full overflow-hidden rounded border border-outline/20 bg-surface-dim/30" style={{ height: canvasH }}>
+      <div
+        className="relative w-full overflow-hidden rounded border border-outline/20 bg-surface-dim/30"
+        style={{ height: canvasH }}
+      >
         <svg className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden>
           <defs>
             <pattern id="demo-grid" width="16" height="16" patternUnits="userSpaceOnUse">
@@ -492,7 +542,12 @@ function CanvasDemo() {
           <rect width="100%" height="100%" fill="url(#demo-grid)" />
         </svg>
 
-        <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox={`0 0 ${canvasW} ${canvasH}`} preserveAspectRatio="xMidYMid slice" aria-hidden>
+        <svg
+          className="absolute inset-0 w-full h-full pointer-events-none"
+          viewBox={`0 0 ${canvasW} ${canvasH}`}
+          preserveAspectRatio="xMidYMid slice"
+          aria-hidden
+        >
           {demoEdges.map((e, i) => {
             const d = buildEdgePath(e.source, e.target, positions[e.source], positions[e.target]);
             const color = edgeColor(e);
@@ -556,13 +611,21 @@ function CanvasDemo() {
 
       <div className="mt-2 flex items-center justify-between border-t border-outline/20 pt-2 px-1">
         <div className="flex items-center gap-3 text-[10px] font-mono text-slate-400">
-          <span className={`flex items-center gap-1 ${execution === 'completed' ? 'text-emerald-600' : execution === 'running' ? 'text-primary' : ''}`}>
+          <span
+            className={`flex items-center gap-1 ${execution === 'completed' ? 'text-emerald-600' : execution === 'running' ? 'text-primary' : ''}`}
+          >
             {execution === 'completed' ? (
-              <><CheckCircle2 className="w-3 h-3 text-emerald-500" /> Completed</>
+              <>
+                <CheckCircle2 className="w-3 h-3 text-emerald-500" /> Completed
+              </>
             ) : execution === 'running' ? (
-              <><Loader2 className="w-3 h-3 animate-spin text-primary" /> Executing...</>
+              <>
+                <Loader2 className="w-3 h-3 animate-spin text-primary" /> Executing...
+              </>
             ) : (
-              <><span className="h-2 w-2 rounded-full bg-slate-400" /> Ready</>
+              <>
+                <span className="h-2 w-2 rounded-full bg-slate-400" /> Ready
+              </>
             )}
           </span>
           <span>4 agents</span>

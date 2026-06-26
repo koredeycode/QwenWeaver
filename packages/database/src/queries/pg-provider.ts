@@ -9,7 +9,12 @@ import type {
   AgentLogInput,
   AgentLogOutput,
   MCPAuthConfig,
+  CredentialResponse,
+  CredentialInput,
+  CredentialUpdate,
+  CredentialType,
 } from '@qwenweaver/types';
+import { encrypt, decrypt } from '@qwenweaver/encryption';
 
 const log = {
   info: (data: Record<string, unknown>, message: string) => {
@@ -178,6 +183,135 @@ export const pgProvider: QueryProvider = {
     };
   },
 
+  async listCredentials(userId: string): Promise<CredentialResponse[]> {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const s = pgSchema;
+    const rows = await pgDb
+      .select({
+        id: s.pgCredentials.id,
+        userId: s.pgCredentials.userId,
+        name: s.pgCredentials.name,
+        type: s.pgCredentials.type,
+        description: s.pgCredentials.description,
+        createdAt: s.pgCredentials.createdAt,
+        updatedAt: s.pgCredentials.updatedAt,
+      })
+      .from(s.pgCredentials)
+      .where(eq(s.pgCredentials.userId, userId));
+    return rows.map((r) => ({
+      id: r.id,
+      userId: r.userId,
+      name: r.name,
+      type: r.type as CredentialType,
+      description: r.description ?? null,
+      createdAt: r.createdAt.getTime(),
+      updatedAt: r.updatedAt.getTime(),
+    }));
+  },
+
+  async getCredential(id: string, userId: string): Promise<CredentialResponse | null> {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const s = pgSchema;
+    const rows = await pgDb
+      .select()
+      .from(s.pgCredentials)
+      .where(and(eq(s.pgCredentials.id, id), eq(s.pgCredentials.userId, userId)))
+      .limit(1);
+    if (rows.length === 0) return null;
+    const r = rows[0];
+    return {
+      id: r.id,
+      userId: r.userId,
+      name: r.name,
+      type: r.type as CredentialType,
+      description: r.description ?? null,
+      value: decrypt(r.encryptedData),
+      createdAt: r.createdAt.getTime(),
+      updatedAt: r.updatedAt.getTime(),
+    };
+  },
+
+  async createCredential(userId: string, input: CredentialInput): Promise<CredentialResponse> {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const s = pgSchema;
+    const id = crypto.randomUUID();
+    const encryptedData = encrypt(input.value);
+    await pgDb.insert(s.pgCredentials).values({
+      id,
+      userId,
+      name: input.name,
+      type: input.type,
+      encryptedData,
+      description: input.description ?? null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    return {
+      id,
+      userId,
+      name: input.name,
+      type: input.type,
+      description: input.description ?? null,
+      value: input.value,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+  },
+
+  async updateCredential(
+    id: string,
+    userId: string,
+    input: CredentialUpdate,
+  ): Promise<CredentialResponse> {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const s = pgSchema;
+    await pgDb
+      .update(s.pgCredentials)
+      .set({
+        ...(input.name !== undefined && { name: input.name }),
+        ...(input.description !== undefined && { description: input.description }),
+        ...(input.value !== undefined && { encryptedData: encrypt(input.value) }),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(s.pgCredentials.id, id), eq(s.pgCredentials.userId, userId)));
+    const rows = await pgDb
+      .select()
+      .from(s.pgCredentials)
+      .where(eq(s.pgCredentials.id, id))
+      .limit(1);
+    const r = rows[0];
+    return {
+      id: r.id,
+      userId: r.userId,
+      name: r.name,
+      type: r.type as CredentialType,
+      description: r.description ?? null,
+      value: decrypt(r.encryptedData),
+      createdAt: r.createdAt.getTime(),
+      updatedAt: r.updatedAt.getTime(),
+    };
+  },
+
+  async deleteCredential(id: string, userId: string): Promise<boolean> {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const s = pgSchema;
+    const existing = await pgDb
+      .select()
+      .from(s.pgCredentials)
+      .where(and(eq(s.pgCredentials.id, id), eq(s.pgCredentials.userId, userId)))
+      .limit(1);
+    if (existing.length === 0) return false;
+    await pgDb
+      .delete(s.pgCredentials)
+      .where(and(eq(s.pgCredentials.id, id), eq(s.pgCredentials.userId, userId)));
+    return true;
+  },
+
   async saveWorkflow(userId: string, workflow: WorkflowPayload): Promise<string> {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
@@ -223,9 +357,7 @@ export const pgProvider: QueryProvider = {
         description: workflow.description || null,
         nodesEdges: payload,
       })
-      .where(
-        and(eq(pgSchema.pgWorkflows.id, workflowId), eq(pgSchema.pgWorkflows.userId, userId)),
-      );
+      .where(and(eq(pgSchema.pgWorkflows.id, workflowId), eq(pgSchema.pgWorkflows.userId, userId)));
 
     return workflowId;
   },
@@ -252,7 +384,13 @@ export const pgProvider: QueryProvider = {
           nodeCounts[node.type] = (nodeCounts[node.type] || 0) + 1;
         }
       }
-      return { id: w.id, name: w.name, description: w.description, createdAt: w.createdAt, nodeCounts };
+      return {
+        id: w.id,
+        name: w.name,
+        description: w.description,
+        createdAt: w.createdAt,
+        nodeCounts,
+      };
     });
   },
 

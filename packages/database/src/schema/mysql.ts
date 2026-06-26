@@ -1,5 +1,11 @@
 import { mysqlTable, text, int, timestamp, json, index, varchar } from 'drizzle-orm/mysql-core';
-import type { NodeData, ExecutionMetrics, AgentLogInput, AgentLogOutput, WorkflowPayload } from '@qwenweaver/types';
+import type {
+  NodeData,
+  ExecutionMetrics,
+  AgentLogInput,
+  AgentLogOutput,
+  WorkflowPayload,
+} from '@qwenweaver/types';
 import type { MCPAuthConfig } from '@qwenweaver/types';
 
 export const mysqlUsers = mysqlTable('users', {
@@ -188,6 +194,23 @@ export const mysqlUserCredits = mysqlTable('user_credits', {
   lifetimeSpent: int('lifetime_spent').notNull().default(0),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+export const mysqlCredentials = mysqlTable(
+  'credentials',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    userId: varchar('user_id', { length: 36 })
+      .notNull()
+      .references(() => mysqlUsers.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    type: varchar('type', { length: 50 }).notNull(),
+    encryptedData: text('encrypted_data').notNull(),
+    description: text('description'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [index('credentials_user_id_idx').on(table.userId)],
+);
 
 export const mysqlCreditTransactions = mysqlTable(
   'credit_transactions',

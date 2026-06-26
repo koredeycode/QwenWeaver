@@ -9,7 +9,11 @@ import type {
   AgentLogInput,
   AgentLogOutput,
   MCPAuthConfig,
+  CredentialResponse,
+  CredentialInput,
+  CredentialUpdate,
 } from '@qwenweaver/types';
+import { encrypt, decrypt } from '@qwenweaver/encryption';
 
 const log = {
   info: (data: Record<string, unknown>, message: string) => {
@@ -197,6 +201,133 @@ export const sqliteProvider: QueryProvider = {
     };
   },
 
+  async listCredentials(userId: string): Promise<CredentialResponse[]> {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const s = sqliteSchema;
+    const rows = await sqliteDb
+      .select({
+        id: s.sqliteCredentials.id,
+        userId: s.sqliteCredentials.userId,
+        name: s.sqliteCredentials.name,
+        type: s.sqliteCredentials.type,
+        description: s.sqliteCredentials.description,
+        createdAt: s.sqliteCredentials.createdAt,
+        updatedAt: s.sqliteCredentials.updatedAt,
+      })
+      .from(s.sqliteCredentials)
+      .where(eq(s.sqliteCredentials.userId, userId));
+    return rows as CredentialResponse[];
+  },
+
+  async getCredential(id: string, userId: string): Promise<CredentialResponse | null> {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const s = sqliteSchema;
+    const rows = await sqliteDb
+      .select()
+      .from(s.sqliteCredentials)
+      .where(and(eq(s.sqliteCredentials.id, id), eq(s.sqliteCredentials.userId, userId)))
+      .limit(1);
+    if (rows.length === 0) return null;
+    const row = rows[0];
+    return {
+      id: row.id,
+      userId: row.userId,
+      name: row.name,
+      type: row.type as CredentialResponse['type'],
+      description: row.description,
+      value: decrypt(row.encryptedData),
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  },
+
+  async createCredential(userId: string, input: CredentialInput): Promise<CredentialResponse> {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const s = sqliteSchema;
+    const id = crypto.randomUUID();
+    const encrypted = encrypt(input.value);
+    const now = Date.now();
+    await sqliteDb.insert(s.sqliteCredentials).values({
+      id,
+      userId,
+      name: input.name,
+      type: input.type,
+      encryptedData: encrypted,
+      description: input.description ?? null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return {
+      id,
+      userId,
+      name: input.name,
+      type: input.type,
+      description: input.description ?? null,
+      value: input.value,
+      createdAt: now,
+      updatedAt: now,
+    };
+  },
+
+  async updateCredential(
+    id: string,
+    userId: string,
+    input: CredentialUpdate,
+  ): Promise<CredentialResponse> {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const s = sqliteSchema;
+    const existing = await sqliteDb
+      .select()
+      .from(s.sqliteCredentials)
+      .where(and(eq(s.sqliteCredentials.id, id), eq(s.sqliteCredentials.userId, userId)))
+      .limit(1);
+    if (existing.length === 0) throw new Error('Credential not found');
+
+    const values: Record<string, unknown> = { updatedAt: Date.now() };
+    if (input.name !== undefined) values.name = input.name;
+    if (input.description !== undefined) values.description = input.description;
+    if (input.value !== undefined) values.encryptedData = encrypt(input.value);
+
+    await sqliteDb.update(s.sqliteCredentials).set(values).where(eq(s.sqliteCredentials.id, id));
+
+    const updated = await sqliteDb
+      .select()
+      .from(s.sqliteCredentials)
+      .where(eq(s.sqliteCredentials.id, id))
+      .limit(1);
+    const row = updated[0];
+    return {
+      id: row.id,
+      userId: row.userId,
+      name: row.name,
+      type: row.type as CredentialResponse['type'],
+      description: row.description,
+      value: input.value ?? decrypt(row.encryptedData),
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  },
+
+  async deleteCredential(id: string, userId: string): Promise<boolean> {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const s = sqliteSchema;
+    const existing = await sqliteDb
+      .select()
+      .from(s.sqliteCredentials)
+      .where(and(eq(s.sqliteCredentials.id, id), eq(s.sqliteCredentials.userId, userId)))
+      .limit(1);
+    if (existing.length === 0) return false;
+    await sqliteDb
+      .delete(s.sqliteCredentials)
+      .where(and(eq(s.sqliteCredentials.id, id), eq(s.sqliteCredentials.userId, userId)));
+    return true;
+  },
+
   async saveWorkflow(userId: string, workflow: WorkflowPayload): Promise<string> {
     const { db } = getConnection();
     const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
@@ -274,7 +405,13 @@ export const sqliteProvider: QueryProvider = {
           nodeCounts[node.type] = (nodeCounts[node.type] || 0) + 1;
         }
       }
-      return { id: w.id, name: w.name, description: w.description, createdAt: w.createdAt, nodeCounts };
+      return {
+        id: w.id,
+        name: w.name,
+        description: w.description,
+        createdAt: w.createdAt,
+        nodeCounts,
+      };
     });
   },
 

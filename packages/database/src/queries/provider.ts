@@ -1,5 +1,10 @@
 import type { SavedMCPServerInput, SavedMCPServer } from './mcp.js';
-import type { MCPAuthConfig } from '@qwenweaver/types';
+import type {
+  MCPAuthConfig,
+  CredentialInput,
+  CredentialUpdate,
+  CredentialResponse,
+} from '@qwenweaver/types';
 import type { TemplateRow, TemplateReviewRow, TemplateCategoryRow } from './templates.js';
 import type {
   WorkflowPayload,
@@ -51,6 +56,17 @@ export interface QueryProvider {
     userId: string,
     authConfig: MCPAuthConfig,
   ): Promise<SavedMCPServer>;
+
+  // Credentials
+  listCredentials(userId: string): Promise<CredentialResponse[]>;
+  getCredential(id: string, userId: string): Promise<CredentialResponse | null>;
+  createCredential(userId: string, input: CredentialInput): Promise<CredentialResponse>;
+  updateCredential(
+    id: string,
+    userId: string,
+    input: CredentialUpdate,
+  ): Promise<CredentialResponse>;
+  deleteCredential(id: string, userId: string): Promise<boolean>;
 
   saveWorkflow(userId: string, workflow: WorkflowPayload): Promise<string>;
   updateWorkflow(workflowId: string, userId: string, workflow: WorkflowPayload): Promise<string>;
