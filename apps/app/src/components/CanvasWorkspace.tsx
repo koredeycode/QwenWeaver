@@ -503,7 +503,7 @@ export const CanvasWorkspace = () => {
       const isTrigger = (t?: string) => t === 'trigger' || t === 'input_trigger';
 
       if (sourceNode.type === 'mcp_tool' && isAgent(targetNode.type)) {
-        sourceHandle = 'target';
+        sourceHandle = 'source-bottom';
       }
 
       const targetHandle =

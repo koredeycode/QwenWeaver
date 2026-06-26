@@ -34,25 +34,29 @@ export interface ExampleWorkflow {
 
 export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
   {
-    id: 'research-workflow',
-    name: 'Academic Research Workflow',
+    id: 'research-synthesis',
+    name: 'Research & Synthesis',
     description:
-      'Scrapes databases for latest research papers, scans patents, and synthesizes findings using a Consensus Supervisor.',
+      'Takes a research question, searches for information via two specialized agents, then a supervisor synthesizes a final answer with thinking-based reasoning.',
     nodes: [
       {
         id: 'node-trigger',
-        type: 'trigger',
+        type: 'input_trigger',
         position: { x: 50, y: 200 },
-        data: { label: 'Web Trigger (Cron 9 AM)', outputFormat: 'text' },
+        data: {
+          label: 'Research question: What are the latest advances in LLM agent orchestration?',
+          outputFormat: 'text',
+        },
       },
       {
         id: 'node-agent-1',
         type: 'agent',
         position: { x: 300, y: 100 },
         data: {
-          label: 'Academic Searcher',
+          label: 'Literature Searcher',
           model: 'qwen-plus',
-          systemPrompt: 'Scrapes Google Scholar for the latest papers on multi-agent consensus.',
+          systemPrompt:
+            'Search for recent academic papers and blog posts on the given topic. Summarize key findings, methodologies, and results.',
           outputFormat: 'markdown',
         },
       },
@@ -61,9 +65,10 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         type: 'agent',
         position: { x: 300, y: 300 },
         data: {
-          label: 'Patent Scanner',
+          label: 'Industry Analyst',
           model: 'qwen-plus',
-          systemPrompt: 'Queries global patent databases for visual node orchestration systems.',
+          systemPrompt:
+            'Analyze industry trends, real-world applications, and production deployments related to the topic. Focus on practical insights.',
           outputFormat: 'markdown',
         },
       },
@@ -72,27 +77,13 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         type: 'supervisor',
         position: { x: 600, y: 200 },
         data: {
-          label: 'Consensus Supervisor',
+          label: 'Synthesis Supervisor',
           model: 'qwen3-max',
           systemPrompt:
-            'Review the outputs of both Searcher and Scanner. Synthesize findings. If they contradict, ask them to re-verify.',
+            'Combine the literature review and industry analysis into a coherent synthesis. Identify conflicts and resolve them. Output a structured report with sections: Summary, Key Findings, Conflicts, Recommendations.',
           enableThinking: true,
           thinkingBudget: 1024,
-          outputFormat: 'json',
-        },
-      },
-      {
-        id: 'node-mcp-tool',
-        type: 'mcp_tool',
-        position: { x: 900, y: 200 },
-        data: {
-          label: 'AlphaCreek SEC Filings',
-          mcpServerId: 'ai.alphacreek/alphacreek-mcp',
-          mcpServerUrl: 'https://mcp.alphacreek.ai/mcp',
-          iconUrl: 'https://www.alphacreek.ai/assets/images/logo/logo400x400.png',
-          systemPrompt:
-            'Retrieve the latest SEC filings for companies referenced in the research report.',
-          outputFormat: 'text',
+          outputFormat: 'markdown',
         },
       },
     ],
@@ -129,28 +120,21 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         targetHandle: 'target-left',
         type: 'animated',
       },
-      {
-        id: 'e-s-m',
-        source: 'node-supervisor',
-        target: 'node-mcp-tool',
-        sourceHandle: 'source-bottom',
-        targetHandle: 'target',
-        type: 'animated',
-      },
     ],
   },
   {
     id: 'translation-pipeline',
-    name: 'Translation & Localization Pipeline',
+    name: 'Translation & Review Pipeline',
     description:
-      'Automates multi-language translation and context review before publishing localized files to the directory.',
+      'Translates text into a target language, then a supervisor reviews for accuracy, tone, and cultural appropriateness with thinking-based reasoning.',
     nodes: [
       {
         id: 'node-trigger-input',
         type: 'input_trigger',
         position: { x: 50, y: 200 },
         data: {
-          label: 'Translate QwenWeaver marketing landing page into simplified Chinese.',
+          label:
+            'Translate the following to Spanish: "Our platform enables teams to build AI agents visually. No coding required."',
           outputFormat: 'text',
         },
       },
@@ -162,7 +146,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
           label: 'Linguistic Translator',
           model: 'qwen-plus',
           systemPrompt:
-            'Translate the upstream text context into natural-sounding Simplified Chinese. Retain technical jargon.',
+            'Translate the text into the target language. Preserve technical terms, brand names, and formatting. Produce natural-sounding output.',
           outputFormat: 'markdown',
         },
       },
@@ -171,26 +155,13 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         type: 'supervisor',
         position: { x: 650, y: 200 },
         data: {
-          label: 'Linguistic Peer Reviewer',
+          label: 'Translation Reviewer',
           model: 'qwen3-max',
           systemPrompt:
-            'Compare the translation with the original english prompt. Ensure tone, accuracy, and format. If anything is wrong, reject and feedback.',
+            'Review the translation for accuracy, tone, and cultural appropriateness. Check that technical terms are correctly translated. If the translation has errors, reject it with specific feedback for the translator to fix.',
           enableThinking: true,
           thinkingBudget: 1024,
           outputFormat: 'markdown',
-        },
-      },
-      {
-        id: 'node-mcp-saver',
-        type: 'mcp_tool',
-        position: { x: 950, y: 200 },
-        data: {
-          label: 'Tandem Docs MCP',
-          mcpServerId: 'ac.tandem/docs-mcp',
-          mcpServerUrl: 'https://tandem.ac/mcp',
-          systemPrompt:
-            'Search and retrieve relevant documentation to verify translation accuracy.',
-          outputFormat: 'text',
         },
       },
     ],
@@ -211,37 +182,33 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         targetHandle: 'target-left',
         type: 'animated',
       },
-      {
-        id: 'e-rev-save',
-        source: 'node-reviewer',
-        target: 'node-mcp-saver',
-        sourceHandle: 'source-bottom',
-        targetHandle: 'target',
-        type: 'animated',
-      },
     ],
   },
   {
-    id: 'security-audit',
-    name: 'Security Auditing Workflow',
+    id: 'code-quality-audit',
+    name: 'Code Quality Audit',
     description:
-      'Performs static analysis of files, checks for exposed secrets/API keys, and submits risk tickets automatically.',
+      'Analyzes code for style issues and security vulnerabilities using parallel agents, then a supervisor produces a consolidated review.',
     nodes: [
       {
         id: 'node-trigger-audit',
         type: 'input_trigger',
         position: { x: 50, y: 200 },
-        data: { label: 'Audit directory: packages/database/src/schema', outputFormat: 'text' },
+        data: {
+          label:
+            'Review the following code for quality and security issues...\n\nfunction getDbConnection() {\n  const conn = new Connection("postgres://admin:password123@localhost:5432/prod");\n  return conn.query("SELECT * FROM users WHERE id = " + userId);\n}',
+          outputFormat: 'text',
+        },
       },
       {
         id: 'node-static-analyzer',
         type: 'agent',
         position: { x: 300, y: 100 },
         data: {
-          label: 'SQL Static Analyzer',
+          label: 'Code Style Analyzer',
           model: 'qwen-plus',
           systemPrompt:
-            'Audit code for SQL injection, raw queries without parameterization, or schema vulnerabilities.',
+            'Analyze the provided code for style issues, anti-patterns, and best practice violations. Check naming conventions, error handling, code organization.',
           outputFormat: 'markdown',
         },
       },
@@ -250,10 +217,10 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         type: 'agent',
         position: { x: 300, y: 300 },
         data: {
-          label: 'Secret Scanner',
+          label: 'Security Vulnerability Scanner',
           model: 'qwen-plus',
           systemPrompt:
-            'Scan files for hardcoded database credentials, API keys, JWT secrets, or tokens.',
+            'Scan the code for security vulnerabilities: SQL injection, hardcoded credentials, XSS, CSRF, insecure deserialization, and dependency vulnerabilities.',
           outputFormat: 'markdown',
         },
       },
@@ -262,26 +229,13 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         type: 'supervisor',
         position: { x: 600, y: 200 },
         data: {
-          label: 'Security Lead Auditor',
+          label: 'Audit Consolidator',
           model: 'qwen3-max',
           systemPrompt:
-            'Consolidate warnings from sql static analyzer and secret scanner. Filter out duplicates, grade the severity.',
+            'Combine the style analysis and security scan into a single report. Deduplicate findings, prioritize by severity, and provide actionable remediation steps.',
           enableThinking: true,
           thinkingBudget: 2048,
-          outputFormat: 'json',
-        },
-      },
-      {
-        id: 'node-jira-reporter',
-        type: 'mcp_tool',
-        position: { x: 900, y: 200 },
-        data: {
-          label: 'AgentBerg MCP',
-          mcpServerId: 'ai.agentberg/agentberg',
-          mcpServerUrl: 'https://agentberg.ai/mcp',
-          systemPrompt:
-            'Publish security audit findings and query the agent network for known vulnerability patterns.',
-          outputFormat: 'text',
+          outputFormat: 'markdown',
         },
       },
     ],
@@ -318,21 +272,13 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         targetHandle: 'target-left',
         type: 'animated',
       },
-      {
-        id: 'e-su-jr',
-        source: 'node-sec-supervisor',
-        target: 'node-jira-reporter',
-        sourceHandle: 'source-bottom',
-        targetHandle: 'target',
-        type: 'animated',
-      },
     ],
   },
   {
     id: 'customer-escalation',
-    name: 'Customer Support Escalation Workflow',
+    name: 'Customer Support Escalation',
     description:
-      'Classifies customer issues, runs specialized diagnosis (billing & DevOps) concurrently, constructs a polished resolution message, and logs results to CRM & Slack.',
+      'Triages a customer complaint, dispatches specialized billing and technical agents in parallel, and synthesizes a resolution via a supervisor.',
     nodes: [
       {
         id: 'node-trigger-support',
@@ -340,7 +286,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         position: { x: 50, y: 250 },
         data: {
           label:
-            'Customer complaint: Received double charge on last invoice and API latency is above 2000ms.',
+            'Customer complaint: I was charged twice for my subscription this month and the dashboard shows error 503 when I try to view my invoices.',
           outputFormat: 'text',
         },
       },
@@ -352,7 +298,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
           label: 'Triage Supervisor',
           model: 'qwen3-max',
           systemPrompt:
-            'Analyze client issues. Trigger Billing Specialist for charges or invoices. Trigger DevOps Specialist for timeouts or high latency. Trigger general Support Agent for other queries.',
+            'Analyze the customer issue. Identify whether it involves billing, technical problems, or both. Dispatch to the appropriate specialist agents: Billing Specialist for payment issues, DevOps Specialist for technical errors. Always also dispatch the Support Agent for a holding response.',
           enableThinking: true,
           thinkingBudget: 1024,
           outputFormat: 'json',
@@ -366,7 +312,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
           label: 'Billing Specialist',
           model: 'qwen-plus',
           systemPrompt:
-            'Search invoice history database, identify duplicate billing charges, and calculate refunds.',
+            'Investigate the billing issue: check for duplicate charges, verify payment history, calculate any refunds due, and draft a resolution.',
           outputFormat: 'markdown',
         },
       },
@@ -378,7 +324,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
           label: 'DevOps Specialist',
           model: 'qwen-plus',
           systemPrompt:
-            'Examine server health metrics, container logs, database query locks, and API gateway response times.',
+            'Investigate the technical issue: check server status, identify potential causes for error 503, suggest remediation steps.',
           outputFormat: 'markdown',
         },
       },
@@ -389,7 +335,8 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         data: {
           label: 'Support Agent',
           model: 'qwen-plus',
-          systemPrompt: 'Draft polite holding statement apologizing for the delay in service.',
+          systemPrompt:
+            'Draft a polite, empathetic holding response acknowledging the customer issue and setting expectations for resolution timeline.',
           outputFormat: 'markdown',
         },
       },
@@ -401,36 +348,10 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
           label: 'Resolution Supervisor',
           model: 'qwen3-max',
           systemPrompt:
-            'Review the billing diagnosis and devops status details. Formulate the final professional resolution message outlining actions taken (e.g. refund status, server fix updates).',
+            'Review the billing diagnosis, technical analysis, and holding response. Compose a comprehensive final resolution message that addresses all customer concerns professionally.',
           enableThinking: true,
           thinkingBudget: 1024,
           outputFormat: 'markdown',
-        },
-      },
-      {
-        id: 'node-db-writer',
-        type: 'mcp_tool',
-        position: { x: 1050, y: 150 },
-        data: {
-          label: 'AlphaCreek MCP',
-          mcpServerId: 'ai.alphacreek/alphacreek-mcp',
-          mcpServerUrl: 'https://mcp.alphacreek.ai/mcp',
-          iconUrl: 'https://www.alphacreek.ai/assets/images/logo/logo400x400.png',
-          systemPrompt: 'Logs ticket resolution as a published finding in the agent network.',
-          outputFormat: 'text',
-        },
-      },
-      {
-        id: 'node-slack-publisher',
-        type: 'mcp_tool',
-        position: { x: 1050, y: 350 },
-        data: {
-          label: 'AgentBerg',
-          mcpServerId: 'ai.agentberg/agentberg',
-          mcpServerUrl: 'https://agentberg.ai/mcp',
-          systemPrompt:
-            'Query the agent network for similar support ticket patterns and resolutions.',
-          outputFormat: 'text',
         },
       },
     ],
@@ -489,22 +410,6 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         target: 'node-resolution-reviewer',
         sourceHandle: 'source-right',
         targetHandle: 'target-left',
-        type: 'animated',
-      },
-      {
-        id: 'e-rr-db',
-        source: 'node-resolution-reviewer',
-        target: 'node-db-writer',
-        sourceHandle: 'source-bottom',
-        targetHandle: 'target',
-        type: 'animated',
-      },
-      {
-        id: 'e-rr-sp',
-        source: 'node-resolution-reviewer',
-        target: 'node-slack-publisher',
-        sourceHandle: 'source-bottom',
-        targetHandle: 'target',
         type: 'animated',
       },
     ],

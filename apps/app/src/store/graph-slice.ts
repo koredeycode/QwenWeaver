@@ -252,7 +252,7 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
         sourceHandle = 'source';
         targetHandle = 'target-left';
       } else if (sourceNode.type === 'mcp_tool' && isAgent(targetNode.type)) {
-        sourceHandle = 'target';
+        sourceHandle = 'source-bottom';
         targetHandle = 'target-bottom';
       } else if (isAgent(targetNode.type)) {
         targetHandle = 'target-left';

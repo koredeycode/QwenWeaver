@@ -9,14 +9,13 @@ function id(prefix: string): string {
   return `${prefix}_${randomUUID().slice(0, 8)}`;
 }
 
-// Seed workflow definitions (subset of mock-workflows)
 const SEED_WORKFLOWS = [
   {
-    name: 'Academic Research Workflow',
+    name: 'Research & Synthesis',
     description:
-      'Scrapes databases for latest research papers, scans patents, and synthesizes findings using a Consensus Supervisor.',
+      'Takes a research question, searches for information via two specialized agents, then a supervisor synthesizes a final answer with thinking-based reasoning.',
     categorySlug: 'research',
-    tags: ['research', 'academic', 'consensus'],
+    tags: ['research', 'academic', 'synthesis'],
     featured: true,
     downloads: 142,
     avgRating: 4,
@@ -25,18 +24,22 @@ const SEED_WORKFLOWS = [
       nodes: [
         {
           id: 'node-trigger',
-          type: 'trigger',
+          type: 'input_trigger',
           position: { x: 50, y: 200 },
-          data: { label: 'Web Trigger (Cron 9 AM)', outputFormat: 'text' },
+          data: {
+            label: 'Research question: What are the latest advances in LLM agent orchestration?',
+            outputFormat: 'text',
+          },
         },
         {
           id: 'node-agent-1',
           type: 'agent',
           position: { x: 300, y: 100 },
           data: {
-            label: 'Academic Searcher',
+            label: 'Literature Searcher',
             model: 'qwen-plus',
-            systemPrompt: 'Scrapes Google Scholar for the latest papers on multi-agent consensus.',
+            systemPrompt:
+              'Search for recent academic papers and blog posts on the given topic. Summarize key findings, methodologies, and results.',
             outputFormat: 'markdown',
           },
         },
@@ -45,9 +48,10 @@ const SEED_WORKFLOWS = [
           type: 'agent',
           position: { x: 300, y: 300 },
           data: {
-            label: 'Patent Scanner',
+            label: 'Industry Analyst',
             model: 'qwen-plus',
-            systemPrompt: 'Queries global patent databases for visual node orchestration systems.',
+            systemPrompt:
+              'Analyze industry trends, real-world applications, and production deployments related to the topic. Focus on practical insights.',
             outputFormat: 'markdown',
           },
         },
@@ -56,43 +60,56 @@ const SEED_WORKFLOWS = [
           type: 'supervisor',
           position: { x: 600, y: 200 },
           data: {
-            label: 'Consensus Supervisor',
+            label: 'Synthesis Supervisor',
             model: 'qwen3-max',
             systemPrompt:
-              'Review the outputs of both Searcher and Scanner. Synthesize findings. If they contradict, ask them to re-verify.',
+              'Combine the literature review and industry analysis into a coherent synthesis. Identify conflicts and resolve them. Output a structured report with sections: Summary, Key Findings, Conflicts, Recommendations.',
             enableThinking: true,
             thinkingBudget: 1024,
-            outputFormat: 'json',
-          },
-        },
-        {
-          id: 'node-mcp-tool',
-          type: 'mcp_tool',
-          position: { x: 900, y: 200 },
-          data: {
-            label: 'AlphaCreek SEC Filings',
-            mcpServerId: 'ai.alphacreek/alphacreek-mcp',
-            mcpServerUrl: 'https://mcp.alphacreek.ai/mcp',
-            iconUrl: 'https://www.alphacreek.ai/assets/images/logo/logo400x400.png',
-            systemPrompt:
-              'Retrieve the latest SEC filings for companies referenced in the research report.',
-            outputFormat: 'text',
+            outputFormat: 'markdown',
           },
         },
       ],
       edges: [
-        { id: 'e-t-a1', source: 'node-trigger', target: 'node-agent-1', type: 'animated' },
-        { id: 'e-t-a2', source: 'node-trigger', target: 'node-agent-2', type: 'animated' },
-        { id: 'e-a1-s', source: 'node-agent-1', target: 'node-supervisor', type: 'animated' },
-        { id: 'e-a2-s', source: 'node-agent-2', target: 'node-supervisor', type: 'animated' },
-        { id: 'e-s-m', source: 'node-supervisor', target: 'node-mcp-tool', type: 'animated' },
+        {
+          id: 'e-t-a1',
+          source: 'node-trigger',
+          target: 'node-agent-1',
+          sourceHandle: 'source',
+          targetHandle: 'target-left',
+          type: 'animated',
+        },
+        {
+          id: 'e-t-a2',
+          source: 'node-trigger',
+          target: 'node-agent-2',
+          sourceHandle: 'source',
+          targetHandle: 'target-left',
+          type: 'animated',
+        },
+        {
+          id: 'e-a1-s',
+          source: 'node-agent-1',
+          target: 'node-supervisor',
+          sourceHandle: 'source-right',
+          targetHandle: 'target-left',
+          type: 'animated',
+        },
+        {
+          id: 'e-a2-s',
+          source: 'node-agent-2',
+          target: 'node-supervisor',
+          sourceHandle: 'source-right',
+          targetHandle: 'target-left',
+          type: 'animated',
+        },
       ],
     },
   },
   {
-    name: 'Translation & Localization Pipeline',
+    name: 'Translation & Review Pipeline',
     description:
-      'Automates multi-language translation and context review before publishing localized files to the directory.',
+      'Translates text into a target language, then a supervisor reviews for accuracy, tone, and cultural appropriateness with thinking-based reasoning.',
     categorySlug: 'content',
     tags: ['translation', 'i18n', 'content'],
     featured: true,
@@ -106,7 +123,8 @@ const SEED_WORKFLOWS = [
           type: 'input_trigger',
           position: { x: 50, y: 200 },
           data: {
-            label: 'Translate QwenWeaver marketing landing page into simplified Chinese.',
+            label:
+              'Translate the following to Spanish: "Our platform enables teams to build AI agents visually. No coding required."',
             outputFormat: 'text',
           },
         },
@@ -118,7 +136,7 @@ const SEED_WORKFLOWS = [
             label: 'Linguistic Translator',
             model: 'qwen-plus',
             systemPrompt:
-              'Translate the upstream text context into natural-sounding Simplified Chinese. Retain technical jargon.',
+              'Translate the text into the target language. Preserve technical terms, brand names, and formatting. Produce natural-sounding output.',
             outputFormat: 'markdown',
           },
         },
@@ -127,26 +145,13 @@ const SEED_WORKFLOWS = [
           type: 'supervisor',
           position: { x: 650, y: 200 },
           data: {
-            label: 'Linguistic Peer Reviewer',
+            label: 'Translation Reviewer',
             model: 'qwen3-max',
             systemPrompt:
-              'Compare the translation with the original english prompt. Ensure tone, accuracy, and format. If anything is wrong, reject and feedback.',
+              'Review the translation for accuracy, tone, and cultural appropriateness. Check that technical terms are correctly translated. If the translation has errors, reject it with specific feedback for the translator to fix.',
             enableThinking: true,
             thinkingBudget: 1024,
             outputFormat: 'markdown',
-          },
-        },
-        {
-          id: 'node-mcp-saver',
-          type: 'mcp_tool',
-          position: { x: 950, y: 200 },
-          data: {
-            label: 'Tandem Docs MCP',
-            mcpServerId: 'ac.tandem/docs-mcp',
-            mcpServerUrl: 'https://tandem.ac/mcp',
-            systemPrompt:
-              'Search and retrieve relevant documentation to verify translation accuracy.',
-            outputFormat: 'text',
           },
         },
       ],
@@ -155,17 +160,25 @@ const SEED_WORKFLOWS = [
           id: 'e-ti-tr',
           source: 'node-trigger-input',
           target: 'node-translator',
+          sourceHandle: 'source',
+          targetHandle: 'target-left',
           type: 'animated',
         },
-        { id: 'e-tr-rev', source: 'node-translator', target: 'node-reviewer', type: 'animated' },
-        { id: 'e-rev-save', source: 'node-reviewer', target: 'node-mcp-saver', type: 'animated' },
+        {
+          id: 'e-tr-rev',
+          source: 'node-translator',
+          target: 'node-reviewer',
+          sourceHandle: 'source-right',
+          targetHandle: 'target-left',
+          type: 'animated',
+        },
       ],
     },
   },
   {
-    name: 'Security Auditing Workflow',
+    name: 'Code Quality Audit',
     description:
-      'Performs static analysis of files, checks for exposed secrets/API keys, and submits risk tickets automatically.',
+      'Analyzes code for style issues and security vulnerabilities using parallel agents, then a supervisor produces a consolidated report.',
     categorySlug: 'devops',
     tags: ['security', 'audit', 'devops'],
     featured: false,
@@ -178,17 +191,21 @@ const SEED_WORKFLOWS = [
           id: 'node-trigger-audit',
           type: 'input_trigger',
           position: { x: 50, y: 200 },
-          data: { label: 'Audit directory: packages/database/src/schema', outputFormat: 'text' },
+          data: {
+            label:
+              'Review the following code for quality and security issues...\n\nfunction getDbConnection() {\n  const conn = new Connection("postgres://admin:password123@localhost:5432/prod");\n  return conn.query("SELECT * FROM users WHERE id = " + userId);\n}',
+            outputFormat: 'text',
+          },
         },
         {
           id: 'node-static-analyzer',
           type: 'agent',
           position: { x: 300, y: 100 },
           data: {
-            label: 'SQL Static Analyzer',
+            label: 'Code Style Analyzer',
             model: 'qwen-plus',
             systemPrompt:
-              'Audit code for SQL injection, raw queries without parameterization, or schema vulnerabilities.',
+              'Analyze the provided code for style issues, anti-patterns, and best practice violations. Check naming conventions, error handling, code organization.',
             outputFormat: 'markdown',
           },
         },
@@ -197,10 +214,10 @@ const SEED_WORKFLOWS = [
           type: 'agent',
           position: { x: 300, y: 300 },
           data: {
-            label: 'Secret Scanner',
+            label: 'Security Vulnerability Scanner',
             model: 'qwen-plus',
             systemPrompt:
-              'Scan files for hardcoded database credentials, API keys, JWT secrets, or tokens.',
+              'Scan the code for security vulnerabilities: SQL injection, hardcoded credentials, XSS, CSRF, insecure deserialization, and dependency vulnerabilities.',
             outputFormat: 'markdown',
           },
         },
@@ -209,26 +226,13 @@ const SEED_WORKFLOWS = [
           type: 'supervisor',
           position: { x: 600, y: 200 },
           data: {
-            label: 'Security Lead Auditor',
+            label: 'Audit Consolidator',
             model: 'qwen3-max',
             systemPrompt:
-              'Consolidate warnings from sql static analyzer and secret scanner. Filter out duplicates, grade the severity.',
+              'Combine the style analysis and security scan into a single report. Deduplicate findings, prioritize by severity, and provide actionable remediation steps.',
             enableThinking: true,
             thinkingBudget: 2048,
-            outputFormat: 'json',
-          },
-        },
-        {
-          id: 'node-jira-reporter',
-          type: 'mcp_tool',
-          position: { x: 900, y: 200 },
-          data: {
-            label: 'AgentBerg MCP',
-            mcpServerId: 'ai.agentberg/agentberg',
-            mcpServerUrl: 'https://agentberg.ai/mcp',
-            systemPrompt:
-              'Publish security audit findings and query the agent network for known vulnerability patterns.',
-            outputFormat: 'text',
+            outputFormat: 'markdown',
           },
         },
       ],
@@ -237,39 +241,41 @@ const SEED_WORKFLOWS = [
           id: 'e-ta-sa',
           source: 'node-trigger-audit',
           target: 'node-static-analyzer',
+          sourceHandle: 'source',
+          targetHandle: 'target-left',
           type: 'animated',
         },
         {
           id: 'e-ta-ss',
           source: 'node-trigger-audit',
           target: 'node-secret-scanner',
+          sourceHandle: 'source',
+          targetHandle: 'target-left',
           type: 'animated',
         },
         {
           id: 'e-sa-su',
           source: 'node-static-analyzer',
           target: 'node-sec-supervisor',
+          sourceHandle: 'source-right',
+          targetHandle: 'target-left',
           type: 'animated',
         },
         {
           id: 'e-ss-su',
           source: 'node-secret-scanner',
           target: 'node-sec-supervisor',
-          type: 'animated',
-        },
-        {
-          id: 'e-su-jr',
-          source: 'node-sec-supervisor',
-          target: 'node-jira-reporter',
+          sourceHandle: 'source-right',
+          targetHandle: 'target-left',
           type: 'animated',
         },
       ],
     },
   },
   {
-    name: 'Customer Support Escalation Workflow',
+    name: 'Customer Support Escalation',
     description:
-      'Classifies customer issues, runs specialized diagnosis (billing & DevOps) concurrently, constructs a polished resolution message, and logs results to CRM & Slack.',
+      'Triages a customer complaint, dispatches specialized billing and technical agents in parallel, and synthesizes a resolution via a supervisor.',
     categorySlug: 'customer-support',
     tags: ['support', 'crm', 'automation'],
     featured: true,
@@ -284,7 +290,7 @@ const SEED_WORKFLOWS = [
           position: { x: 50, y: 250 },
           data: {
             label:
-              'Customer complaint: Received double charge on last invoice and API latency is above 2000ms.',
+              'Customer complaint: I was charged twice for my subscription this month and the dashboard shows error 503 when I try to view my invoices.',
             outputFormat: 'text',
           },
         },
@@ -296,7 +302,7 @@ const SEED_WORKFLOWS = [
             label: 'Triage Supervisor',
             model: 'qwen3-max',
             systemPrompt:
-              'Analyze client issues. Trigger Billing Specialist for charges or invoices. Trigger DevOps Specialist for timeouts or high latency. Trigger general Support Agent for other queries.',
+              'Analyze the customer issue. Identify whether it involves billing, technical problems, or both. Dispatch to the appropriate specialist agents: Billing Specialist for payment issues, DevOps Specialist for technical errors. Always also dispatch the Support Agent for a holding response.',
             enableThinking: true,
             thinkingBudget: 1024,
             outputFormat: 'json',
@@ -310,7 +316,7 @@ const SEED_WORKFLOWS = [
             label: 'Billing Specialist',
             model: 'qwen-plus',
             systemPrompt:
-              'Search invoice history database, identify duplicate billing charges, and calculate refunds.',
+              'Investigate the billing issue: check for duplicate charges, verify payment history, calculate any refunds due, and draft a resolution.',
             outputFormat: 'markdown',
           },
         },
@@ -322,7 +328,7 @@ const SEED_WORKFLOWS = [
             label: 'DevOps Specialist',
             model: 'qwen-plus',
             systemPrompt:
-              'Examine server health metrics, container logs, database query locks, and API gateway response times.',
+              'Investigate the technical issue: check server status, identify potential causes for error 503, suggest remediation steps.',
             outputFormat: 'markdown',
           },
         },
@@ -333,7 +339,8 @@ const SEED_WORKFLOWS = [
           data: {
             label: 'Support Agent',
             model: 'qwen-plus',
-            systemPrompt: 'Draft polite holding statement apologizing for the delay in service.',
+            systemPrompt:
+              'Draft a polite, empathetic holding response acknowledging the customer issue and setting expectations for resolution timeline.',
             outputFormat: 'markdown',
           },
         },
@@ -345,36 +352,10 @@ const SEED_WORKFLOWS = [
             label: 'Resolution Supervisor',
             model: 'qwen3-max',
             systemPrompt:
-              'Review the billing diagnosis and devops status details. Formulate the final professional resolution message outlining actions taken (e.g. refund status, server fix updates).',
+              'Review the billing diagnosis, technical analysis, and holding response. Compose a comprehensive final resolution message that addresses all customer concerns professionally.',
             enableThinking: true,
             thinkingBudget: 1024,
             outputFormat: 'markdown',
-          },
-        },
-        {
-          id: 'node-db-writer',
-          type: 'mcp_tool',
-          position: { x: 1050, y: 150 },
-          data: {
-            label: 'AlphaCreek MCP',
-            mcpServerId: 'ai.alphacreek/alphacreek-mcp',
-            mcpServerUrl: 'https://mcp.alphacreek.ai/mcp',
-            iconUrl: 'https://www.alphacreek.ai/assets/images/logo/logo400x400.png',
-            systemPrompt: 'Logs ticket resolution as a published finding in the agent network.',
-            outputFormat: 'text',
-          },
-        },
-        {
-          id: 'node-slack-publisher',
-          type: 'mcp_tool',
-          position: { x: 1050, y: 350 },
-          data: {
-            label: 'AgentBerg',
-            mcpServerId: 'ai.agentberg/agentberg',
-            mcpServerUrl: 'https://agentberg.ai/mcp',
-            systemPrompt:
-              'Query the agent network for similar support ticket patterns and resolutions.',
-            outputFormat: 'text',
           },
         },
       ],
@@ -383,63 +364,65 @@ const SEED_WORKFLOWS = [
           id: 'e-t-st',
           source: 'node-trigger-support',
           target: 'node-support-triage',
+          sourceHandle: 'source',
+          targetHandle: 'target-left',
           type: 'animated',
         },
         {
           id: 'e-st-ba',
           source: 'node-support-triage',
           target: 'node-billing-agent',
+          sourceHandle: 'source-right',
+          targetHandle: 'target-left',
           type: 'animated',
         },
         {
           id: 'e-st-da',
           source: 'node-support-triage',
           target: 'node-devops-agent',
+          sourceHandle: 'source-right',
+          targetHandle: 'target-left',
           type: 'animated',
         },
         {
           id: 'e-st-fa',
           source: 'node-support-triage',
           target: 'node-feedback-agent',
+          sourceHandle: 'source-right',
+          targetHandle: 'target-left',
           type: 'animated',
         },
         {
           id: 'e-ba-rr',
           source: 'node-billing-agent',
           target: 'node-resolution-reviewer',
+          sourceHandle: 'source-right',
+          targetHandle: 'target-left',
           type: 'animated',
         },
         {
           id: 'e-da-rr',
           source: 'node-devops-agent',
           target: 'node-resolution-reviewer',
+          sourceHandle: 'source-right',
+          targetHandle: 'target-left',
           type: 'animated',
         },
         {
           id: 'e-fa-rr',
           source: 'node-feedback-agent',
           target: 'node-resolution-reviewer',
-          type: 'animated',
-        },
-        {
-          id: 'e-rr-db',
-          source: 'node-resolution-reviewer',
-          target: 'node-db-writer',
-          type: 'animated',
-        },
-        {
-          id: 'e-rr-sp',
-          source: 'node-resolution-reviewer',
-          target: 'node-slack-publisher',
+          sourceHandle: 'source-right',
+          targetHandle: 'target-left',
           type: 'animated',
         },
       ],
     },
   },
   {
-    name: 'Social Media Content Scheduler',
+    name: 'Social Media Content Generator',
     description:
-      'Generates on-brand social posts from a brief, reviews tone, and schedules them across platforms via MCP tools.',
+      'Generates on-brand social posts from a brief, then a supervisor reviews tone and brand alignment before approval.',
     categorySlug: 'content',
     tags: ['social-media', 'marketing', 'content'],
     featured: false,
@@ -465,7 +448,7 @@ const SEED_WORKFLOWS = [
             label: 'Copywriter',
             model: 'qwen-plus',
             systemPrompt:
-              'Draft 3 social media posts (LinkedIn, Twitter, Instagram) based on the brief provided.',
+              'Draft 3 social media posts (LinkedIn, Twitter, Instagram) based on the brief provided. Each post should be platform-appropriate in length and style.',
             outputFormat: 'markdown',
           },
         },
@@ -477,47 +460,37 @@ const SEED_WORKFLOWS = [
             label: 'Brand Supervisor',
             model: 'qwen3-max',
             systemPrompt:
-              'Ensure all posts align with brand voice and guidelines. Flag anything off-tone.',
+              'Ensure all posts align with brand voice and guidelines. Flag anything off-tone, inappropriate, or inconsistent with brand messaging. Provide specific revision suggestions if needed.',
             enableThinking: true,
             thinkingBudget: 512,
-            outputFormat: 'json',
-          },
-        },
-        {
-          id: 'node-mcp-scheduler',
-          type: 'mcp_tool',
-          position: { x: 900, y: 200 },
-          data: {
-            label: 'Tandem Docs MCP',
-            mcpServerId: 'ac.tandem/docs-mcp',
-            mcpServerUrl: 'https://tandem.ac/mcp',
-            systemPrompt:
-              'Search documentation for best practices on scheduling and publishing content.',
-            outputFormat: 'text',
+            outputFormat: 'markdown',
           },
         },
       ],
       edges: [
-        { id: 'e-ts-cw', source: 'node-trigger-soc', target: 'node-copywriter', type: 'animated' },
+        {
+          id: 'e-ts-cw',
+          source: 'node-trigger-soc',
+          target: 'node-copywriter',
+          sourceHandle: 'source',
+          targetHandle: 'target-left',
+          type: 'animated',
+        },
         {
           id: 'e-cw-br',
           source: 'node-copywriter',
           target: 'node-brand-reviewer',
-          type: 'animated',
-        },
-        {
-          id: 'e-br-ms',
-          source: 'node-brand-reviewer',
-          target: 'node-mcp-scheduler',
+          sourceHandle: 'source-right',
+          targetHandle: 'target-left',
           type: 'animated',
         },
       ],
     },
   },
   {
-    name: 'Code Review Pipeline',
+    name: 'PR Code Review Pipeline',
     description:
-      'Reviews pull requests for code quality, security issues, and best practices before merging.',
+      'Reviews pull request code for style issues and security vulnerabilities, then a supervisor produces a consolidated review summary.',
     categorySlug: 'devops',
     tags: ['code-review', 'devops', 'quality'],
     featured: false,
@@ -528,9 +501,12 @@ const SEED_WORKFLOWS = [
       nodes: [
         {
           id: 'node-trigger-cr',
-          type: 'trigger',
+          type: 'input_trigger',
           position: { x: 50, y: 200 },
-          data: { label: 'PR Merged Webhook', outputFormat: 'text' },
+          data: {
+            label: 'Review the following pull request diff for quality and security issues...',
+            outputFormat: 'text',
+          },
         },
         {
           id: 'node-linter',
@@ -540,7 +516,7 @@ const SEED_WORKFLOWS = [
             label: 'Code Linter',
             model: 'qwen-plus',
             systemPrompt:
-              'Review code for style guide violations, formatting issues, and anti-patterns.',
+              'Review code for style guide violations, formatting issues, anti-patterns, and best practice violations. Be specific about file and line-level issues.',
             outputFormat: 'markdown',
           },
         },
@@ -551,7 +527,8 @@ const SEED_WORKFLOWS = [
           data: {
             label: 'Vulnerability Scanner',
             model: 'qwen-plus',
-            systemPrompt: 'Scan dependencies and code for known CVEs and security vulnerabilities.',
+            systemPrompt:
+              'Scan code for security vulnerabilities: SQL injection, XSS, CSRF, hardcoded secrets, insecure deserialization, and dependency issues.',
             outputFormat: 'markdown',
           },
         },
@@ -563,46 +540,44 @@ const SEED_WORKFLOWS = [
             label: 'Review Supervisor',
             model: 'qwen3-max',
             systemPrompt:
-              'Combine lint and vulnerability reports. Approve or request changes on the PR.',
+              'Combine lint and vulnerability reports into a single PR review. Prioritize issues by severity, deduplicate, and provide actionable feedback. Indicate whether the PR should be approved or changes requested.',
             enableThinking: true,
             thinkingBudget: 1024,
-            outputFormat: 'json',
-          },
-        },
-        {
-          id: 'node-github-writer',
-          type: 'mcp_tool',
-          position: { x: 900, y: 200 },
-          data: {
-            label: 'AlphaCreek MCP',
-            mcpServerId: 'ai.alphacreek/alphacreek-mcp',
-            mcpServerUrl: 'https://mcp.alphacreek.ai/mcp',
-            iconUrl: 'https://www.alphacreek.ai/assets/images/logo/logo400x400.png',
-            systemPrompt:
-              'Publish the code review summary as a finding in the agent network for peer validation.',
-            outputFormat: 'text',
+            outputFormat: 'markdown',
           },
         },
       ],
       edges: [
-        { id: 'e-tcr-la', source: 'node-trigger-cr', target: 'node-linter', type: 'animated' },
+        {
+          id: 'e-tcr-la',
+          source: 'node-trigger-cr',
+          target: 'node-linter',
+          sourceHandle: 'source',
+          targetHandle: 'target-left',
+          type: 'animated',
+        },
         {
           id: 'e-tcr-vs',
           source: 'node-trigger-cr',
           target: 'node-vulnerability',
+          sourceHandle: 'source',
+          targetHandle: 'target-left',
           type: 'animated',
         },
-        { id: 'e-la-cs', source: 'node-linter', target: 'node-cr-supervisor', type: 'animated' },
+        {
+          id: 'e-la-cs',
+          source: 'node-linter',
+          target: 'node-cr-supervisor',
+          sourceHandle: 'source-right',
+          targetHandle: 'target-left',
+          type: 'animated',
+        },
         {
           id: 'e-vs-cs',
           source: 'node-vulnerability',
           target: 'node-cr-supervisor',
-          type: 'animated',
-        },
-        {
-          id: 'e-cs-gw',
-          source: 'node-cr-supervisor',
-          target: 'node-github-writer',
+          sourceHandle: 'source-right',
+          targetHandle: 'target-left',
           type: 'animated',
         },
       ],
@@ -611,7 +586,7 @@ const SEED_WORKFLOWS = [
   {
     name: 'Data Pipeline Orchestrator',
     description:
-      'Extracts data from APIs, transforms it, and loads it into a database with quality checks at each stage.',
+      'Extracts data from an API, transforms and normalizes it, then a quality gate supervisor validates before output.',
     categorySlug: 'data',
     tags: ['data', 'etl', 'pipeline'],
     featured: false,
@@ -622,9 +597,13 @@ const SEED_WORKFLOWS = [
       nodes: [
         {
           id: 'node-trigger-dp',
-          type: 'trigger',
+          type: 'input_trigger',
           position: { x: 50, y: 200 },
-          data: { label: 'Daily Cron (2 AM)', outputFormat: 'text' },
+          data: {
+            label:
+              'Extract and transform user data from the sales API. Filter for active accounts in Q3.',
+            outputFormat: 'text',
+          },
         },
         {
           id: 'node-extractor',
@@ -634,7 +613,7 @@ const SEED_WORKFLOWS = [
             label: 'API Extractor',
             model: 'qwen-plus',
             systemPrompt:
-              'Fetch latest data from the external API endpoint and format as structured JSON.',
+              'Parse the input data request, identify the data source and parameters. Fetch and format the data as structured JSON with proper schema.',
             outputFormat: 'json',
           },
         },
@@ -646,7 +625,7 @@ const SEED_WORKFLOWS = [
             label: 'Data Transformer',
             model: 'qwen-plus',
             systemPrompt:
-              'Clean, normalize, and transform the extracted data to match the target schema.',
+              'Clean, normalize, and transform the extracted data. Handle missing values, type conversions, and field mappings. Output valid JSON matching the target schema.',
             outputFormat: 'json',
           },
         },
@@ -658,42 +637,45 @@ const SEED_WORKFLOWS = [
             label: 'Quality Gate',
             model: 'qwen3-max',
             systemPrompt:
-              'Validate data quality: check for nulls, outliers, type mismatches. If quality fails, reject the batch.',
+              'Validate the transformed data: check for nulls in required fields, outliers, type mismatches, and schema compliance. If quality fails, reject with specific reasons. If valid, approve the output.',
             enableThinking: true,
             thinkingBudget: 512,
             outputFormat: 'json',
           },
         },
-        {
-          id: 'node-loader',
-          type: 'mcp_tool',
-          position: { x: 1050, y: 200 },
-          data: {
-            label: 'AgentBerg MCP',
-            mcpServerId: 'ai.agentberg/agentberg',
-            mcpServerUrl: 'https://agentberg.ai/mcp',
-            systemPrompt: 'Publish validated data records as findings in the agent network.',
-            outputFormat: 'text',
-          },
-        },
       ],
       edges: [
-        { id: 'e-tdp-ex', source: 'node-trigger-dp', target: 'node-extractor', type: 'animated' },
-        { id: 'e-ex-tr', source: 'node-extractor', target: 'node-transformer', type: 'animated' },
+        {
+          id: 'e-tdp-ex',
+          source: 'node-trigger-dp',
+          target: 'node-extractor',
+          sourceHandle: 'source',
+          targetHandle: 'target-left',
+          type: 'animated',
+        },
+        {
+          id: 'e-ex-tr',
+          source: 'node-extractor',
+          target: 'node-transformer',
+          sourceHandle: 'source-right',
+          targetHandle: 'target-left',
+          type: 'animated',
+        },
         {
           id: 'e-tr-qg',
           source: 'node-transformer',
           target: 'node-quality-gate',
+          sourceHandle: 'source-right',
+          targetHandle: 'target-left',
           type: 'animated',
         },
-        { id: 'e-qg-lo', source: 'node-quality-gate', target: 'node-loader', type: 'animated' },
       ],
     },
   },
   {
-    name: 'Lead Scoring & CRM Enrichment',
+    name: 'Lead Scoring & Routing',
     description:
-      'Scores inbound leads, enriches with public data, and pushes qualified leads to the CRM.',
+      'Scores inbound leads based on signals, enriches with company data, and a routing supervisor determines the next action.',
     categorySlug: 'customer-support',
     tags: ['sales', 'crm', 'leads'],
     featured: false,
@@ -704,9 +686,13 @@ const SEED_WORKFLOWS = [
       nodes: [
         {
           id: 'node-trigger-ls',
-          type: 'trigger',
+          type: 'input_trigger',
           position: { x: 50, y: 200 },
-          data: { label: 'Webhook: New Lead Form Submission', outputFormat: 'text' },
+          data: {
+            label:
+              'New lead: Acme Corp, 500 employees, SaaS industry, visited pricing page 3x this week.',
+            outputFormat: 'text',
+          },
         },
         {
           id: 'node-scorer',
@@ -716,7 +702,7 @@ const SEED_WORKFLOWS = [
             label: 'Lead Scorer',
             model: 'qwen-plus',
             systemPrompt:
-              'Score the lead based on company size, industry, and engagement signals. Return score 0-100.',
+              'Score the lead based on company size, industry relevance, engagement signals, and fit score. Return a numeric score 0-100 with a brief justification.',
             outputFormat: 'json',
           },
         },
@@ -728,7 +714,7 @@ const SEED_WORKFLOWS = [
             label: 'Data Enricher',
             model: 'qwen-plus',
             systemPrompt:
-              'Look up company information: headcount, funding, tech stack from public sources.',
+              'Enrich the lead with publicly available information: estimated headcount, funding history, technology stack, and recent news mentions.',
             outputFormat: 'json',
           },
         },
@@ -740,7 +726,7 @@ const SEED_WORKFLOWS = [
             label: 'Routing Supervisor',
             model: 'qwen3-max',
             systemPrompt:
-              'If lead score > 70 route to sales. If 40-70 route to nurture. If < 40 archive.',
+              'Review the lead score and enriched data. If score > 70 route to sales team with priority. If 40-70 route to nurture campaign. If < 40 archive with a note. Output the routing decision and rationale.',
             enableThinking: true,
             thinkingBudget: 512,
             outputFormat: 'json',
@@ -748,9 +734,30 @@ const SEED_WORKFLOWS = [
         },
       ],
       edges: [
-        { id: 'e-tls-sc', source: 'node-trigger-ls', target: 'node-scorer', type: 'animated' },
-        { id: 'e-sc-en', source: 'node-scorer', target: 'node-enricher', type: 'animated' },
-        { id: 'e-en-ra', source: 'node-enricher', target: 'node-routing-agent', type: 'animated' },
+        {
+          id: 'e-tls-sc',
+          source: 'node-trigger-ls',
+          target: 'node-scorer',
+          sourceHandle: 'source',
+          targetHandle: 'target-left',
+          type: 'animated',
+        },
+        {
+          id: 'e-sc-en',
+          source: 'node-scorer',
+          target: 'node-enricher',
+          sourceHandle: 'source-right',
+          targetHandle: 'target-left',
+          type: 'animated',
+        },
+        {
+          id: 'e-en-ra',
+          source: 'node-enricher',
+          target: 'node-routing-agent',
+          sourceHandle: 'source-right',
+          targetHandle: 'target-left',
+          type: 'animated',
+        },
       ],
     },
   },
@@ -775,7 +782,7 @@ const REVIEWS_DATA: { templateIdx: number; rating: number; review: string }[] = 
     templateIdx: 0,
     rating: 5,
     review:
-      'Excellent research workflow. The consensus supervisor works great for literature reviews.',
+      'Excellent research workflow. The synthesis supervisor produces great literature reviews.',
   },
   {
     templateIdx: 0,
@@ -815,7 +822,7 @@ const REVIEWS_DATA: { templateIdx: number; rating: number; review: string }[] = 
   {
     templateIdx: 4,
     rating: 3,
-    review: 'Decent scheduler but the brand voice detection could be better.',
+    review: 'Decent content generator but the brand voice detection could be better.',
   },
   {
     templateIdx: 5,
@@ -836,7 +843,7 @@ const REVIEWS_DATA: { templateIdx: number; rating: number; review: string }[] = 
 ];
 
 async function seed() {
-  console.log('🌱 Seeding database...\n');
+  console.log('Seeding database...\n');
 
   createConnection();
   const { db } = getConnection();
@@ -859,7 +866,7 @@ async function seed() {
 
   // Create demo user
   const userId = id('user');
-  console.log(`  Creating demo user: demo@qwenweaver.dev / password123`);
+  console.log('  Creating demo user: demo@qwenweaver.dev / password123');
   sqliteDb
     .insert(s.sqliteUsers)
     .values({
@@ -871,7 +878,7 @@ async function seed() {
     .run();
 
   // Create categories
-  console.log(`  Creating ${CATEGORIES.length} categories...`);
+  console.log('  Creating ' + CATEGORIES.length + ' categories...');
   for (const cat of CATEGORIES) {
     sqliteDb
       .insert(s.sqliteTemplateCategories)
@@ -886,7 +893,7 @@ async function seed() {
   }
 
   // Create templates
-  console.log(`  Creating ${SEED_WORKFLOWS.length} templates...`);
+  console.log('  Creating ' + SEED_WORKFLOWS.length + ' templates...');
   const templateIds: string[] = [];
   for (const wf of SEED_WORKFLOWS) {
     const tid = id('tpl');
@@ -913,7 +920,7 @@ async function seed() {
   }
 
   // Create reviews
-  console.log(`  Creating ${REVIEWS_DATA.length} reviews...`);
+  console.log('  Creating ' + REVIEWS_DATA.length + ' reviews...');
   for (const r of REVIEWS_DATA) {
     sqliteDb
       .insert(s.sqliteTemplateReviews)
@@ -928,15 +935,15 @@ async function seed() {
       .run();
   }
 
-  console.log('\n✅ Seed complete!');
-  console.log(`   User:       demo@qwenweaver.dev / password123`);
-  console.log(`   Categories: ${CATEGORIES.length}`);
-  console.log(`   Templates:  ${SEED_WORKFLOWS.length}`);
-  console.log(`   Reviews:    ${REVIEWS_DATA.length}`);
+  console.log('\nSeed complete!');
+  console.log('   User:       demo@qwenweaver.dev / password123');
+  console.log('   Categories: ' + CATEGORIES.length);
+  console.log('   Templates:  ' + SEED_WORKFLOWS.length);
+  console.log('   Reviews:    ' + REVIEWS_DATA.length);
   process.exit(0);
 }
 
 seed().catch((err) => {
-  console.error('❌ Seed failed:', err);
+  console.error('Seed failed:', err);
   process.exit(1);
 });

@@ -1,4 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { createWriteStream, existsSync, mkdirSync } from 'node:fs';
+import { resolve } from 'node:path';
 import pino from 'pino';
 import type { MiddlewareHandler } from 'hono';
 import { routePath } from 'hono/route';
@@ -6,10 +8,14 @@ import { http_request_duration_ms } from './metrics.js';
 
 export const requestContext = new AsyncLocalStorage<{ requestId: string }>();
 
-const stdout = pino.destination(1);
-const fileLog = pino.destination({ dest: './qwenweaver.log', mkdir: true, sync: false });
-
 const level = process.env.LOG_LEVEL || 'info';
+
+// Ensure the data directory exists for the log file
+const logDir = resolve(process.cwd(), 'data');
+if (!existsSync(logDir)) mkdirSync(logDir, { recursive: true });
+
+const logPath = resolve(logDir, 'qwenweaver.log');
+const fileStream = createWriteStream(logPath, { flags: 'a' });
 
 export const logger = pino(
   {
@@ -26,14 +32,10 @@ export const logger = pino(
       const store = requestContext.getStore();
       return store ? { requestId: store.requestId } : {};
     },
-    serializers: {
-      req: pino.stdSerializers.req,
-      res: pino.stdSerializers.res,
-    },
   },
   pino.multistream([
-    { stream: stdout, level },
-    { stream: fileLog, level },
+    { stream: process.stdout, level },
+    { stream: fileStream, level },
   ]),
 );
 

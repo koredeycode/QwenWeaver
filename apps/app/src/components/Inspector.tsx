@@ -326,7 +326,10 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                         mcpAuthConfig: {
                           ...selectedNode.data.mcpAuthConfig,
                           type: type as 'none' | 'api_key' | 'bearer' | 'basic',
-                          credentialId: type === 'none' ? undefined : selectedNode.data.mcpAuthConfig?.credentialId,
+                          credentialId:
+                            type === 'none'
+                              ? undefined
+                              : selectedNode.data.mcpAuthConfig?.credentialId,
                         },
                       });
                   }}
@@ -385,60 +388,67 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                         setNewCredValue('');
                         setNewCredDesc('');
                       }
-                    } catch { /* noop */ }
+                    } catch {
+                      /* noop */
+                    }
                   }}
                 />
 
                 {/* Inline fallback for manual credential entry */}
-                {(selectedNode.data.mcpAuthConfig?.type &&
+                {selectedNode.data.mcpAuthConfig?.type &&
                   selectedNode.data.mcpAuthConfig.type !== 'none' &&
-                  !selectedNode.data.mcpAuthConfig?.credentialId) && (
-                  <div className="border-t border-slate-100 pt-3 mt-2">
-                    <label className="block text-[10px] font-mono font-bold text-amber-600 uppercase tracking-wider mb-2 flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3" />
-                      Manual Credentials (Legacy)
-                    </label>
-                    {selectedNode.data.mcpAuthConfig?.type === 'bearer' && (
-                      <input
-                        type="password"
-                        value={mcpSecrets.token || ''}
-                        onChange={(e) => setMcpSecrets((s) => ({ ...s, token: e.target.value }))}
-                        className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
-                        placeholder="Bearer token..."
-                      />
-                    )}
-                    {selectedNode.data.mcpAuthConfig?.type === 'api_key' && (
-                      <input
-                        type="password"
-                        value={mcpSecrets.apiKey || ''}
-                        onChange={(e) => setMcpSecrets((s) => ({ ...s, apiKey: e.target.value }))}
-                        className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
-                        placeholder="API key..."
-                      />
-                    )}
-                    {selectedNode.data.mcpAuthConfig?.type === 'basic' && (
-                      <div className="space-y-2">
-                        <input
-                          type="text"
-                          value={mcpSecrets.username || ''}
-                          onChange={(e) => setMcpSecrets((s) => ({ ...s, username: e.target.value }))}
-                          className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
-                          placeholder="Username..."
-                        />
+                  !selectedNode.data.mcpAuthConfig?.credentialId && (
+                    <div className="border-t border-slate-100 pt-3 mt-2">
+                      <label className="block text-[10px] font-mono font-bold text-amber-600 uppercase tracking-wider mb-2 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        Manual Credentials (Legacy)
+                      </label>
+                      {selectedNode.data.mcpAuthConfig?.type === 'bearer' && (
                         <input
                           type="password"
-                          value={mcpSecrets.password || ''}
-                          onChange={(e) => setMcpSecrets((s) => ({ ...s, password: e.target.value }))}
+                          value={mcpSecrets.token || ''}
+                          onChange={(e) => setMcpSecrets((s) => ({ ...s, token: e.target.value }))}
                           className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
-                          placeholder="Password..."
+                          placeholder="Bearer token..."
                         />
-                      </div>
-                    )}
-                    <p className="text-[9px] text-amber-500 font-mono mt-1">
-                      Credentials entered here are sent inline. Use the credential selector above for encrypted storage.
-                    </p>
-                  </div>
-                )}
+                      )}
+                      {selectedNode.data.mcpAuthConfig?.type === 'api_key' && (
+                        <input
+                          type="password"
+                          value={mcpSecrets.apiKey || ''}
+                          onChange={(e) => setMcpSecrets((s) => ({ ...s, apiKey: e.target.value }))}
+                          className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
+                          placeholder="API key..."
+                        />
+                      )}
+                      {selectedNode.data.mcpAuthConfig?.type === 'basic' && (
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={mcpSecrets.username || ''}
+                            onChange={(e) =>
+                              setMcpSecrets((s) => ({ ...s, username: e.target.value }))
+                            }
+                            className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
+                            placeholder="Username..."
+                          />
+                          <input
+                            type="password"
+                            value={mcpSecrets.password || ''}
+                            onChange={(e) =>
+                              setMcpSecrets((s) => ({ ...s, password: e.target.value }))
+                            }
+                            className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
+                            placeholder="Password..."
+                          />
+                        </div>
+                      )}
+                      <p className="text-[9px] text-amber-500 font-mono mt-1">
+                        Credentials entered here are sent inline. Use the credential selector above
+                        for encrypted storage.
+                      </p>
+                    </div>
+                  )}
 
                 {/* MCP Action Connect button */}
                 <div className="pt-2">
@@ -800,11 +810,12 @@ function CredentialSelector({
     basic: ['mcp_basic_auth'],
   };
   const matchingCreds = authConfig.type
-    ? credentials.filter((c) => (typeMap[authConfig.type] || []).includes(c.type) || c.type === 'custom')
+    ? credentials.filter(
+        (c) => (typeMap[authConfig.type] || []).includes(c.type) || c.type === 'custom',
+      )
     : [];
 
-  const needsCredential =
-    authConfig.type && authConfig.type !== 'none' && !authConfig.credentialId;
+  const needsCredential = authConfig.type && authConfig.type !== 'none' && !authConfig.credentialId;
 
   return (
     <div className="border-t border-slate-100 pt-3">
@@ -820,10 +831,7 @@ function CredentialSelector({
         </p>
       )}
 
-      <AuthTypeSelect
-        value={authConfig.type || 'none'}
-        onChange={onAuthTypeChange}
-      />
+      <AuthTypeSelect value={authConfig.type || 'none'} onChange={onAuthTypeChange} />
 
       {authConfig.type && authConfig.type !== 'none' && (
         <div className="relative" ref={ref}>

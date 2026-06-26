@@ -376,6 +376,14 @@ export const MCPToolNode = memo(({ id, data }: NodeProps<any>) => {
         title="Receives from Agent/Supervisor"
       />
 
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="source-bottom"
+        className="w-2.5 h-2.5 !bg-purple-500 !border-2 !border-white hover:scale-125 transition-all shadow-sm"
+        title="Connects to next agent"
+      />
+
       <div className="flex items-center justify-between px-1.5 py-1 border-b border-outline-variant">
         <div className="flex items-center gap-1">
           <Wrench className="w-2.5 h-2.5 text-purple-600" />
