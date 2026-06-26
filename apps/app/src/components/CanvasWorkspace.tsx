@@ -369,11 +369,11 @@ export const CanvasWorkspace = () => {
           })),
         };
         withRefresh(() =>
-          client.api.workflow.detail[':workflowId'].$put(
+          (client.api.workflow.detail[':workflowId'] as any).$put(
             {
               param: { workflowId: state.workflowId! },
               json: payload as any,
-            } as any,
+            },
             { headers: authHeaders() },
           ),
         )

@@ -85,6 +85,7 @@ export interface ExecutionSlice {
   nodeOutputs: Record<string, string>;
   activeEdges: Set<string>;
   metrics: ExecutionMetrics | null;
+  abortController: AbortController | null;
   runWorkflow: () => Promise<void>;
   stopWorkflow: () => void;
 }

@@ -30,6 +30,7 @@ export interface ActiveExecution {
   resolve?: () => void;
   createdAt: number; // Track creation time for TTL sweep
   userId?: string;
+  hasEverHadEmitter: boolean; // true once at least one SSE client connects
 }
 
 export const activeExecutions = new Map<string, ActiveExecution>();
@@ -209,6 +210,7 @@ export const handleExecute = async (c: Context<{ Variables: Variables }>) => {
     resolve: resolveExecution!,
     createdAt: Date.now(),
     userId,
+    hasEverHadEmitter: false,
   });
 
   log.info(
@@ -249,6 +251,7 @@ export const handleStream = async (c: Context<{ Variables: Variables }>) => {
       emitters: new Set(),
       status: dbExecution.status as any,
       createdAt: Date.now(),
+      hasEverHadEmitter: false,
     };
     activeExecutions.set(executionId, execution);
   }
@@ -286,6 +289,7 @@ export const handleStream = async (c: Context<{ Variables: Variables }>) => {
     };
 
     execution!.emitters.add(emitter);
+    execution!.hasEverHadEmitter = true;
 
     if (dbExecution.status === 'completed' || dbExecution.status === 'failed') {
       await emitter.emit('complete', {
@@ -398,6 +402,12 @@ async function runExecutionAsync(
   const execution = activeExecutions.get(executionId);
   if (!execution) return;
 
+  // Wait up to 3s for at least one SSE client to connect before starting
+  const sseWaitStart = Date.now();
+  while (execution.emitters.size === 0 && Date.now() - sseWaitStart < 3000) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
   execution.status = 'running';
 
   // Wrap in try/finally to guarantee cleanup even on crash
@@ -413,7 +423,7 @@ async function runExecutionAsync(
         );
         await Promise.all(promises);
       },
-      isClosed: () => execution.emitters.size === 0,
+      isClosed: () => execution.hasEverHadEmitter && execution.emitters.size === 0,
     };
 
     const result = await executeWorkflow(

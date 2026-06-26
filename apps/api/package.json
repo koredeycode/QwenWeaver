@@ -21,6 +21,7 @@
     "@qwenweaver/types": "workspace:*",
     "ai": "^6.0.0",
     "bcryptjs": "^3.0.3",
+    "dotenv": "^16.6.1",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.5.0",
     "pino": "^10.0.0",
