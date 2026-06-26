@@ -5,8 +5,8 @@ export function Footer() {
   return (
     <footer className="border-t border-outline/40 bg-surface">
       <div className="mx-auto max-w-7xl px-6 py-12">
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
+        <div className="grid gap-8 sm:grid-cols-3">
+          <div className="sm:col-span-1">
             <div className="flex items-center gap-2 text-lg font-bold">
               <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-xs font-bold text-on-primary">
                 Q
@@ -42,16 +42,6 @@ export function Footer() {
               </a>
               <a href={URLS.githubIssues} className="hover:text-on-surface transition-colors">
                 Issues
-              </a>
-            </div>
-          </div>
-
-          <div>
-            <h4 className="mb-3 text-sm font-semibold">Community</h4>
-            <div className="flex flex-col gap-2 text-sm text-on-surface-variant">
-              <span>Discord (coming soon)</span>
-              <a href={URLS.twitter} className="hover:text-on-surface transition-colors">
-                Twitter
               </a>
             </div>
           </div>
