@@ -248,7 +248,7 @@ export const WorkflowDashboard = () => {
               <span className="text-[#ea580c]">🔀</span> QWENWEAVER WORKFLOWS
             </h1>
             <p className="text-xs text-slate-500 font-mono mt-1 uppercase tracking-wide">
-              Select or deploy a visual multi-agent swarm pipeline.
+              Select or deploy a visual multi-agent workflow pipeline.
             </p>
           </div>
 
@@ -266,7 +266,7 @@ export const WorkflowDashboard = () => {
                 Deploy Blank Workflow
               </h3>
               <p className="text-[11px] text-slate-400 mt-1 max-w-[200px] leading-relaxed">
-                Initialize an empty canvas workspace and build a swarm DAG from scratch.
+                Initialize an empty canvas workspace and build a workflow DAG from scratch.
               </p>
             </button>
 

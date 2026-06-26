@@ -311,7 +311,7 @@ export const SupervisorNode = memo(({ id, data }: NodeProps<any>) => {
       </div>
 
       <div className="text-sm font-bold tracking-tight text-secondary-container">
-        {data.label || 'Swarm Supervisor'}
+        {data.label || 'Supervisor'}
       </div>
 
       {data.systemPrompt && (

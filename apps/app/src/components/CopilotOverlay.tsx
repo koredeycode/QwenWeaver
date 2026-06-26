@@ -2,7 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquareCode, Send, Loader2, X, Sparkles } from 'lucide-react';
 import { useStore } from '../store/index.js';
 
-export const CopilotOverlay = () => {
+export const CopilotOverlay = ({
+  className = 'fixed bottom-14 right-3 z-50 flex flex-col items-end gap-2 pointer-events-none',
+}: {
+  className?: string;
+}) => {
   const messages = useStore((s) => s.copilotMessages);
   const isTyping = useStore((s) => s.isCopilotTyping);
   const sendMessage = useStore((s) => s.sendCopilotMessage);
@@ -33,9 +37,9 @@ export const CopilotOverlay = () => {
   };
 
   return (
-    <div className="fixed bottom-14 right-3 z-50 flex flex-col items-end gap-2 pointer-events-none">
+    <div className={`pointer-events-none ${className}`}>
       {isOpen && (
-        <div className="pointer-events-auto bg-white border border-[#cbd5e1] shadow-2xl flex flex-col font-sans text-slate-800 select-none rounded-none overflow-hidden animate-in fade-in zoom-in-95 duration-150 w-[340px] h-[440px] mb-1">
+        <div className="absolute bottom-full right-0 mb-2 pointer-events-auto bg-white border border-[#cbd5e1] shadow-2xl flex flex-col font-sans text-slate-800 select-none rounded-none overflow-hidden animate-in fade-in zoom-in-95 duration-150 w-[340px] h-[440px]">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-[#cbd5e1] bg-[#f8fafc] px-4 py-2.5 flex-shrink-0">
             <div className="flex items-center gap-1.5 text-xs font-mono font-bold tracking-wider text-slate-900">
@@ -58,7 +62,7 @@ export const CopilotOverlay = () => {
                 <Sparkles className="w-8 h-8 text-slate-300 mb-2 animate-bounce" />
                 <p className="text-xs font-bold text-slate-500">Ask Qwen Copilot anything!</p>
                 <p className="text-[10px] mt-1 max-w-[200px]">
-                  E.g. "Build a research swarm comparing patent scanners with worker agents."
+                  E.g. "Build a research workflow comparing patent scanners with worker agents."
                 </p>
               </div>
             ) : (
@@ -82,7 +86,7 @@ export const CopilotOverlay = () => {
             {isTyping && (
               <div className="bg-slate-50 border border-slate-200 p-2.5 text-xs text-slate-500 mr-6 flex items-center gap-2">
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-[#ea580c]" />
-                <span className="font-mono text-[10px]">Copilot compiling swarm...</span>
+                <span className="font-mono text-[10px]">Copilot building workflow...</span>
               </div>
             )}
 
@@ -96,7 +100,7 @@ export const CopilotOverlay = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyPress}
-              placeholder="Ask copilot to build a swarm..."
+              placeholder="Ask copilot to build a workflow..."
               className="flex-1 bg-transparent text-xs text-slate-800 outline-none resize-none px-2 py-1 max-h-20 border border-slate-200 focus:border-[#cbd5e1] rounded-none font-mono"
             />
             <button
@@ -114,10 +118,10 @@ export const CopilotOverlay = () => {
       {/* Copilot Button — fixed at bottom-left above shortcuts */}
       <button
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`pointer-events-auto flex items-center gap-2 px-4 py-2.5 shadow-lg border border-[#cbd5e1] font-mono text-xs font-bold transition-all rounded-none ${
+        className={`pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 shadow-lg border border-[#cbd5e1] font-mono text-xs font-bold transition-all rounded-none ${
           isOpen
             ? 'bg-[#ea580c] border-[#ea580c] text-white'
-            : 'bg-white hover:bg-slate-50 text-slate-700'
+            : 'bg-white hover:bg-slate-50 text-slate-600'
         }`}
         data-tour="copilot"
       >

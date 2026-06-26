@@ -111,7 +111,7 @@ export const PublishTemplateDialog = ({
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Academic Research Swarm"
+              placeholder="e.g. Academic Research Workflow"
               className="w-full border border-slate-200 bg-white p-3 font-mono text-sm outline-none focus:border-slate-400 text-slate-800 placeholder:text-slate-300"
               required
             />

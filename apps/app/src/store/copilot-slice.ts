@@ -5,7 +5,7 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
   copilotMessages: [
     {
       role: 'assistant',
-      text: 'Hi! I am the Qwen3-Max Visual Architect Copilot. I can help configure your workflow or generate complex multi-agent swarms. Try typing "generate search swarm" or "clear canvas".',
+      text: 'Hi! I am the Qwen3-Max Visual Architect Copilot. I can help configure your workflow or generate complex multi-agent workflows. Try typing "generate search workflow" or "clear canvas".',
     },
   ],
   isCopilotTyping: false,
@@ -23,12 +23,12 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
 
       if (
         promptLower.includes('generate') ||
-        promptLower.includes('swarm') ||
+        promptLower.includes('workflow') ||
         promptLower.includes('build')
       ) {
         get().loadTemplate('research');
         reply =
-          'Generated a standard **Research Swarm** template on your canvas! It connects a Trigger to two parallel scraper agents ("Academic Searcher" & "Patent Scanner"), which then aggregate outputs into a "Consensus Supervisor" that uses Qwen3-Max logic gates. Finally, it formats the result and pushes it to GitHub via MCP tool connection.';
+          'Generated a standard **Research Workflow** template on your canvas! It connects a Trigger to two parallel scraper agents ("Academic Searcher" & "Patent Scanner"), which then aggregate outputs into a "Consensus Supervisor" that uses Qwen3-Max logic gates. Finally, it formats the result and pushes it to GitHub via MCP tool connection.';
       } else if (promptLower.includes('clear') || promptLower.includes('empty')) {
         get().clearGraph();
         reply =
@@ -40,7 +40,7 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
         reply =
           'Model Context Protocol (MCP) servers allow Qwen agents to execute local commands, write to file systems, scan databases, or fetch internet urls. Simply connect an MCP tool node to your agent.';
       } else {
-        reply = `I've received your request: "${text}". \n\nAs the QwenWeaver Copilot, I can help you structure multi-agent flows. If you want to instantiate this flow, type "build research swarm" to load a pre-configured architecture.`;
+        reply = `I've received your request: "${text}". \n\nAs the QwenWeaver Copilot, I can help you structure multi-agent flows. If you want to instantiate this flow, type "build research workflow" to load a pre-configured architecture.`;
       }
 
       set((state) => ({

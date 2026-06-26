@@ -12,7 +12,7 @@ function id(prefix: string): string {
 // Seed workflow definitions (subset of mock-workflows)
 const SEED_WORKFLOWS = [
   {
-    name: 'Academic Research Swarm',
+    name: 'Academic Research Workflow',
     description:
       'Scrapes databases for latest research papers, scans patents, and synthesizes findings using a Consensus Supervisor.',
     categorySlug: 'research',
@@ -163,7 +163,7 @@ const SEED_WORKFLOWS = [
     },
   },
   {
-    name: 'Security Auditing Swarm',
+    name: 'Security Auditing Workflow',
     description:
       'Performs static analysis of files, checks for exposed secrets/API keys, and submits risk tickets automatically.',
     categorySlug: 'devops',
@@ -267,7 +267,7 @@ const SEED_WORKFLOWS = [
     },
   },
   {
-    name: 'Customer Support Escalation Swarm',
+    name: 'Customer Support Escalation Workflow',
     description:
       'Classifies customer issues, runs specialized diagnosis (billing & DevOps) concurrently, constructs a polished resolution message, and logs results to CRM & Slack.',
     categorySlug: 'customer-support',

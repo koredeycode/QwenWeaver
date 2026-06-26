@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Wrench, Search, X, Loader2, CheckCircle2, ChevronDown, Key, Shield } from 'lucide-react';
+import { CheckCircle2, ChevronDown, Key, Loader2, Search, Shield, Wrench, X } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { authHeaders, client, client2 } from '../lib/api-client.js';
 import { useStore } from '../store/index.js';
-import { client, client2, authHeaders } from '../lib/api-client.js';
 
 const REGISTRY_URL = 'https://registry.modelcontextprotocol.io/v0/servers';
 const PAGE_SIZE = 20;
@@ -158,7 +158,7 @@ export const MCPMarketplace = ({
           setLoading(true);
         }
 
-        // Fetch user's saved servers from our backend
+        // Fetch user's saved mcp servers from our backend
         const userPromise = client.api.mcp.servers.$get({}, { headers: authHeaders() });
 
         // Fetch registry directly (no backend proxy)
@@ -397,7 +397,7 @@ export const MCPMarketplace = ({
                 disabled={saving}
                 className="w-full py-2 border border-slate-300 text-slate-600 text-xs font-mono hover:bg-slate-100 transition-colors cursor-pointer mb-2 disabled:opacity-50"
               >
-                {saving ? 'Saving...' : 'Save to My Servers'}
+                {saving ? 'Saving...' : 'Save MCP Server'}
               </button>
             )}
             <div className="flex gap-2">

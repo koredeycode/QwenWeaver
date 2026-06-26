@@ -2,7 +2,6 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { ReactFlowProvider } from '@xyflow/react';
-import { HelpCircle } from 'lucide-react';
 import { useStore } from './store/index.js';
 import { AuthScreen } from './components/AuthScreen.js';
 import { SetupWizard } from './components/SetupWizard.js';
@@ -21,22 +20,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-function TourTrigger() {
-  const startTour = useStore((s) => s.startTour);
-  const isActive = useStore((s) => s.isTourActive);
-  if (isActive) return null;
-  return (
-    <button
-      onClick={startTour}
-      className="fixed bottom-4 right-4 z-50 flex items-center gap-1.5 border border-[#cbd5e1] bg-white px-3 py-1.5 font-mono text-xs font-bold text-slate-600 shadow-lg hover:bg-slate-50"
-      data-tour="tour-trigger"
-    >
-      <HelpCircle className="h-3.5 w-3.5 text-[#ea580c]" />
-      Help
-    </button>
-  );
-}
-
 function App() {
   if (isSelfHosted()) {
     const saasUrl = getSaaSUrl();
@@ -44,7 +27,6 @@ function App() {
       <ReactFlowProvider>
         <Toaster position="top-right" />
         <SpotlightOverlay />
-        <TourTrigger />
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<AuthScreen />} />
@@ -82,7 +64,6 @@ function App() {
     <ReactFlowProvider>
       <Toaster position="top-right" />
       <SpotlightOverlay />
-      <TourTrigger />
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<AuthScreen />} />

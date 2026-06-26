@@ -34,8 +34,8 @@ export interface ExampleWorkflow {
 
 export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
   {
-    id: 'research-swarm',
-    name: 'Academic Research Swarm',
+    id: 'research-workflow',
+    name: 'Academic Research Workflow',
     description:
       'Scrapes databases for latest research papers, scans patents, and synthesizes findings using a Consensus Supervisor.',
     nodes: [
@@ -223,7 +223,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
   },
   {
     id: 'security-audit',
-    name: 'Security Auditing Swarm',
+    name: 'Security Auditing Workflow',
     description:
       'Performs static analysis of files, checks for exposed secrets/API keys, and submits risk tickets automatically.',
     nodes: [
@@ -330,7 +330,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
   },
   {
     id: 'customer-escalation',
-    name: 'Customer Support Escalation Swarm',
+    name: 'Customer Support Escalation Workflow',
     description:
       'Classifies customer issues, runs specialized diagnosis (billing & DevOps) concurrently, constructs a polished resolution message, and logs results to CRM & Slack.',
     nodes: [

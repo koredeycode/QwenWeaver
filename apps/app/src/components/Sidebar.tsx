@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   LayoutDashboard,
   History,
@@ -51,22 +51,25 @@ export const Sidebar = () => {
     event.dataTransfer.effectAllowed = 'move';
   };
 
+  const fetchMcpServers = useCallback(() => {
+    if (activeCategory !== 'mcp') return;
+    setMcpLoading(true);
+    client.api.mcp.servers
+      .$get({}, { headers: authHeaders() })
+      .then((r) => r.json() as any)
+      .then((data) => setSavedMcpServers(data.servers || []))
+      .catch(() => {})
+      .finally(() => setMcpLoading(false));
+  }, [activeCategory]);
+
+  useEffect(() => {
+    fetchMcpServers();
+  }, [fetchMcpServers]);
+
   const [marketplaceOpen, setMarketplaceOpen] = useState(false);
   const [marketplaceTab, setMarketplaceTab] = useState<'registry' | 'myservers'>('registry');
   const [savedMcpServers, setSavedMcpServers] = useState<any[]>([]);
   const [mcpLoading, setMcpLoading] = useState(false);
-
-  useEffect(() => {
-    if (activeCategory === 'mcp') {
-      setMcpLoading(true);
-      client.api.mcp.servers
-        .$get({}, { headers: authHeaders() })
-        .then((r) => r.json() as any)
-        .then((data) => setSavedMcpServers(data.servers || []))
-        .catch(() => {})
-        .finally(() => setMcpLoading(false));
-    }
-  }, [activeCategory]);
 
   const paletteItems = {
     triggers: [
@@ -417,7 +420,7 @@ export const Sidebar = () => {
               ) : savedMcpServers.length > 0 ? (
                 <div>
                   <span className="block text-[8px] font-mono font-bold text-slate-400 uppercase tracking-wider px-2 py-1">
-                    Saved Servers
+                    Saved MCPs
                   </span>
                   {savedMcpServers.slice(0, 5).map((svr: any) => (
                     <div
@@ -452,7 +455,7 @@ export const Sidebar = () => {
                 </div>
               ) : (
                 <div className="text-[10px] text-slate-400 font-mono px-2 py-2 text-center">
-                  No saved servers yet.
+                  No saved MCPs yet.
                 </div>
               )}
 
@@ -496,7 +499,13 @@ export const Sidebar = () => {
           )}
 
           {marketplaceOpen && (
-            <MCPMarketplace onClose={() => setMarketplaceOpen(false)} initialTab={marketplaceTab} />
+            <MCPMarketplace
+              onClose={() => {
+                setMarketplaceOpen(false);
+                fetchMcpServers();
+              }}
+              initialTab={marketplaceTab}
+            />
           )}
         </div>
       </div>

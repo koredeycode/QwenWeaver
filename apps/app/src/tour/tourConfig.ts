@@ -50,7 +50,7 @@ export const tourConfig: TourStep[] = [
     id: 'copilot-toggle',
     title: 'Ask Qwen Copilot',
     description:
-      'Need help wiring up your swarm? Open the Qwen Copilot and describe what you want to build in plain English.',
+      'Need help wiring up your workflow? Open the Qwen Copilot and describe what you want to build in plain English.',
     targets: [{ type: 'dom_selector', value: '[data-tour="copilot"]' }],
   },
 ];

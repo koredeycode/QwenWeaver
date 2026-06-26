@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Eye,
+  Copy,
   Trash2,
   X,
   HelpCircle,
@@ -21,6 +22,7 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
   const updateNodeData = useStore((s) => s.updateNodeData);
   const deleteNode = useStore((s) => s.deleteNode);
   const selectNode = useStore((s) => s.selectNode);
+  const duplicateNode = useStore((s) => s.duplicateNode);
 
   // Local state for capabilities
   const [webBrowsing, setWebBrowsing] = useState(true);
@@ -544,6 +546,13 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                 Revert
               </button>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => duplicateNode(selectedNode.id)}
+                  title="Duplicate Node"
+                  className="p-2 hover:bg-slate-100 text-slate-600 border border-slate-200"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </button>
                 <button
                   onClick={() => deleteNode(selectedNode.id)}
                   title="Delete Node"

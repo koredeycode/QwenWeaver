@@ -39,6 +39,7 @@ import {
   Wrench,
   X,
   LogOut,
+  HelpCircle,
 } from 'lucide-react';
 
 import { CustomZoomControls } from './CustomZoomControls.js';
@@ -72,6 +73,7 @@ export const CanvasWorkspace = () => {
   const pushHistory = useStore((s) => s.pushHistory);
   const canUndo = useStore((s) => s.canUndo);
   const canRedo = useStore((s) => s.canRedo);
+  const markClean = useStore((s) => s.markClean);
 
   const status = useStore((s) => s.executionStatus);
   const runWorkflow = useStore((s) => s.runWorkflow);
@@ -79,6 +81,7 @@ export const CanvasWorkspace = () => {
   const user = useStore((s) => s.user);
   const credits = useStore((s) => s.credits);
   const fetchCredits = useStore((s) => s.fetchCredits);
+  const isTourActive = useStore((s) => s.isTourActive);
   const logout = useStore((s) => s.logout);
 
   const reactFlowInstance = useReactFlow();
@@ -225,6 +228,9 @@ export const CanvasWorkspace = () => {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editTitleValue, setEditTitleValue] = useState('');
+  const titleInputRef = useRef<HTMLInputElement>(null);
   const [isMinimapVisible, setIsMinimapVisible] = useState(() => {
     const saved = localStorage.getItem('qwenweaver_minimap_visible');
     return saved !== 'false';
@@ -238,7 +244,7 @@ export const CanvasWorkspace = () => {
         target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
       if (isInput) return;
 
-      // 1. Run Swarm: Ctrl + Enter or Cmd + Enter
+      // 1. Run Workflow: Ctrl + Enter or Cmd + Enter
       if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
         event.preventDefault();
         if (status !== 'running' && nodes.length > 0) {
@@ -371,7 +377,10 @@ export const CanvasWorkspace = () => {
             { headers: authHeaders() },
           ),
         )
-          .then(() => setIsSaving(false))
+          .then(() => {
+            setIsSaving(false);
+            markClean();
+          })
           .catch((err) => {
             setIsSaving(false);
             console.warn('Auto-save to backend failed:', err);
@@ -586,33 +595,67 @@ export const CanvasWorkspace = () => {
         <header className="h-14 bg-white border-b border-[#cbd5e1] flex items-center justify-between px-6 z-20 flex-shrink-0">
           {/* Left: Workflow name + info */}
           <div className="flex items-center gap-3 h-full">
-            {workflowName && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-slate-900">{workflowName}</span>
-                {isDirty && (
-                  <span
-                    className="w-2 h-2 rounded-full bg-orange-500 inline-block flex-shrink-0"
-                    title="Unsaved changes"
-                  />
-                )}
-                {workflowDescription && (
-                  <div className="relative" ref={descRef}>
-                    <button
-                      onClick={() => setIsDescOpen(!isDescOpen)}
-                      className="p-0.5 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-                      title="Workflow description"
-                    >
-                      <Info className="w-4 h-4" />
-                    </button>
-                    {isDescOpen && (
-                      <div className="absolute top-full left-0 mt-1 w-72 bg-white border border-slate-200 shadow-lg z-50 p-3 text-xs text-slate-600 font-sans leading-relaxed">
-                        {workflowDescription}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              {editingTitle ? (
+                <input
+                  ref={titleInputRef}
+                  value={editTitleValue}
+                  onChange={(e) => setEditTitleValue(e.target.value)}
+                  onBlur={() => {
+                    if (editTitleValue.trim() !== workflowName) {
+                      setWorkflowMeta(
+                        editTitleValue.trim() || 'Untitled Project',
+                        workflowDescription,
+                      );
+                    }
+                    setEditingTitle(false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      (e.target as HTMLInputElement).blur();
+                    }
+                    if (e.key === 'Escape') {
+                      setEditingTitle(false);
+                    }
+                  }}
+                  className="text-sm font-bold text-slate-900 bg-transparent border-b border-slate-400 outline-none w-64 px-0 py-0"
+                  autoFocus
+                />
+              ) : (
+                <span
+                  onClick={() => {
+                    setEditTitleValue(workflowName);
+                    setEditingTitle(true);
+                    setTimeout(() => titleInputRef.current?.focus(), 0);
+                  }}
+                  className="text-sm font-bold text-slate-900 cursor-pointer hover:text-slate-600"
+                >
+                  {workflowName || 'Untitled Project'}
+                </span>
+              )}
+              {isDirty && (
+                <span
+                  className="w-2 h-2 rounded-full bg-orange-500 inline-block flex-shrink-0"
+                  title="Unsaved changes"
+                />
+              )}
+              {workflowDescription && (
+                <div className="relative" ref={descRef}>
+                  <button
+                    onClick={() => setIsDescOpen(!isDescOpen)}
+                    className="p-0.5 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                    title="Workflow description"
+                  >
+                    <Info className="w-4 h-4" />
+                  </button>
+                  {isDescOpen && (
+                    <div className="absolute top-full left-0 mt-1 w-72 bg-white border border-slate-200 shadow-lg z-50 p-3 text-xs text-slate-600 font-sans leading-relaxed">
+                      {workflowDescription}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Right: Actions, Deploy, Run, Settings, Profile */}
@@ -737,19 +780,17 @@ export const CanvasWorkspace = () => {
               )}
             </div>
 
-            {/* Save Workflow Button (only shown for unsaved workflows) */}
-            {!workflowId && (
-              <button
-                onClick={() => setSaveDialogOpen(true)}
-                disabled={nodes.length === 0}
-                className="px-3.5 py-1.5 bg-[#9a3412] hover:bg-[#a73a00] text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                title="Save this workflow"
-                data-tour="save-workflow"
-              >
-                <Save className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">Save</span>
-              </button>
-            )}
+            {/* Save Workflow Button */}
+            <button
+              onClick={() => setSaveDialogOpen(true)}
+              disabled={!isDirty || nodes.length === 0}
+              className="px-3.5 py-1.5 bg-[#9a3412] hover:bg-[#a73a00] text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+              title={!isDirty ? 'No unsaved changes' : 'Save this workflow'}
+              data-tour="save-workflow"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Save</span>
+            </button>
 
             {/* Saving indicator */}
             {isSaving && (
@@ -786,7 +827,7 @@ export const CanvasWorkspace = () => {
                 className="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors cursor-pointer"
               >
                 <Square className="w-3.5 h-3.5 fill-white" />
-                <span className="hidden md:inline">Kill Swarm</span>
+                <span className="hidden md:inline">Kill Workflow</span>
               </button>
             ) : (
               <button
@@ -878,242 +919,297 @@ export const CanvasWorkspace = () => {
         <div className="flex-1 w-full min-h-0 flex flex-row relative bg-[#f8fafc]">
           {/* Main workspace container (Canvas + Gantt) */}
           <div className="flex-1 h-full flex flex-col min-w-0 relative">
-            {/* React Flow Workspace Canvas */}
-            <div ref={canvasRef} className="flex-1 w-full min-h-0 relative">
-              <ReactFlow
-                nodes={nodes}
-                edges={edges}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onConnect={onConnect}
-                onConnectStart={onConnectStart}
-                onConnectEnd={onConnectEnd}
-                onNodeDragStart={onNodeDragStart}
-                onDragOver={onDragOver}
-                onDrop={onDrop}
-                nodeTypes={nodeTypes as any}
-                edgeTypes={edgeTypes as any}
-                onNodeClick={handleNodeClick}
-                onPaneClick={handlePaneClick}
-                fitView
-                minZoom={0.2}
-                maxZoom={1.5}
-                nodesDraggable={!isLocked && status !== 'running'}
-                nodesConnectable={!isLocked && status !== 'running'}
-                elementsSelectable={!isLocked && status !== 'running'}
-                deleteKeyCode={isLocked || status === 'running' ? null : ['Backspace', 'Delete']}
-                proOptions={{ hideAttribution: true }}
-                isValidConnection={(connection) => {
-                  if (!connection.source || !connection.target) return false;
-                  const sn = nodes.find((n) => n.id === connection.source);
-                  const tn = nodes.find((n) => n.id === connection.target);
-                  if (!sn || !tn) return false;
-                  const isAgent = (t?: string) => t === 'agent' || t === 'supervisor';
-                  const isTrigger = (t?: string) => t === 'trigger' || t === 'input_trigger';
-                  if (sn.type === 'mcp_tool' && tn.type === 'mcp_tool') return false;
-                  if (sn.type === 'mcp_tool' && !isAgent(tn.type)) return false;
-                  if (isTrigger(sn.type) && !isAgent(tn.type)) return false;
-                  return true;
-                }}
-              >
-                <Background color="#cbd5e1" gap={16} size={1} className="opacity-40" />
-                {nodes.length === 0 && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="flex flex-col items-center text-center select-none">
-                      <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-3">
-                        <Wrench className="w-6 h-6 text-slate-300" />
+            {/* Canvas + Inspector row */}
+            <div className="flex-1 flex flex-row min-h-0 relative">
+              {/* Canvas column: canvas + footer, width matches canvas (not behind inspector) */}
+              <div className="flex-1 flex flex-col min-w-0">
+                {/* React Flow Workspace Canvas */}
+                <div ref={canvasRef} className="flex-1 min-h-0 relative">
+                  <ReactFlow
+                    nodes={nodes}
+                    edges={edges}
+                    onNodesChange={onNodesChange}
+                    onEdgesChange={onEdgesChange}
+                    onConnect={onConnect}
+                    onConnectStart={onConnectStart}
+                    onConnectEnd={onConnectEnd}
+                    onNodeDragStart={onNodeDragStart}
+                    onDragOver={onDragOver}
+                    onDrop={onDrop}
+                    nodeTypes={nodeTypes as any}
+                    edgeTypes={edgeTypes as any}
+                    onNodeClick={handleNodeClick}
+                    onPaneClick={handlePaneClick}
+                    fitView
+                    minZoom={0.2}
+                    maxZoom={1.5}
+                    nodesDraggable={!isLocked && status !== 'running'}
+                    nodesConnectable={!isLocked && status !== 'running'}
+                    elementsSelectable={!isLocked && status !== 'running'}
+                    deleteKeyCode={
+                      isLocked || status === 'running' ? null : ['Backspace', 'Delete']
+                    }
+                    proOptions={{ hideAttribution: true }}
+                    isValidConnection={(connection) => {
+                      if (!connection.source || !connection.target) return false;
+                      const sn = nodes.find((n) => n.id === connection.source);
+                      const tn = nodes.find((n) => n.id === connection.target);
+                      if (!sn || !tn) return false;
+                      const isAgent = (t?: string) => t === 'agent' || t === 'supervisor';
+                      const isTrigger = (t?: string) => t === 'trigger' || t === 'input_trigger';
+                      if (sn.type === 'mcp_tool' && tn.type === 'mcp_tool') return false;
+                      if (sn.type === 'mcp_tool' && !isAgent(tn.type)) return false;
+                      if (isTrigger(sn.type) && !isAgent(tn.type)) return false;
+                      // Prevent connecting two MCP tools from the same server to the same agent (tool→agent)
+                      if (sn.type === 'mcp_tool' && isAgent(tn.type)) {
+                        const sameServerExists = edges.some((e) => {
+                          if (e.target !== connection.target) return false;
+                          if (e.source === connection.source) return false;
+                          const src = nodes.find((n) => n.id === e.source);
+                          return (
+                            src?.type === 'mcp_tool' &&
+                            src?.data?.mcpServerId != null &&
+                            src?.data?.mcpServerId === sn.data?.mcpServerId
+                          );
+                        });
+                        if (sameServerExists) return false;
+                      }
+                      // Prevent connecting two MCP tools from the same server to the same agent (agent→tool)
+                      if (isAgent(sn.type) && tn.type === 'mcp_tool') {
+                        const sameServerExists = edges.some((e) => {
+                          if (e.source !== connection.source) return false;
+                          const target = nodes.find((n) => n.id === e.target);
+                          return (
+                            target?.type === 'mcp_tool' &&
+                            target?.data?.mcpServerId != null &&
+                            target?.data?.mcpServerId === tn.data?.mcpServerId
+                          );
+                        });
+                        if (sameServerExists) return false;
+                      }
+                      // Block reverse connections (prevents cycles: A→B blocks B→A)
+                      if (
+                        edges.some(
+                          (e) => e.source === connection.target && e.target === connection.source,
+                        )
+                      )
+                        return false;
+                      return true;
+                    }}
+                  >
+                    <Background color="#94a3b8" gap={16} size={2} className="opacity-80" />
+                    {nodes.length === 0 && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="flex flex-col items-center text-center select-none">
+                          <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                            <Wrench className="w-6 h-6 text-slate-300" />
+                          </div>
+                          <p className="text-sm font-bold text-slate-400 font-mono mb-1">
+                            Empty Canvas
+                          </p>
+                          <p className="text-[10px] text-slate-300 font-mono max-w-[240px] leading-relaxed">
+                            Drag nodes from the sidebar or use the MCP Marketplace to add tools.
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-sm font-bold text-slate-400 font-mono mb-1">
-                        Empty Canvas
-                      </p>
-                      <p className="text-[10px] text-slate-300 font-mono max-w-[240px] leading-relaxed">
-                        Drag nodes from the sidebar or use the MCP Marketplace to add tools.
-                      </p>
-                    </div>
-                  </div>
-                )}
-                <div data-export-hide="true">
-                  <CustomZoomControls
-                    isLocked={isLocked}
-                    onToggleLock={() => setIsLocked(!isLocked)}
-                  />
-                </div>
-                <div data-export-hide="true">
-                  {isShortcutsOpen ? (
-                    <Panel
-                      position="bottom-left"
-                      className="ml-0 mb-0 bg-white border border-[#cbd5e1] p-2.5 font-mono text-[10px] text-slate-500 shadow-sm flex flex-col gap-1 select-none pointer-events-auto rounded-none w-[270px]"
-                    >
-                      <div className="flex items-center justify-between font-bold text-slate-700 border-b border-slate-100 pb-1 mb-1">
-                        <span>KEYBOARD SHORTCUTS</span>
-                        <button
-                          onClick={() => {
-                            setIsShortcutsOpen(false);
-                            localStorage.setItem('qwenweaver_shortcuts_open', 'false');
-                          }}
-                          className="text-slate-400 hover:text-slate-700 transition-colors p-0.5 cursor-pointer"
-                          title="Hide Legend"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                      <div className="flex justify-between gap-6">
-                        <span>Run Swarm:</span>
-                        <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
-                          Ctrl + Enter
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between gap-6">
-                        <span>Rearrange:</span>
-                        <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
-                          Ctrl + L
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between gap-6">
-                        <span>Toggle Lock:</span>
-                        <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
-                          Ctrl + Shift + L
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between gap-6">
-                        <span>Zoom In/Out:</span>
-                        <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
-                          Ctrl + + / -
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between gap-6">
-                        <span>Clear Canvas:</span>
-                        <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
-                          Ctrl + Alt + C
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between gap-6">
-                        <span>Delete Edge:</span>
-                        <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
-                          Click Edge + Backspace
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between gap-6">
-                        <span>Undo:</span>
-                        <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
-                          Ctrl + Z
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between gap-6">
-                        <span>Redo:</span>
-                        <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
-                          Ctrl + Shift + Z
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between gap-6">
-                        <span>Duplicate Node:</span>
-                        <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
-                          Ctrl + D
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between gap-6">
-                        <span>Deselect:</span>
-                        <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
-                          Esc
-                        </kbd>
-                      </div>
-                    </Panel>
-                  ) : (
+                    )}
                     <div data-export-hide="true">
-                      <Panel position="bottom-left" className="ml-0 mb-0 pointer-events-auto">
-                        <button
-                          onClick={() => {
-                            setIsShortcutsOpen(true);
-                            localStorage.setItem('qwenweaver_shortcuts_open', 'true');
-                          }}
-                          className="bg-white border border-[#cbd5e1] p-1.5 hover:bg-slate-50 text-slate-500 hover:text-slate-700 shadow-sm rounded-none text-[10px] font-mono font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
-                          title="Show Keyboard Shortcuts"
-                        >
-                          <Keyboard className="w-3.5 h-3.5 text-slate-400" />
-                          Shortcuts (?)
-                        </button>
-                      </Panel>
-                    </div>
-                  )}
-                </div>
-                <Panel position="bottom-right" className="pointer-events-auto">
-                  {isMinimapVisible ? (
-                    <div className="relative" style={{ height: 100, width: 140 }}>
-                      <button
-                        onClick={() => {
-                          setIsMinimapVisible(false);
-                          localStorage.setItem('qwenweaver_minimap_visible', 'false');
-                        }}
-                        className="absolute -top-2.5 right-0 z-10 bg-white border border-[#cbd5e1] p-0.5 hover:bg-slate-50 text-slate-400 hover:text-slate-700 shadow-sm transition-colors cursor-pointer"
-                        title="Collapse minimap"
-                      >
-                        <ChevronDown className="w-3 h-3" />
-                      </button>
-                      <MiniMap
-                        style={{
-                          height: 100,
-                          width: 140,
-                          background: '#ffffff',
-                          border: '1px solid #cbd5e1',
-                          borderRadius: 0,
-                        }}
-                        nodeColor={(node) => {
-                          switch (node.type) {
-                            case 'trigger':
-                              return '#10b981'; // Green
-                            case 'agent':
-                              return '#ea580c'; // Orange
-                            case 'supervisor':
-                              return '#2563eb'; // Blue
-                            case 'mcp_tool':
-                              return '#8b5cf6'; // Purple
-                            default:
-                              return '#cbd5e1'; // Slate
-                          }
-                        }}
-                        maskColor="rgba(241, 245, 249, 0.4)"
+                      <CustomZoomControls
+                        isLocked={isLocked}
+                        onToggleLock={() => setIsLocked(!isLocked)}
                       />
                     </div>
-                  ) : (
+                    <div data-export-hide="true">
+                      {isShortcutsOpen ? (
+                        <Panel
+                          position="bottom-left"
+                          className="ml-0 mb-0 bg-white border border-[#cbd5e1] p-2.5 font-mono text-[10px] text-slate-500 shadow-sm flex flex-col gap-1 select-none pointer-events-auto rounded-none w-[270px]"
+                        >
+                          <div className="flex items-center justify-between font-bold text-slate-700 border-b border-slate-100 pb-1 mb-1">
+                            <span>KEYBOARD SHORTCUTS</span>
+                            <button
+                              onClick={() => {
+                                setIsShortcutsOpen(false);
+                                localStorage.setItem('qwenweaver_shortcuts_open', 'false');
+                              }}
+                              className="text-slate-400 hover:text-slate-700 transition-colors p-0.5 cursor-pointer"
+                              title="Hide Legend"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                          <div className="flex justify-between gap-6">
+                            <span>Run Workflow:</span>
+                            <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
+                              Ctrl + Enter
+                            </kbd>
+                          </div>
+                          <div className="flex justify-between gap-6">
+                            <span>Rearrange:</span>
+                            <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
+                              Ctrl + L
+                            </kbd>
+                          </div>
+                          <div className="flex justify-between gap-6">
+                            <span>Toggle Lock:</span>
+                            <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
+                              Ctrl + Shift + L
+                            </kbd>
+                          </div>
+                          <div className="flex justify-between gap-6">
+                            <span>Zoom In/Out:</span>
+                            <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
+                              Ctrl + + / -
+                            </kbd>
+                          </div>
+                          <div className="flex justify-between gap-6">
+                            <span>Clear Canvas:</span>
+                            <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
+                              Ctrl + Alt + C
+                            </kbd>
+                          </div>
+                          <div className="flex justify-between gap-6">
+                            <span>Delete Edge:</span>
+                            <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
+                              Click Edge + Backspace
+                            </kbd>
+                          </div>
+                          <div className="flex justify-between gap-6">
+                            <span>Undo:</span>
+                            <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
+                              Ctrl + Z
+                            </kbd>
+                          </div>
+                          <div className="flex justify-between gap-6">
+                            <span>Redo:</span>
+                            <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
+                              Ctrl + Shift + Z
+                            </kbd>
+                          </div>
+                          <div className="flex justify-between gap-6">
+                            <span>Duplicate Node:</span>
+                            <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
+                              Ctrl + D
+                            </kbd>
+                          </div>
+                          <div className="flex justify-between gap-6">
+                            <span>Deselect:</span>
+                            <kbd className="bg-slate-50 px-1 border border-slate-200 font-semibold text-slate-600 rounded-none">
+                              Esc
+                            </kbd>
+                          </div>
+                        </Panel>
+                      ) : (
+                        <div data-export-hide="true">
+                          <Panel position="bottom-left" className="ml-0 mb-0 pointer-events-auto">
+                            <button
+                              onClick={() => {
+                                setIsShortcutsOpen(true);
+                                localStorage.setItem('qwenweaver_shortcuts_open', 'true');
+                              }}
+                              className="bg-white border border-[#cbd5e1] p-1.5 hover:bg-slate-50 text-slate-500 hover:text-slate-700 shadow-sm rounded-none text-[10px] font-mono font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
+                              title="Show Keyboard Shortcuts"
+                            >
+                              <Keyboard className="w-3.5 h-3.5 text-slate-400" />
+                              Shortcuts (?)
+                            </button>
+                          </Panel>
+                        </div>
+                      )}
+                    </div>
+                    <div data-export-hide="true">
+                      <Panel position="bottom-right" className="pointer-events-auto">
+                        {isMinimapVisible ? (
+                          <div className="relative" style={{ height: 100, width: 140 }}>
+                            <button
+                              onClick={() => {
+                                setIsMinimapVisible(false);
+                                localStorage.setItem('qwenweaver_minimap_visible', 'false');
+                              }}
+                              className="absolute -top-2.5 right-0 z-10 bg-white border border-[#cbd5e1] p-0.5 hover:bg-slate-50 text-slate-400 hover:text-slate-700 shadow-sm transition-colors cursor-pointer"
+                              title="Collapse minimap"
+                            >
+                              <ChevronUp className="w-3 h-3" />
+                            </button>
+                            <MiniMap
+                              style={{
+                                height: 100,
+                                width: 140,
+                                background: '#ffffff',
+                                border: '1px solid #cbd5e1',
+                                borderRadius: 0,
+                              }}
+                              nodeColor={(node) => {
+                                switch (node.type) {
+                                  case 'trigger':
+                                    return '#10b981'; // Green
+                                  case 'agent':
+                                    return '#ea580c'; // Orange
+                                  case 'supervisor':
+                                    return '#2563eb'; // Blue
+                                  case 'mcp_tool':
+                                    return '#8b5cf6'; // Purple
+                                  default:
+                                    return '#cbd5e1'; // Slate
+                                }
+                              }}
+                              maskColor="rgba(241, 245, 249, 0.4)"
+                            />
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setIsMinimapVisible(true);
+                              localStorage.setItem('qwenweaver_minimap_visible', 'true');
+                            }}
+                            className="bg-white border border-[#cbd5e1] p-1 hover:bg-slate-50 text-slate-400 hover:text-slate-700 shadow-sm transition-colors cursor-pointer"
+                            title="Expand minimap"
+                          >
+                            <ChevronDown className="w-3 h-3" />
+                          </button>
+                        )}
+                      </Panel>
+                    </div>
+                  </ReactFlow>
+
+                  {/* Floating Sidebar Toggle Button (when collapsed) */}
+                  {!isSidebarOpen && (
                     <button
-                      onClick={() => {
-                        setIsMinimapVisible(true);
-                        localStorage.setItem('qwenweaver_minimap_visible', 'true');
-                      }}
-                      className="bg-white border border-[#cbd5e1] p-1 hover:bg-slate-50 text-slate-400 hover:text-slate-700 shadow-sm transition-colors cursor-pointer"
-                      title="Expand minimap"
+                      onClick={() => setIsSidebarOpen(true)}
+                      className="absolute top-4 right-4 z-20 bg-white border border-[#cbd5e1] p-2 hover:bg-slate-50 text-slate-700 shadow-sm rounded-none transition-colors cursor-pointer"
+                      title="Open Properties Panel"
                     >
-                      <ChevronUp className="w-3 h-3" />
+                      <ChevronLeft className="w-4 h-4" />
                     </button>
                   )}
-                </Panel>
-              </ReactFlow>
+                </div>
 
-              {/* Floating Sidebar Toggle Button (when collapsed) */}
-              {!isSidebarOpen && (
-                <button
-                  onClick={() => setIsSidebarOpen(true)}
-                  className="absolute top-4 right-4 z-20 bg-white border border-[#cbd5e1] p-2 hover:bg-slate-50 text-slate-700 shadow-sm rounded-none transition-colors cursor-pointer"
-                  title="Open Properties Panel"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-              )}
-            </div>
+                {/* Footer: Observability + Copilot + Help (width matches canvas, not behind inspector) */}
+                <div className="flex-shrink-0 flex flex-row items-stretch">
+                  <div className="flex-1 min-w-0">
+                    <GanttMetrics />
+                  </div>
+                  <div className="flex flex-row items-center gap-2 p-2 bg-white border-t border-l border-[#cbd5e1]">
+                    <CopilotOverlay className="relative" />
+                    {!isTourActive && (
+                      <button
+                        onClick={() => useStore.getState().startTour()}
+                        className="pointer-events-auto flex items-center gap-1.5 border border-[#cbd5e1] bg-white px-3 py-1.5 font-mono text-xs font-bold text-slate-600 shadow-lg hover:bg-slate-50 rounded-none"
+                      >
+                        <HelpCircle className="h-3.5 w-3.5 text-[#ea580c]" />
+                        Help
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
 
-            {/* Observability Board centered vertically next to Canvas */}
-            <div className="flex-shrink-0">
-              <GanttMetrics />
+              {/* Inspector sits inline with canvas, outside canvas column so buttons don't overlap */}
+              {isSidebarOpen && <Inspector onClose={() => setIsSidebarOpen(false)} />}
             </div>
           </div>
-
-          {/* Right Properties Panel Inspector sits under the top nav header */}
-          {isSidebarOpen && <Inspector onClose={() => setIsSidebarOpen(false)} />}
         </div>
       </div>
-
-      {/* Draggable Qwen Copilot Floating Chat Assistant */}
-      <CopilotOverlay />
 
       {/* Maximized Node Terminal Dialog Overlay */}
       <MaximizedNodeOverlay />
@@ -1222,6 +1318,7 @@ export const CanvasWorkspace = () => {
               workflowName: name,
               workflowDescription: description,
             });
+            markClean();
             setSaveDialogOpen(false);
             navigate(`/workflows/${data.workflowId}`, { replace: true });
             toast.success('Workflow saved!');

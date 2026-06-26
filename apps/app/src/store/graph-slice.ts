@@ -5,8 +5,8 @@ import { toast } from 'sonner';
 import { EXAMPLE_WORKFLOWS } from '../lib/example-workflows.js';
 import { WorkflowPayload, NodeData } from '@qwenweaver/types';
 
-// Initial template for the "Research Swarm"
-const RESEARCH_SWARM_TEMPLATE = {
+// Initial template for the "Research Workflow"
+const RESEARCH_WORKFLOW_TEMPLATE = {
   nodes: [
     {
       id: 'node-trigger',
@@ -111,8 +111,8 @@ const RESEARCH_SWARM_TEMPLATE = {
 let _updateNodeDataTimer: ReturnType<typeof setTimeout> | undefined;
 
 export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (set, get) => ({
-  nodes: RESEARCH_SWARM_TEMPLATE.nodes,
-  edges: RESEARCH_SWARM_TEMPLATE.edges,
+  nodes: RESEARCH_WORKFLOW_TEMPLATE.nodes,
+  edges: RESEARCH_WORKFLOW_TEMPLATE.edges,
   selectedNodeId: null,
   workflowId: null,
   workflowName: '',
@@ -186,9 +186,50 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
         }
       }
 
-      // Block duplicate connections in the same direction only
+      // Prevent connecting two MCP tools from the same server to the same agent (tool→agent)
+      if (sourceNode.type === 'mcp_tool' && isAgent(targetNode.type)) {
+        const sameServerExists = state.edges.some((e) => {
+          if (e.target !== connection.target) return false;
+          if (e.source === connection.source) return false;
+          const src = state.nodes.find((n) => n.id === e.source);
+          return (
+            src?.type === 'mcp_tool' &&
+            src?.data?.mcpServerId != null &&
+            src?.data?.mcpServerId === sourceNode.data?.mcpServerId
+          );
+        });
+        if (sameServerExists) {
+          toast.error(
+            `"${sourceNode.data?.label || 'MCP Tool'}" and another tool from the same server are both connected to this agent. Only one tool per server is allowed per agent.`,
+          );
+          return {};
+        }
+      }
+
+      // Prevent connecting two MCP tools from the same server to the same agent (agent→tool)
+      if (isAgent(sourceNode.type) && targetNode.type === 'mcp_tool') {
+        const sameServerExists = state.edges.some((e) => {
+          if (e.source !== connection.source) return false;
+          const target = state.nodes.find((n) => n.id === e.target);
+          return (
+            target?.type === 'mcp_tool' &&
+            target?.data?.mcpServerId != null &&
+            target?.data?.mcpServerId === targetNode.data?.mcpServerId
+          );
+        });
+        if (sameServerExists) {
+          toast.error(
+            `"${targetNode.data?.label || 'MCP Tool'}" and another tool from the same server are both connected to this agent. Only one tool per server is allowed per agent.`,
+          );
+          return {};
+        }
+      }
+
+      // Block duplicate or reverse connections between the same two nodes
       const hasEdge = state.edges.some(
-        (e) => e.source === connection.source && e.target === connection.target,
+        (e) =>
+          (e.source === connection.source && e.target === connection.target) ||
+          (e.source === connection.target && e.target === connection.source),
       );
       if (hasEdge) {
         toast.error('A connection already exists between these nodes.');
@@ -336,8 +377,8 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
     if (templateName === 'research') {
       get().pushHistory();
       set({
-        nodes: RESEARCH_SWARM_TEMPLATE.nodes,
-        edges: RESEARCH_SWARM_TEMPLATE.edges,
+        nodes: RESEARCH_WORKFLOW_TEMPLATE.nodes,
+        edges: RESEARCH_WORKFLOW_TEMPLATE.edges,
         selectedNodeId: null,
         isDirty: false,
       });

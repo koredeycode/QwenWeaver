@@ -26,7 +26,7 @@ Workspace names: `@qwenweaver/app`, `@qwenweaver/api`, `@qwenweaver/database`, `
 
 ### Before committing
 
-Run `pnpm lint && pnpm test` and fix any failures first.
+Run `pnpm lint && pnpm test && pnpm format` and fix any failures first.
 
 ### Commit style
 
