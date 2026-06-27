@@ -21,9 +21,16 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
   historyLoading: false,
 
   fetchExecutionHistory: async (limit = 20, offset = 0) => {
+    const workflowId = get().workflowId;
+    if (!workflowId) {
+      set({ executionHistory: [], historyLoading: false });
+      return;
+    }
     set({ historyLoading: true });
     try {
-      const res = await fetchApi(`/api/execution?limit=${limit}&offset=${offset}`);
+      const res = await fetchApi(
+        `/api/execution?limit=${limit}&offset=${offset}&workflowId=${workflowId}`,
+      );
       if (res.ok) {
         const data = (await res.json()) as any;
         set({ executionHistory: data.executions || [] });

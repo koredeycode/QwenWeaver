@@ -106,6 +106,7 @@ export interface QueryProvider {
     userId: string,
     limit?: number,
     offset?: number,
+    workflowId?: string,
   ): Promise<ExecutionSummaryRow[]>;
 
   getExecution(executionId: string): Promise<{

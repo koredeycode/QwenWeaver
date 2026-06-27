@@ -515,6 +515,7 @@ export const mysqlProvider: QueryProvider = {
     userId: string,
     limit: number = 20,
     offset: number = 0,
+    workflowId?: string,
   ): Promise<ExecutionSummaryRow[]> {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
@@ -533,7 +534,14 @@ export const mysqlProvider: QueryProvider = {
         mysqlSchema.mysqlWorkflows,
         eq(mysqlSchema.mysqlExecutions.workflowId, mysqlSchema.mysqlWorkflows.id),
       )
-      .where(eq(mysqlSchema.mysqlExecutions.userId, userId))
+      .where(
+        workflowId
+          ? and(
+              eq(mysqlSchema.mysqlExecutions.userId, userId),
+              eq(mysqlSchema.mysqlExecutions.workflowId, workflowId),
+            )
+          : eq(mysqlSchema.mysqlExecutions.userId, userId),
+      )
       .orderBy(desc(mysqlSchema.mysqlExecutions.startedAt))
       .limit(limit)
       .offset(offset);

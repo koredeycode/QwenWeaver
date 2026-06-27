@@ -503,6 +503,7 @@ export const pgProvider: QueryProvider = {
     userId: string,
     limit: number = 20,
     offset: number = 0,
+    workflowId?: string,
   ): Promise<ExecutionSummaryRow[]> {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
@@ -518,7 +519,14 @@ export const pgProvider: QueryProvider = {
       })
       .from(pgSchema.pgExecutions)
       .leftJoin(pgSchema.pgWorkflows, eq(pgSchema.pgExecutions.workflowId, pgSchema.pgWorkflows.id))
-      .where(eq(pgSchema.pgExecutions.userId, userId))
+      .where(
+        workflowId
+          ? and(
+              eq(pgSchema.pgExecutions.userId, userId),
+              eq(pgSchema.pgExecutions.workflowId, workflowId),
+            )
+          : eq(pgSchema.pgExecutions.userId, userId),
+      )
       .orderBy(desc(pgSchema.pgExecutions.startedAt))
       .limit(limit)
       .offset(offset);

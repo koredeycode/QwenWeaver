@@ -539,6 +539,7 @@ export const sqliteProvider: QueryProvider = {
     userId: string,
     limit: number = 20,
     offset: number = 0,
+    workflowId?: string,
   ): Promise<ExecutionSummaryRow[]> {
     const { db } = getConnection();
     const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
@@ -557,7 +558,14 @@ export const sqliteProvider: QueryProvider = {
         sqliteSchema.sqliteWorkflows,
         eq(sqliteSchema.sqliteExecutions.workflowId, sqliteSchema.sqliteWorkflows.id),
       )
-      .where(eq(sqliteSchema.sqliteExecutions.userId, userId))
+      .where(
+        workflowId
+          ? and(
+              eq(sqliteSchema.sqliteExecutions.userId, userId),
+              eq(sqliteSchema.sqliteExecutions.workflowId, workflowId),
+            )
+          : eq(sqliteSchema.sqliteExecutions.userId, userId),
+      )
       .orderBy(desc(sqliteSchema.sqliteExecutions.startedAt))
       .limit(limit)
       .offset(offset);
