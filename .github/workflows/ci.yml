@@ -2,9 +2,18 @@ name: CI
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    branches: [dev]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'Dockerfile'
+      - 'docker-compose.prod.yml'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'package.json'
+      - 'tsconfig*.json'
+      - '.github/workflows/ci.yml'
+      - '.github/workflows/deploy.yml'
   workflow_call:
 
 jobs:

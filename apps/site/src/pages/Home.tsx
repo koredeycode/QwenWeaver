@@ -259,29 +259,45 @@ function buildEdgePath(
   const p2 = getHandlePos(tgtId, tgtPos, tgtHandle);
   if (!p1 || !p2) return '';
 
-  const r = 6;
+  const r = 8; // corner radius
 
-  if (srcHandle === 'bottom') {
+  if (srcHandle === 'bottom' && tgtHandle === 'top') {
+    // Vertical-to-vertical: Vertical -> Horizontal -> Vertical
+    const dy = Math.sign(p2.y - p1.y);
+    const dx = Math.sign(p2.x - p1.x);
     const midY = (p1.y + p2.y) / 2;
+
+    if (Math.abs(p2.x - p1.x) < 2 * r) {
+      return `M${p1.x},${p1.y} L${p2.x},${p2.y}`;
+    }
+
     return [
       `M${p1.x},${p1.y}`,
-      `L${p1.x},${midY - r}`,
-      `Q${p1.x},${midY} ${p1.x + r},${midY}`,
-      `L${p2.x - r},${midY}`,
-      `Q${p2.x},${midY} ${p2.x},${midY + r}`,
+      `L${p1.x},${midY - dy * r}`,
+      `Q${p1.x},${midY} ${p1.x + dx * r},${midY}`,
+      `L${p2.x - dx * r},${midY}`,
+      `Q${p2.x},${midY} ${p2.x},${midY + dy * r}`,
+      `L${p2.x},${p2.y}`,
+    ].join(' ');
+  } else {
+    // Horizontal-to-horizontal: Horizontal -> Vertical -> Horizontal
+    const dx = Math.sign(p2.x - p1.x);
+    const dy = Math.sign(p2.y - p1.y);
+    const midX = (p1.x + p2.x) / 2;
+
+    if (Math.abs(p2.y - p1.y) < 2 * r) {
+      return `M${p1.x},${p1.y} L${p2.x},${p2.y}`;
+    }
+
+    return [
+      `M${p1.x},${p1.y}`,
+      `L${midX - dx * r},${p1.y}`,
+      `Q${midX},${p1.y} ${midX},${p1.y + dy * r}`,
+      `L${midX},${p2.y - dy * r}`,
+      `Q${midX},${p2.y} ${midX + dx * r},${p2.y}`,
       `L${p2.x},${p2.y}`,
     ].join(' ');
   }
-
-  const midX = (p1.x + p2.x) / 2;
-  return [
-    `M${p1.x},${p1.y}`,
-    `L${midX - r},${p1.y}`,
-    `Q${midX},${p1.y} ${midX},${p1.y + r}`,
-    `L${midX},${p2.y - r}`,
-    `Q${midX},${p2.y} ${midX - r},${p2.y}`,
-    `L${p2.x},${p2.y}`,
-  ].join(' ');
 }
 
 function edgeColor(e: { source: string; target: string }) {
@@ -375,7 +391,7 @@ function DemoTriggerNode({ status }: { status: 'pending' | 'running' | 'complete
         </div>
         <span className="text-[7px] text-slate-400 font-mono">Click to execute</span>
       </div>
-      <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-emerald-500 border-[1.5px] border-slate-700 rounded-full" />
+      <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-emerald-500 border-2 border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
     </div>
   );
 }
@@ -385,8 +401,8 @@ function DemoAgentNode({ status }: { status: 'pending' | 'running' | 'completed'
     <div
       className={`w-full h-full bg-white border-2 ${status === 'completed' ? 'border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.15)]' : status === 'running' ? 'border-primary-container animate-[nodePulse_2s_ease-in-out_infinite]' : 'border-outline'} text-slate-800 font-sans shadow-sm flex flex-col rounded-none relative`}
     >
-      <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-[#f97316] border-[1.5px] border-slate-700 rounded-full" />
-      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-purple-500 border-[1.5px] border-slate-700 rounded-full" />
+      <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-[#f97316] border-2 border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
+      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-purple-500 border-2 border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
 
       <div className="flex items-center justify-between border-b border-outline-variant px-1.5 py-1">
         <div className="flex items-center gap-1.5">
@@ -404,7 +420,7 @@ function DemoAgentNode({ status }: { status: 'pending' | 'running' | 'completed'
         </div>
       </div>
 
-      <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-[#f97316] border-[1.5px] border-slate-700 rounded-full" />
+      <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-[#f97316] border-2 border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
     </div>
   );
 }
@@ -414,8 +430,8 @@ function DemoSupervisorNode({ status }: { status: 'pending' | 'running' | 'compl
     <div
       className={`w-full h-full bg-white border-2 ${status === 'completed' ? 'border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.15)]' : status === 'running' ? 'border-secondary-container animate-[supervisorPulse_2s_ease-in-out_infinite]' : 'border-outline'} text-slate-800 font-sans shadow-md flex flex-col rounded-none relative`}
     >
-      <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-[#2563eb] border-[1.5px] border-slate-700 rounded-full" />
-      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-purple-500 border-[1.5px] border-slate-700 rounded-full" />
+      <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-[#2563eb] border-2 border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
+      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-purple-500 border-2 border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
 
       <div className="flex items-center justify-between border-b border-outline px-1.5 py-1">
         <div className="flex items-center gap-1.5">
@@ -435,7 +451,7 @@ function DemoSupervisorNode({ status }: { status: 'pending' | 'running' | 'compl
         </div>
       </div>
 
-      <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-[#2563eb] border-[1.5px] border-slate-700 rounded-full" />
+      <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-[#2563eb] border-2 border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
     </div>
   );
 }
@@ -445,12 +461,12 @@ function DemoToolNode({ status }: { status: 'pending' | 'running' | 'completed' 
     <div
       className={`w-full h-full bg-white border-2 ${status === 'completed' ? 'border-emerald-500 shadow-[0_2px_6px_rgba(16,185,129,0.12)]' : status === 'running' ? 'border-purple-500 shadow-[0_2px_8px_rgba(168,85,247,0.15)]' : 'border-purple-200'} text-slate-800 font-sans shadow-sm flex flex-col rounded-none relative`}
     >
-      <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-purple-500 border border-white rounded-full" />
-      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-purple-500 border border-white rounded-full" />
+      <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-purple-500 border-2 border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
+      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-purple-500 border-2 border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
 
       <div className="flex items-center justify-between px-1 py-0.5 border-b border-outline-variant">
         <div className="flex items-center gap-0.5">
-          <Wrench className="w-2 h-2 text-purple-600" />
+          <Wrench className="w-2.5 h-2.5 text-purple-600" />
           <span className="text-[5px] font-mono font-bold tracking-wider text-purple-600">MCP</span>
         </div>
         <div className="flex items-center gap-0.5">
@@ -460,7 +476,7 @@ function DemoToolNode({ status }: { status: 'pending' | 'running' | 'completed' 
       </div>
       <div className="flex items-center justify-center flex-1 min-h-0">
         <div className="w-6 h-6 rounded bg-purple-100 flex items-center justify-center">
-          <Wrench className="w-3 h-3 text-purple-600" />
+          <Wrench className="w-3.5 h-3.5 text-purple-600" />
         </div>
       </div>
     </div>
@@ -507,11 +523,27 @@ function CanvasDemo() {
       }));
     };
     const onUp = () => setDragging(null);
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 0) return;
+      e.preventDefault(); // prevent scrolling
+      const touch = e.touches[0];
+      setPositions((prev) => ({
+        ...prev,
+        [dragging]: { x: touch.clientX - dragOffset.x, y: touch.clientY - dragOffset.y },
+      }));
+    };
+    const onTouchEnd = () => setDragging(null);
+
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', onTouchEnd);
     return () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
     };
   }, [dragging, dragOffset]);
 
@@ -520,6 +552,14 @@ function CanvasDemo() {
     const p = positions[id];
     setDragging(id);
     setDragOffset({ x: e.clientX - p.x, y: e.clientY - p.y });
+  };
+
+  const onNodeTouchStart = (id: string, e: React.TouchEvent) => {
+    if (e.touches.length === 0) return;
+    const touch = e.touches[0];
+    const p = positions[id];
+    setDragging(id);
+    setDragOffset({ x: touch.clientX - p.x, y: touch.clientY - p.y });
   };
 
   const startExecution = () => {
@@ -593,6 +633,62 @@ function CanvasDemo() {
             <pattern id="demo-grid" width="16" height="16" patternUnits="userSpaceOnUse">
               <circle cx="8" cy="8" r="0.7" fill="#94a3b8" opacity="0.25" />
             </pattern>
+            {/* Markers for arrow heads */}
+            <marker
+              id="arrow-inactive"
+              viewBox="0 0 10 10"
+              refX="8"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#cbd5e1" />
+            </marker>
+            <marker
+              id="arrow-trigger"
+              viewBox="0 0 10 10"
+              refX="8"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10b981" />
+            </marker>
+            <marker
+              id="arrow-agent"
+              viewBox="0 0 10 10"
+              refX="8"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#f97316" />
+            </marker>
+            <marker
+              id="arrow-supervisor"
+              viewBox="0 0 10 10"
+              refX="8"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#2563eb" />
+            </marker>
+            <marker
+              id="arrow-tool"
+              viewBox="0 0 10 10"
+              refX="8"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#8b5cf6" />
+            </marker>
           </defs>
           <rect width="100%" height="100%" fill="url(#demo-grid)" />
         </svg>
@@ -605,28 +701,46 @@ function CanvasDemo() {
         >
           {demoEdges.map((e, i) => {
             const d = buildEdgePath(e.source, e.target, positions[e.source], positions[e.target]);
-            const color = edgeColor(e);
+            const colorVal = edgeColor(e);
             const srcRunning = nodeStatuses[e.source] === 'running';
             const srcDone = nodeStatuses[e.source] === 'completed';
             const active = srcRunning || srcDone;
             const animDelay = `${i * 0.2}s`;
+
+            const edgeStrokeColor = active ? colorVal : '#cbd5e1';
+            const markerId = !active
+              ? 'arrow-inactive'
+              : demoNodeDefs.find((n) => n.id === e.source)?.type === 'trigger'
+                ? 'arrow-trigger'
+                : demoNodeDefs.find((n) => n.id === e.source)?.type === 'supervisor'
+                  ? 'arrow-supervisor'
+                  : demoNodeDefs.find((n) => n.id === e.source)?.type === 'tool'
+                    ? 'arrow-tool'
+                    : 'arrow-agent';
+
             return (
               <g key={i}>
-                <path d={d} fill="none" stroke={color} strokeWidth="3" strokeOpacity="0.3" />
+                <path
+                  d={d}
+                  fill="none"
+                  stroke={edgeStrokeColor}
+                  strokeWidth={active ? '2.5' : '1.5'}
+                  markerEnd={`url(#${markerId})`}
+                />
                 {active && (
                   <path
                     d={d}
                     fill="none"
-                    stroke={color}
-                    strokeWidth="3"
+                    stroke={edgeStrokeColor}
+                    strokeWidth="2"
                     strokeOpacity={0.9}
-                    strokeDasharray="6 4"
+                    strokeDasharray="5 5"
                     className={srcRunning ? 'animate-edge-flow' : ''}
                     style={{ animationDelay: animDelay }}
                   />
                 )}
                 {srcRunning && (
-                  <circle r="3" fill={color} opacity="0.9">
+                  <circle r="3.5" fill={edgeStrokeColor} opacity="0.9">
                     <animateMotion dur={`${1.2 + i * 0.2}s`} repeatCount="indefinite" path={d} />
                   </circle>
                 )}
@@ -644,6 +758,7 @@ function CanvasDemo() {
             <div
               key={n.id}
               onMouseDown={(e) => onNodeMouseDown(n.id, e)}
+              onTouchStart={(e) => onNodeTouchStart(n.id, e)}
               className="absolute cursor-grab active:cursor-grabbing select-none"
               style={{
                 left: pos.x,
@@ -653,6 +768,7 @@ function CanvasDemo() {
                 opacity: mounted ? 1 : 0,
                 transition: isDragging ? 'none' : `opacity 0.4s ease ${i * 0.1}s`,
                 zIndex: isDragging ? 20 : 10,
+                touchAction: 'none',
               }}
             >
               {n.type === 'trigger' && <DemoTriggerNode status={status} />}

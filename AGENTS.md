@@ -120,6 +120,28 @@ When the user clicks "Run Workflow":
 
 ---
 
+---
+
+## 6. Git Workflow
+
+- **Default branch:** `main` (production). All work happens on the `dev` branch.
+- **Never commit to `main` directly.** Work exclusively on the `dev` branch.
+- **PRs are manual.** Never create a PR unless the user explicitly asks you to. When asked:
+  ```bash
+  git push origin dev
+  gh pr create --base main --head dev --title "..." --body "..."
+  ```
+  The user will review and merge manually. Do not auto-merge. Return the PR URL after creating it.
+- **Before creating a PR:** Inspect `git status`, `git diff`, and recent commits to ensure everything is correct.
+- **After merging, update `dev` from `main`:**
+  ```bash
+  git checkout main && git pull && git checkout dev && git merge main
+  ```
+- **Before committing:** Run `pnpm lint && pnpm test && pnpm format` and fix any failures.
+- **Commit style:** Use conventional commits (see Section 1).
+
+---
+
 ## 5. Boundaries
 
 - **Secrets.** Never hardcode API keys. Never commit `.env` files.
