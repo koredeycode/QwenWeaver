@@ -30,6 +30,8 @@ export const CopilotGenerateBody = z.object({
   mode: z.enum(['generate', 'modify', 'explain']).default('generate'),
   /** User-selected model for copilot reasoning */
   model: z.string().optional(),
+  /** Workflow ID for loading and persisting past messages context */
+  workflowId: z.string().optional(),
 });
 
 export const COPILOT_GENERATE_SYSTEM_PROMPT = `You are QwenWeaver's AI Copilot — an expert at designing new multi-agent workflow graphs.

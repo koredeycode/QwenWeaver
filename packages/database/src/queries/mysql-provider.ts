@@ -17,6 +17,7 @@ import type {
   CredentialResponse,
   CredentialInput,
   CredentialUpdate,
+  CopilotHistoryMessage,
 } from '@qwenweaver/types';
 import { encrypt, decrypt } from '@qwenweaver/encryption';
 
@@ -413,6 +414,7 @@ export const mysqlProvider: QueryProvider = {
         description: mysqlSchema.mysqlWorkflows.description,
         createdAt: mysqlSchema.mysqlWorkflows.createdAt,
         nodesEdges: mysqlSchema.mysqlWorkflows.nodesEdges,
+        copilotHistory: mysqlSchema.mysqlWorkflows.copilotHistory,
       })
       .from(mysqlSchema.mysqlWorkflows)
       .where(
@@ -434,6 +436,24 @@ export const mysqlProvider: QueryProvider = {
       );
     const affectedRows = (result as unknown as { affectedRows: number }).affectedRows;
     return (affectedRows ?? 0) > 0;
+  },
+
+  async updateCopilotHistory(
+    workflowId: string,
+    userId: string,
+    history: CopilotHistoryMessage[],
+  ): Promise<void> {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    await mysqlDb
+      .update(mysqlSchema.mysqlWorkflows)
+      .set({ copilotHistory: history })
+      .where(
+        and(
+          eq(mysqlSchema.mysqlWorkflows.id, workflowId),
+          eq(mysqlSchema.mysqlWorkflows.userId, userId),
+        ),
+      );
   },
 
   async createExecution(executionId: string, workflowId: string, userId: string): Promise<void> {

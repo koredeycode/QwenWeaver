@@ -281,3 +281,14 @@ export type GraphAction =
       type: 'delete_edges';
       payload: string[];
     };
+
+export interface CopilotHistoryMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  thinking?: string;
+  proposal?: {
+    id: string;
+    actions: GraphAction[];
+    status?: 'pending' | 'approved' | 'rejected';
+  };
+}

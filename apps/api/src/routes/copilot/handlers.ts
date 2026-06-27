@@ -163,7 +163,7 @@ export const handleCopilot = async (c: Context<{ Variables: Variables }>) => {
     return c.json({ error: 'Invalid request body', details: parsed.error.format() }, 400);
   }
 
-  const { prompt, canvasState, mode, model: userModel } = parsed.data;
+  const { prompt, canvasState, mode, model: userModel, workflowId } = parsed.data;
 
   const apiKey = process.env.DASHSCOPE_API_KEY;
   if (!apiKey) {
@@ -171,7 +171,7 @@ export const handleCopilot = async (c: Context<{ Variables: Variables }>) => {
   }
 
   log.info(
-    { prompt: prompt.slice(0, 100), mode, userModel },
+    { prompt: prompt.slice(0, 100), mode, userModel, workflowId },
     'Copilot streaming generation requested',
   );
 
@@ -218,10 +218,35 @@ export const handleCopilot = async (c: Context<{ Variables: Variables }>) => {
       ];
       const modelId = userModel && validModels.includes(userModel) ? userModel : 'qwen3.7-max';
 
+      // Load past messages context if workflowId is specified
+      let pastMessages: any[] = [];
+      let dbWorkflow: any = null;
+
+      if (workflowId) {
+        try {
+          const dbProvider = getQueryProvider();
+          dbWorkflow = await dbProvider.getWorkflow(workflowId, userId);
+          if (dbWorkflow && dbWorkflow.copilotHistory) {
+            pastMessages = dbWorkflow.copilotHistory.map((msg: any) => ({
+              role: msg.role === 'user' ? 'user' : 'assistant',
+              content: msg.content,
+            }));
+          }
+        } catch (err) {
+          log.warn({ workflowId, error: (err as Error).message }, 'Failed to load copilot history');
+        }
+      }
+
+      const messages: any[] = [...pastMessages, { role: 'user', content: userMessage }];
+
+      let fullText = '';
+      let fullThinking = '';
+      let proposalObj: any = null;
+
       const streamResult = streamText({
         model: provider(modelId),
         system: systemPrompt,
-        prompt: userMessage,
+        messages: messages,
         maxSteps: 5,
         providerOptions: {
           alibaba: {
@@ -274,6 +299,7 @@ export const handleCopilot = async (c: Context<{ Variables: Variables }>) => {
             }),
             execute: async ({ actions }: { actions: any[] }) => {
               const proposalId = crypto.randomUUID();
+              proposalObj = { id: proposalId, actions, status: 'pending' };
               await stream.writeSSE({
                 event: 'proposal',
                 data: JSON.stringify({ id: proposalId, actions }),
@@ -290,6 +316,7 @@ export const handleCopilot = async (c: Context<{ Variables: Variables }>) => {
           const reasoningDelta =
             (part as any).textDelta || (part as any).text || (part as any).reasoning || '';
           if (reasoningDelta) {
+            fullThinking += reasoningDelta;
             await stream.writeSSE({
               event: 'thinking',
               data: JSON.stringify({ chunk: reasoningDelta }),
@@ -299,12 +326,34 @@ export const handleCopilot = async (c: Context<{ Variables: Variables }>) => {
         } else if (part.type === 'text-delta') {
           const textChunk = (part as any).textDelta || (part as any).text || '';
           if (textChunk) {
+            fullText += textChunk;
             await stream.writeSSE({
               event: 'token',
               data: JSON.stringify({ chunk: textChunk }),
               id: crypto.randomUUID().slice(0, 8),
             });
           }
+        }
+      }
+
+      // Persist the user prompt and the copilot's structured assistant reply in history
+      if (workflowId && dbWorkflow) {
+        try {
+          const dbProvider = getQueryProvider();
+          const existingHistory = dbWorkflow.copilotHistory || [];
+          const updatedHistory = [
+            ...existingHistory,
+            { role: 'user', content: prompt },
+            {
+              role: 'assistant',
+              content: fullText,
+              thinking: fullThinking || undefined,
+              proposal: proposalObj || undefined,
+            },
+          ];
+          await dbProvider.updateCopilotHistory(workflowId, userId, updatedHistory);
+        } catch (err) {
+          log.warn({ workflowId, error: (err as Error).message }, 'Failed to save copilot history');
         }
       }
 

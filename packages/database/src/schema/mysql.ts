@@ -5,6 +5,7 @@ import type {
   AgentLogInput,
   AgentLogOutput,
   WorkflowPayload,
+  CopilotHistoryMessage,
 } from '@qwenweaver/types';
 import type { MCPAuthConfig } from '@qwenweaver/types';
 
@@ -26,6 +27,7 @@ export const mysqlWorkflows = mysqlTable(
     description: text('description'),
     isActive: int('is_active').default(1).notNull(),
     nodesEdges: json('nodes_edges').$type<WorkflowPayload>(),
+    copilotHistory: json('copilot_history').$type<CopilotHistoryMessage[]>(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => [index('workflows_user_id_idx').on(table.userId)],

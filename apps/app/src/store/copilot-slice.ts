@@ -1,6 +1,7 @@
 import { StateCreator } from 'zustand';
 import { StoreState, CopilotSlice, CopilotMessage } from './types.js';
 import { getAccessToken, API_URL } from '../lib/api-client.js';
+import type { CopilotHistoryMessage } from '@qwenweaver/types';
 
 export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> = (set, get) => ({
   copilotMessages: [
@@ -78,6 +79,8 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
         headers['Authorization'] = `Bearer ${token}`;
       }
 
+      const workflowId = get().workflowId;
+
       const response = await fetch(`${API_URL}/api/copilot`, {
         method: 'POST',
         headers,
@@ -86,6 +89,7 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
           canvasState,
           mode,
           model: copilotModel,
+          workflowId: workflowId || undefined,
         }),
       });
 
@@ -93,22 +97,20 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
         const errText = await response.text();
         updateLastAssistantMessage((msg) => ({
           ...msg,
-          text: `Error calling copilot: ${errText || response.statusText}`,
+          text: `Failed: ${errText || response.statusText}`,
         }));
-        set({ isCopilotTyping: false });
         return;
       }
 
-      if (!response.body) {
+      const reader = response.body?.getReader();
+      if (!reader) {
         updateLastAssistantMessage((msg) => ({
           ...msg,
-          text: 'Error: No response body returned from server.',
+          text: 'No response body stream received',
         }));
-        set({ isCopilotTyping: false });
         return;
       }
 
-      const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
 
@@ -149,20 +151,12 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
                   text: (msg.text || '') + payload.chunk,
                 }));
               } else if (eventName === 'proposal') {
-                let parsedActions = payload.actions;
-                if (typeof parsedActions === 'string') {
-                  try {
-                    parsedActions = JSON.parse(parsedActions);
-                  } catch (e) {
-                    parsedActions = [];
-                  }
-                }
                 updateLastAssistantMessage((msg) => ({
                   ...msg,
                   proposal: {
                     id: payload.id,
                     status: 'pending',
-                    actions: parsedActions || [],
+                    actions: payload.actions || [],
                   },
                 }));
               } else if (eventName === 'error') {
@@ -186,5 +180,31 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
     } finally {
       set({ isCopilotTyping: false });
     }
+  },
+
+  loadCopilotHistory: (history: CopilotHistoryMessage[]) => {
+    const defaultMsg: CopilotMessage = {
+      role: 'assistant',
+      text: 'Hi! I am the Visual Architect Copilot. I can help configure your workflow or generate complex multi-agent workflows. Try typing "generate search workflow" or asking questions.',
+      thinking: '',
+    };
+    if (!history || history.length === 0) {
+      set({ copilotMessages: [defaultMsg] });
+      return;
+    }
+
+    const mapped = history.map((msg: any) => ({
+      role: msg.role === 'user' ? ('user' as const) : ('assistant' as const),
+      text: msg.content,
+      thinking: msg.thinking || '',
+      proposal: msg.proposal
+        ? {
+            id: msg.proposal.id,
+            status: msg.proposal.status || 'pending',
+            actions: msg.proposal.actions || [],
+          }
+        : undefined,
+    }));
+    set({ copilotMessages: [defaultMsg, ...mapped] });
   },
 });

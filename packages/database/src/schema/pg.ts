@@ -13,6 +13,7 @@ import type {
   AgentLogInput,
   AgentLogOutput,
   WorkflowPayload,
+  CopilotHistoryMessage,
 } from '@qwenweaver/types';
 import type { MCPAuthConfig } from '@qwenweaver/types';
 
@@ -32,6 +33,7 @@ export const pgWorkflows = pgTable(
     description: text('description'),
     isActive: integer('is_active').default(1).notNull(),
     nodesEdges: jsonb('nodes_edges').$type<WorkflowPayload>(),
+    copilotHistory: jsonb('copilot_history').$type<CopilotHistoryMessage[]>(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => [index('workflows_user_id_idx').on(table.userId)],

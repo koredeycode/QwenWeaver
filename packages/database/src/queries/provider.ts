@@ -12,6 +12,7 @@ import type {
   AgentLogInput,
   AgentLogOutput,
   CreditTransaction,
+  CopilotHistoryMessage,
 } from '@qwenweaver/types';
 import { getConnection } from '../index.js';
 import { sqliteProvider } from './sqlite-provider.js';
@@ -32,6 +33,7 @@ export interface WorkflowDetail {
   description: string | null;
   createdAt: number | Date | string;
   nodesEdges: WorkflowPayload;
+  copilotHistory?: CopilotHistoryMessage[] | null;
 }
 
 export interface ExecutionSummaryRow {
@@ -83,6 +85,11 @@ export interface QueryProvider {
   listUserWorkflows(userId: string): Promise<WorkflowRow[]>;
   getWorkflow(id: string, userId: string): Promise<WorkflowDetail | null>;
   deleteWorkflow(id: string, userId: string): Promise<boolean>;
+  updateCopilotHistory(
+    workflowId: string,
+    userId: string,
+    history: CopilotHistoryMessage[],
+  ): Promise<void>;
 
   createExecution(executionId: string, workflowId: string, userId: string): Promise<void>;
   updateExecution(executionId: string, status: string, metrics?: ExecutionMetrics): Promise<void>;

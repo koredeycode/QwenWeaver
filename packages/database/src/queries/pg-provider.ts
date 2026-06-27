@@ -18,6 +18,7 @@ import type {
   CredentialInput,
   CredentialUpdate,
   CredentialType,
+  CopilotHistoryMessage,
 } from '@qwenweaver/types';
 import { encrypt, decrypt } from '@qwenweaver/encryption';
 
@@ -409,6 +410,7 @@ export const pgProvider: QueryProvider = {
         description: pgSchema.pgWorkflows.description,
         createdAt: pgSchema.pgWorkflows.createdAt,
         nodesEdges: pgSchema.pgWorkflows.nodesEdges,
+        copilotHistory: pgSchema.pgWorkflows.copilotHistory,
       })
       .from(pgSchema.pgWorkflows)
       .where(and(eq(pgSchema.pgWorkflows.id, id), eq(pgSchema.pgWorkflows.userId, userId)))
@@ -427,6 +429,19 @@ export const pgProvider: QueryProvider = {
 
     const count = (result as any).count;
     return (count ?? 0) > 0;
+  },
+
+  async updateCopilotHistory(
+    workflowId: string,
+    userId: string,
+    history: CopilotHistoryMessage[],
+  ): Promise<void> {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    await pgDb
+      .update(pgSchema.pgWorkflows)
+      .set({ copilotHistory: history })
+      .where(and(eq(pgSchema.pgWorkflows.id, workflowId), eq(pgSchema.pgWorkflows.userId, userId)));
   },
 
   async createExecution(executionId: string, workflowId: string, userId: string): Promise<void> {
