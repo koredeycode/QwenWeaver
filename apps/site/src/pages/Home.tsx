@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, type ReactNode } from 'react';
+import { URLS } from '../config.js';
 import {
   Play,
   Bot,
@@ -869,7 +870,7 @@ function Hero() {
             style={{ animationDelay: '0.25s' }}
           >
             <a
-              href="/app"
+              href={URLS.app}
               className="group relative inline-flex items-center gap-2 rounded-lg bg-primary px-8 py-3 text-base font-semibold text-on-primary shadow-sm transition-all hover:shadow-lg hover:shadow-orange-500/20"
             >
               <span className="absolute -inset-0.5 rounded-lg bg-gradient-to-r from-orange-500 to-blue-500 opacity-0 blur transition-opacity group-hover:opacity-30" />
@@ -1363,7 +1364,7 @@ function CTA() {
           <div className="relative">
             <span className="absolute inset-0 rounded-lg bg-gradient-to-r from-orange-500 to-blue-500 opacity-20 blur-xl animate-pulse-slow" />
             <a
-              href="/app"
+              href={URLS.app}
               className="relative inline-flex items-center gap-2 rounded-lg bg-primary px-8 py-3 text-base font-semibold text-on-primary shadow-sm transition-all hover:shadow-lg hover:shadow-orange-500/20"
             >
               Get Started Free
