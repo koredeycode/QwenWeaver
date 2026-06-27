@@ -111,8 +111,8 @@ const RESEARCH_WORKFLOW_TEMPLATE = {
 let _updateNodeDataTimer: ReturnType<typeof setTimeout> | undefined;
 
 export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (set, get) => ({
-  nodes: RESEARCH_WORKFLOW_TEMPLATE.nodes,
-  edges: RESEARCH_WORKFLOW_TEMPLATE.edges,
+  nodes: [],
+  edges: [],
   selectedNodeId: null,
   workflowId: null,
   workflowName: '',
