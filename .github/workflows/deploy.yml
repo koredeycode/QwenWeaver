@@ -111,8 +111,6 @@ jobs:
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml down
             docker compose -f docker-compose.prod.yml up -d --no-deps qwenweaver
-            docker compose -f docker-compose.prod.yml exec -T qwenweaver \
-              node apps/api/dist/migrate.js
             docker image prune -af
             docker builder prune -af
             df -h /

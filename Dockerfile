@@ -39,33 +39,46 @@ COPY packages/cli/ packages/cli/
 # Build everything
 RUN pnpm build
 
-# Prune dev dependencies
-RUN pnpm prune --prod --config.confirmModulesPurge=false
 
 # =============================================================================
 # Stage 2: Runtime image
 # =============================================================================
-FROM node:22-alpine
+FROM node:22-alpine AS runner
 
 RUN npm install -g pnpm@latest && \
     apk add --no-cache tini
 
 WORKDIR /app
 
-# Copy built artifacts and production node_modules
-COPY --from=builder /build/node_modules ./node_modules
-COPY --from=builder /build/apps/api/node_modules ./apps/api/node_modules
+# Copy workspace config and package manifests for production install
+COPY pnpm-workspace.yaml ./
+COPY package.json ./
+COPY pnpm-lock.yaml ./
+
+COPY apps/api/package.json apps/api/
+COPY packages/types/package.json packages/types/
+COPY packages/database/package.json packages/database/
+COPY packages/encryption/package.json packages/encryption/
+COPY packages/mcp-client/package.json packages/mcp-client/
+COPY packages/cli/package.json packages/cli/
+
+# Copy the pnpm store from builder to speed up install
+COPY --from=builder /build/node_modules/.pnpm /app/node_modules/.pnpm
+COPY --from=builder /build/node_modules/.modules.yaml /app/node_modules/.modules.yaml
+
+# Install only production deps — creates all symlinks correctly
+RUN pnpm install --prod --frozen-lockfile --config.confirmModulesPurge=false
+
+# Copy built artifacts
 COPY --from=builder /build/packages ./packages
 COPY --from=builder /build/apps/api/dist ./apps/api/dist
 COPY --from=builder /build/apps/app/dist ./apps/app/dist
 
 # Copy static assets for the API
-COPY --from=builder /build/apps/api/package.json ./apps/api/
 COPY --from=builder /build/apps/api/src/public/ ./apps/api/src/public/
 
 # Copy CLI binary
 COPY --from=builder /build/packages/cli/dist ./packages/cli/dist
-COPY --from=builder /build/packages/cli/package.json ./packages/cli/
 
 # Expose default port
 EXPOSE 3001
