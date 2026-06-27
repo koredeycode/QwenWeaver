@@ -53,7 +53,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
       activeExecutionId: null,
     });
 
-    const { nodes, edges, workflowName, workflowDescription } = get();
+    const { nodes, edges, workflowName, workflowDescription, workflowId } = get();
     if (nodes.length === 0) {
       set({ executionStatus: 'idle' });
       return;
@@ -70,6 +70,8 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
 
     try {
       const workflowPayload = {
+        workflowId: workflowId || undefined,
+        id: workflowId || undefined,
         name: workflowName || 'Untitled Workflow',
         description: workflowDescription || '',
         nodes: nodes.map((n) => ({
@@ -100,10 +102,16 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
 
       const execData = await execRes.json();
       const executionId = execData.executionId;
+      const returnedWorkflowId = execData.workflowId;
       if (!executionId) {
         toast.error('No execution ID returned');
         set({ executionStatus: 'idle' });
         return;
+      }
+
+      if (returnedWorkflowId && !get().workflowId) {
+        set({ workflowId: returnedWorkflowId, isDirty: false });
+        window.history.replaceState(null, '', `/workflows/${returnedWorkflowId}`);
       }
 
       set({ activeExecutionId: executionId });
