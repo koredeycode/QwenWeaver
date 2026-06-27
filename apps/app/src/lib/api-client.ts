@@ -1,7 +1,7 @@
 import { hc } from 'hono/client';
 import type { AppType, AppType2 } from '@qwenweaver/api';
 
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+export const API_URL = import.meta.env.VITE_API_URL || '';
 
 // Custom fetch that auto-retries on 401 by refreshing the token.
 // This wraps every hc client call so individual calls don't need `withRefresh()`.

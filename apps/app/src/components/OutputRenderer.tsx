@@ -50,7 +50,7 @@ export const OutputRenderer = React.memo(
     if (!outputUrl && !streamingText && !thinkingText) return null;
 
     const finalOutputUrl = outputUrl?.startsWith('/')
-      ? `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${outputUrl}`
+      ? `${import.meta.env.VITE_API_URL || ''}${outputUrl}`
       : outputUrl;
 
     const isRunning = status === 'running';
