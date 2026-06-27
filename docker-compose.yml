@@ -23,7 +23,6 @@ services:
       # Uncomment to add Dashscope API key for AI agents
       # DASHSCOPE_API_KEY: your-key-here
     volumes:
-      # Persist SQLite database outside the container
       - qwenweaver-data:/data
 
 volumes:

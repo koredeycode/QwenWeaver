@@ -1,0 +1,111 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  build-and-push:
+    needs: [ci]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push qwenweaver image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/qwenweaver:latest
+            ghcr.io/${{ github.repository }}/qwenweaver:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: |
+          tar czf site-dist.tar.gz -C apps/site/dist .
+          tar czf app-dist.tar.gz -C apps/app/dist .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: builds
+          path: |
+            site-dist.tar.gz
+            app-dist.tar.gz
+
+  deploy:
+    needs: [build-and-push]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: builds
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Write .env from secrets
+        run: |
+          cat > .env << EOF
+          API_SECRET=${{ secrets.API_SECRET }}
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          DASHSCOPE_API_KEY=${{ secrets.DASHSCOPE_API_KEY }}
+          CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}
+          PUBLIC_URL=${{ secrets.PUBLIC_URL }}
+          CREDENTIALS_ENCRYPTION_KEY=${{ secrets.CREDENTIALS_ENCRYPTION_KEY }}
+          EOF
+
+      - name: Deploy to VPS
+        run: |
+          scp site-dist.tar.gz app-dist.tar.gz .env deploy@${{ secrets.VPS_HOST }}:/home/deploy/qwenweaver/
+
+          ssh deploy@${{ secrets.VPS_HOST }} << 'ENDSSH'
+            set -euo pipefail
+
+            cd /home/deploy/qwenweaver/www
+            tar xzf ../site-dist.tar.gz -C site --no-same-owner
+            tar xzf ../app-dist.tar.gz -C app --no-same-owner
+            rm -f ../site-dist.tar.gz ../app-dist.tar.gz
+
+            cd /home/deploy/qwenweaver
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d --no-deps qwenweaver
+            docker compose -f docker-compose.prod.yml exec -T qwenweaver \
+              node apps/api/dist/migrate.js
+            docker image prune -af
+            docker builder prune -af
+            df -h /
+          ENDSSH
+
+      - name: Health Check
+        run: |
+          sleep 15
+          curl -sf https://app.qwenweaver.xyz/api/health \
+            && echo "Deployment OK" \
+            || exit 1

@@ -1,0 +1,23 @@
+# Production QwenWeaver with Supabase (external PostgreSQL)
+# Usage: docker compose -f docker-compose.prod.yml up -d
+# Requires: .env file with DATABASE_URL, API_SECRET, etc.
+version: "3.9"
+
+services:
+  qwenweaver:
+    image: ghcr.io/qwenweaver/qwenweaver:latest
+    container_name: qw-app
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3001"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      HOST: 0.0.0.0
+      PUBLIC_URL: ${PUBLIC_URL}
+      DATABASE_URL: ${DATABASE_URL}
+      API_SECRET: ${API_SECRET}
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY}
+      CREDENTIALS_ENCRYPTION_KEY: ${CREDENTIALS_ENCRYPTION_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      LOG_LEVEL: info
