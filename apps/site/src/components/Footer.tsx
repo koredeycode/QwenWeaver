@@ -5,18 +5,16 @@ export function Footer() {
   return (
     <footer className="border-t border-outline/40 bg-surface">
       <div className="mx-auto max-w-7xl px-6 py-12">
-        <div className="grid gap-8 sm:grid-cols-3">
-          <div className="sm:col-span-1">
+        <div className="grid gap-8 grid-cols-2 sm:grid-cols-3">
+          <div className="col-span-2 sm:col-span-1">
             <div className="flex items-center gap-2 text-lg font-bold">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-xs font-bold text-on-primary">
-                Q
-              </span>
+              <img src="/logo.png" alt="QwenWeaver Logo" className="h-7 w-7 object-contain" />
               {SITE.name}
             </div>
             <p className="mt-2 text-sm text-on-surface-variant">{SITE.description}</p>
           </div>
 
-          <div>
+          <div className="col-span-1">
             <h4 className="mb-3 text-sm font-semibold">Product</h4>
             <div className="flex flex-col gap-2 text-sm text-on-surface-variant">
               <Link to="/pricing" className="hover:text-on-surface transition-colors">
@@ -28,7 +26,7 @@ export function Footer() {
             </div>
           </div>
 
-          <div>
+          <div className="col-span-1">
             <h4 className="mb-3 text-sm font-semibold">Resources</h4>
             <div className="flex flex-col gap-2 text-sm text-on-surface-variant">
               <Link to={URLS.docs} className="hover:text-on-surface transition-colors">
