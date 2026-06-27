@@ -61,7 +61,8 @@ export function getModelForNode(node: NodePayload): ModelConfig {
   const modelId = node.data.model ?? MODEL_DEFAULTS[node.type] ?? 'qwen-plus';
   const model = provider(modelId);
 
-  const isThinkingModel = modelId.includes('max') || modelId.includes('qwq');
+  const isThinkingModel =
+    modelId.includes('max') || modelId.includes('qwq') || modelId.includes('deepseek');
   const enableThinking =
     isThinkingModel && (node.data.enableThinking ?? THINKING_ENABLED_TYPES.has(node.type));
 

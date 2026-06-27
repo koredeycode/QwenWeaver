@@ -424,8 +424,9 @@ export const pgProvider: QueryProvider = {
     const result = await pgDb
       .delete(pgSchema.pgWorkflows)
       .where(and(eq(pgSchema.pgWorkflows.id, id), eq(pgSchema.pgWorkflows.userId, userId)));
-    const rowCount = (result as unknown as { rowCount: number }).rowCount;
-    return (rowCount ?? 0) > 0;
+
+    const count = (result as any).count;
+    return (count ?? 0) > 0;
   },
 
   async createExecution(executionId: string, workflowId: string, userId: string): Promise<void> {

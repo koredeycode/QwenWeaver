@@ -523,18 +523,23 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                   <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-1">
                     AI LLM Model
                   </label>
-                  <select
-                    value={
-                      selectedNode.data.model ||
-                      (selectedNode.type === 'supervisor' ? 'qwen3-max' : 'qwen-plus')
-                    }
-                    onChange={handleModelChange}
-                    className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
-                  >
-                    <option value="qwen-plus">qwen-plus (Worker Default)</option>
-                    <option value="qwen3-max">qwen3-max (Supervisor Default)</option>
-                    <option value="qwen-turbo">qwen-turbo (Fast Parser)</option>
-                  </select>
+                  {selectedNode.type === 'supervisor' ? (
+                    <select
+                      value={selectedNode.data.model || 'qwen3.7-max'}
+                      onChange={handleModelChange}
+                      className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
+                    >
+                      <option value="qwen3.7-max">qwen3.7-max (Supervisor Default)</option>
+                      <option value="qwen3.7-plus">qwen3.7-plus (Balanced)</option>
+                      <option value="qwen3.6-flash">qwen3.6-flash (Fast Reasoning)</option>
+                      <option value="deepseek-v4-pro">deepseek-v4-pro (DeepSeek Reasoning)</option>
+                      <option value="deepseek-v4-flash">deepseek-v4-flash (DeepSeek Fast)</option>
+                    </select>
+                  ) : (
+                    <div className="bg-slate-50 border border-[#cbd5e1] p-2 text-xs font-mono text-slate-600">
+                      {selectedNode.data.model || 'qwen3.7-plus'} (Preconfigured)
+                    </div>
+                  )}
                 </div>
 
                 {/* Supervisor Node Thinking Settings */}
@@ -619,16 +624,9 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                 <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-1">
                   Expected Output Format
                 </label>
-                <select
-                  value={selectedNode.data.outputFormat || 'text'}
-                  onChange={handleFormatChange}
-                  className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
-                >
-                  <option value="text">text</option>
-                  <option value="markdown">markdown</option>
-                  <option value="json">json</option>
-                  <option value="yaml">yaml</option>
-                </select>
+                <div className="bg-slate-50 border border-[#cbd5e1] p-2 text-xs font-mono text-slate-600 uppercase">
+                  {selectedNode.data.outputFormat || 'text'} (Preconfigured)
+                </div>
               </div>
             )}
 

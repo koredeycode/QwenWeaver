@@ -23,7 +23,11 @@ import { client, authHeaders } from '../lib/api-client.js';
 import { MCPMarketplace } from './MCPMarketplace.js';
 import { ExecutionHistoryPanel } from './ExecutionHistoryPanel.js';
 
-export const Sidebar = () => {
+export const Sidebar = ({
+  onOpenWorkerCatalog,
+}: {
+  onOpenWorkerCatalog: (pos: { x: number; y: number } | null) => void;
+}) => {
   const addNode = useStore((s) => s.addNode);
   const loadTemplate = useStore((s) => s.loadTemplate);
 
@@ -90,9 +94,9 @@ export const Sidebar = () => {
     agents: [
       {
         type: 'agent',
-        label: 'Normal Agent',
+        label: 'Worker Agent',
         icon: Bot,
-        detail: 'General worker for parsing subtasks.',
+        detail: 'Preconfigured workers grouped by capability.',
       },
       {
         type: 'supervisor',
@@ -375,11 +379,17 @@ export const Sidebar = () => {
                   key={idx}
                   draggable
                   onDragStart={(e) => handleDragStart(e, item.type as NodeType)}
-                  onClick={() => addNode(item.type as NodeType)}
+                  onClick={() => {
+                    if (item.type === 'agent') {
+                      onOpenWorkerCatalog(null);
+                    } else {
+                      addNode(item.type as NodeType);
+                    }
+                  }}
                   className="p-2 hover:bg-[#eff6ff] hover:text-[#2563eb] cursor-grab active:cursor-grabbing text-xs text-slate-700 font-semibold border-b border-slate-100 last:border-0 transition-colors"
                 >
                   <span className="font-mono text-[9px] bg-slate-100 text-slate-500 px-1 mr-1.5 uppercase rounded-none">
-                    {item.type === 'supervisor' ? 'SUPERVISOR' : 'AGENT'}
+                    {item.type === 'supervisor' ? 'SUPERVISOR' : 'WORKER'}
                   </span>
                   {item.label}
                 </div>

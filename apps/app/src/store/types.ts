@@ -1,5 +1,5 @@
 import { Node, Edge, OnNodesChange, OnEdgesChange, OnConnect } from '@xyflow/react';
-import type { NodeType, NodeData, ExecutionMetrics } from '@qwenweaver/types';
+import type { NodeType, NodeData, ExecutionMetrics, GraphAction } from '@qwenweaver/types';
 import type {
   TemplateSummary,
   TemplateDetail,
@@ -10,7 +10,13 @@ import type { TourStep } from '../tour/types.js';
 
 export interface CopilotMessage {
   role: 'user' | 'assistant';
-  text: string;
+  text?: string;
+  thinking?: string;
+  proposal?: {
+    id: string;
+    status: 'pending' | 'approved' | 'rejected';
+    actions: GraphAction[];
+  };
 }
 
 export interface CanvasSnapshot {
@@ -79,6 +85,7 @@ export interface GraphSlice {
     workflowData: { nodes: Node<any>[]; edges: Edge<any>[] },
     merge: boolean,
   ) => boolean;
+  applyActions: (actions: GraphAction[]) => void;
 }
 
 export interface ExecutionSummary {
@@ -111,7 +118,10 @@ export interface ExecutionSlice {
 export interface CopilotSlice {
   copilotMessages: CopilotMessage[];
   isCopilotTyping: boolean;
+  copilotModel: string;
+  setCopilotModel: (model: string) => void;
   sendCopilotMessage: (message: string) => Promise<void>;
+  updateProposalStatus: (messageIndex: number, status: 'approved' | 'rejected') => void;
 }
 
 export interface TemplateSlice {
