@@ -2,7 +2,7 @@ import { StateCreator } from 'zustand';
 import type { NodeTiming } from '@qwenweaver/types';
 import { StoreState, ExecutionSlice } from './types.js';
 import { toast } from 'sonner';
-import { getAccessToken, fetchApi } from '../lib/api-client.js';
+import { getAccessToken, client, authHeaders } from '../lib/api-client.js';
 
 export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSlice> = (
   set,
@@ -21,9 +21,23 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
   historyLoading: false,
 
   fetchExecutionHistory: async (limit = 20, offset = 0) => {
+    const workflowId = get().workflowId;
+    if (!workflowId) {
+      set({ executionHistory: [], historyLoading: false });
+      return;
+    }
     set({ historyLoading: true });
     try {
-      const res = await fetchApi(`/api/execution?limit=${limit}&offset=${offset}`);
+      const res = await client.api.execution.$get(
+        {
+          query: {
+            limit: String(limit),
+            offset: String(offset),
+            workflowId,
+          },
+        },
+        { headers: authHeaders() },
+      );
       if (res.ok) {
         const data = (await res.json()) as any;
         set({ executionHistory: data.executions || [] });
@@ -46,7 +60,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
       activeExecutionId: null,
     });
 
-    const { nodes, edges, workflowName, workflowDescription } = get();
+    const { nodes, edges, workflowName, workflowDescription, workflowId } = get();
     if (nodes.length === 0) {
       set({ executionStatus: 'idle' });
       return;
@@ -63,6 +77,8 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
 
     try {
       const workflowPayload = {
+        workflowId: workflowId || undefined,
+        id: workflowId || undefined,
         name: workflowName || 'Untitled Workflow',
         description: workflowDescription || '',
         nodes: nodes.map((n) => ({
@@ -80,23 +96,31 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
         })),
       };
 
-      const execRes = await fetchApi('/api/workflow/execute', {
-        method: 'POST',
-        body: JSON.stringify(workflowPayload),
-      });
+      const execRes = await client.api.workflow.execute.$post(
+        {
+          json: workflowPayload,
+        },
+        { headers: authHeaders() },
+      );
       if (!execRes.ok) {
-        const errBody = await execRes.json().catch(() => ({}));
+        const errBody = (await execRes.json().catch(() => ({}))) as any;
         toast.error(errBody.error || 'Failed to execute workflow');
         set({ executionStatus: 'idle' });
         return;
       }
 
-      const execData = await execRes.json();
+      const execData = (await execRes.json()) as any;
       const executionId = execData.executionId;
+      const returnedWorkflowId = execData.workflowId;
       if (!executionId) {
         toast.error('No execution ID returned');
         set({ executionStatus: 'idle' });
         return;
+      }
+
+      if (returnedWorkflowId && !get().workflowId) {
+        set({ workflowId: returnedWorkflowId, isDirty: false });
+        window.history.replaceState(null, '', `/workflows/${returnedWorkflowId}`);
       }
 
       set({ activeExecutionId: executionId });

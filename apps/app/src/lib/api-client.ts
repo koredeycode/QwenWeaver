@@ -125,34 +125,6 @@ export function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-/**
- * Wraps fetch with automatic 401 → token refresh → retry.
- * Use this for critical authenticated API calls so that expired tokens
- * are refreshed transparently instead of returning a 401 to the caller.
- */
-export async function fetchApi(path: string, options: RequestInit = {}): Promise<Response> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string>),
-    ...authHeaders(),
-  };
-
-  let res = await fetch(`${API_URL}${path}`, { ...options, headers });
-
-  if (res.status === 401 && getRefreshToken()) {
-    const newToken = await refreshAccessToken();
-    if (newToken) {
-      headers['Authorization'] = `Bearer ${newToken}`;
-      res = await fetch(`${API_URL}${path}`, { ...options, headers });
-      return res;
-    }
-    clearAuth();
-    notifyAuthExpired();
-  }
-
-  return res;
-}
-
 export function getTemplateApiUrl(): string {
   return API_URL;
 }

@@ -17,7 +17,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
-import { client, authHeaders, fetchApi } from '../lib/api-client.js';
+import { client, client2, authHeaders } from '../lib/api-client.js';
 import type { OutputFormat } from '@qwenweaver/types';
 
 export const Inspector = ({ onClose }: { onClose: () => void }) => {
@@ -116,7 +116,8 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
   useEffect(() => {
     if (selectedNode?.type === 'mcp_tool') {
       setLoadingCreds(true);
-      fetchApi('/api/credentials')
+      client2.api.credentials
+        .$get({}, { headers: authHeaders() })
         .then((res) => res.json())
         .then((data: any) => {
           setCredentials(data.credentials || []);
@@ -364,15 +365,17 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                         api_key: 'mcp_api_key',
                         basic: 'mcp_basic_auth',
                       };
-                      const res = await fetchApi('/api/credentials', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                          name: newCredName,
-                          type: typeMap[authType || ''] || 'custom',
-                          value: newCredValue,
-                          description: newCredDesc || undefined,
-                        }),
-                      });
+                      const res = await client2.api.credentials.$post(
+                        {
+                          json: {
+                            name: newCredName,
+                            type: (typeMap[authType || ''] || 'custom') as any,
+                            value: newCredValue,
+                            description: newCredDesc || undefined,
+                          },
+                        },
+                        { headers: authHeaders() },
+                      );
                       const data: any = await res.json();
                       if (res.ok && data.credential) {
                         setCredentials((prev) => [...prev, data.credential]);

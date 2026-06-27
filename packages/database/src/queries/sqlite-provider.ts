@@ -17,6 +17,7 @@ import type {
   CredentialResponse,
   CredentialInput,
   CredentialUpdate,
+  CopilotHistoryMessage,
 } from '@qwenweaver/types';
 import { encrypt, decrypt } from '@qwenweaver/encryption';
 
@@ -430,6 +431,7 @@ export const sqliteProvider: QueryProvider = {
         description: sqliteSchema.sqliteWorkflows.description,
         createdAt: sqliteSchema.sqliteWorkflows.createdAt,
         nodesEdges: sqliteSchema.sqliteWorkflows.nodesEdges,
+        copilotHistory: sqliteSchema.sqliteWorkflows.copilotHistory,
       })
       .from(sqliteSchema.sqliteWorkflows)
       .where(
@@ -458,6 +460,24 @@ export const sqliteProvider: QueryProvider = {
 
     const changes = (result as unknown as { changes: number }).changes;
     return (changes ?? 0) > 0;
+  },
+
+  async updateCopilotHistory(
+    workflowId: string,
+    userId: string,
+    history: CopilotHistoryMessage[],
+  ): Promise<void> {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    await sqliteDb
+      .update(sqliteSchema.sqliteWorkflows)
+      .set({ copilotHistory: history })
+      .where(
+        and(
+          eq(sqliteSchema.sqliteWorkflows.id, workflowId),
+          eq(sqliteSchema.sqliteWorkflows.userId, userId),
+        ),
+      );
   },
 
   async createExecution(executionId: string, workflowId: string, userId: string): Promise<void> {
@@ -519,6 +539,7 @@ export const sqliteProvider: QueryProvider = {
     userId: string,
     limit: number = 20,
     offset: number = 0,
+    workflowId?: string,
   ): Promise<ExecutionSummaryRow[]> {
     const { db } = getConnection();
     const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
@@ -537,7 +558,14 @@ export const sqliteProvider: QueryProvider = {
         sqliteSchema.sqliteWorkflows,
         eq(sqliteSchema.sqliteExecutions.workflowId, sqliteSchema.sqliteWorkflows.id),
       )
-      .where(eq(sqliteSchema.sqliteExecutions.userId, userId))
+      .where(
+        workflowId
+          ? and(
+              eq(sqliteSchema.sqliteExecutions.userId, userId),
+              eq(sqliteSchema.sqliteExecutions.workflowId, workflowId),
+            )
+          : eq(sqliteSchema.sqliteExecutions.userId, userId),
+      )
       .orderBy(desc(sqliteSchema.sqliteExecutions.startedAt))
       .limit(limit)
       .offset(offset);

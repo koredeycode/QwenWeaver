@@ -383,6 +383,7 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
       workflowDescription: '',
       isDirty: false,
     });
+    get().loadCopilotHistory([]);
   },
 
   loadTemplate: (templateName) => {

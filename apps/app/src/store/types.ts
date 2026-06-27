@@ -1,5 +1,11 @@
 import { Node, Edge, OnNodesChange, OnEdgesChange, OnConnect } from '@xyflow/react';
-import type { NodeType, NodeData, ExecutionMetrics, GraphAction } from '@qwenweaver/types';
+import type {
+  NodeType,
+  NodeData,
+  ExecutionMetrics,
+  GraphAction,
+  CopilotHistoryMessage,
+} from '@qwenweaver/types';
 import type {
   TemplateSummary,
   TemplateDetail,
@@ -122,6 +128,7 @@ export interface CopilotSlice {
   setCopilotModel: (model: string) => void;
   sendCopilotMessage: (message: string) => Promise<void>;
   updateProposalStatus: (messageIndex: number, status: 'approved' | 'rejected') => void;
+  loadCopilotHistory: (history: CopilotHistoryMessage[]) => void;
 }
 
 export interface TemplateSlice {

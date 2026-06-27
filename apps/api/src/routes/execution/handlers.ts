@@ -9,11 +9,12 @@ export const handleListExecutions = async (c: Context<{ Variables: Variables }>)
   const userId = c.get('jwtPayload').sub;
   const limit = Math.min(Number(c.req.query('limit')) || 20, 100);
   const offset = Number(c.req.query('offset')) || 0;
+  const workflowId = c.req.query('workflowId');
 
-  log.info({ userId, limit, offset }, 'List executions');
+  log.info({ userId, limit, offset, workflowId }, 'List executions');
 
   const provider = getQueryProvider();
-  const executions = await provider.listUserExecutions(userId, limit, offset);
+  const executions = await provider.listUserExecutions(userId, limit, offset, workflowId);
 
   return c.json({ executions }, 200);
 };

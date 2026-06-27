@@ -4,6 +4,7 @@ import type {
   AgentLogInput,
   AgentLogOutput,
   WorkflowPayload,
+  CopilotHistoryMessage,
 } from '@qwenweaver/types';
 import type { MCPAuthConfig } from '@qwenweaver/types';
 
@@ -23,6 +24,7 @@ export const sqliteWorkflows = sqliteTable(
     description: text('description'),
     isActive: integer('is_active').default(1).notNull(),
     nodesEdges: text('nodes_edges', { mode: 'json' }).$type<WorkflowPayload>(),
+    copilotHistory: text('copilot_history', { mode: 'json' }).$type<CopilotHistoryMessage[]>(),
     createdAt: integer('created_at').notNull(),
   },
   (table) => [index('workflows_user_id_idx').on(table.userId)],

@@ -14,7 +14,6 @@ import {
   PROMPT_TOKEN_COST,
   COMPLETION_TOKEN_COST,
   MIN_COST,
-  MAX_FREE_WORKFLOWS,
 } from '../../config.js';
 
 const log = createModuleLogger('routes/workflow.handlers');
@@ -132,13 +131,6 @@ export const handleSaveWorkflow = async (c: Context<{ Variables: Variables }>) =
     return c.json({ error: 'Invalid workflow', details: parsed.error.format() }, 400);
   }
   const provider = getQueryProvider();
-  const workflowCount = await provider.countUserWorkflows(jwtPayload.sub);
-  if (workflowCount >= MAX_FREE_WORKFLOWS) {
-    return c.json(
-      { error: `Workflow limit reached. Maximum ${MAX_FREE_WORKFLOWS} workflows allowed.` },
-      403,
-    );
-  }
   const workflowId = await provider.saveWorkflow(jwtPayload.sub, parsed.data);
   return c.json({ workflowId }, 201);
 };
