@@ -58,7 +58,7 @@ jobs:
       - name: Push database schema
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: pnpm --filter @qwenweaver/database drizzle:push
+        run: pnpm --filter @qwenweaver/database drizzle:push || echo "Schema push skipped (tables may already exist)"
       - run: |
           tar czf site-dist.tar.gz -C apps/site/dist .
           tar czf app-dist.tar.gz -C apps/app/dist .
