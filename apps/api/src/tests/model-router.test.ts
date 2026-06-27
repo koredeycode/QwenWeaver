@@ -11,24 +11,24 @@ function node(
 }
 
 describe('model-router', () => {
-  it('assigns qwen3-max to supervisor nodes', () => {
-    expect(getModelIdForNode(node('s1', 'supervisor'))).toBe('qwen3-max');
+  it('assigns qwen3.7-max to supervisor nodes', () => {
+    expect(getModelIdForNode(node('s1', 'supervisor'))).toBe('qwen3.7-max');
   });
 
-  it('assigns qwen-plus to agent nodes', () => {
-    expect(getModelIdForNode(node('a1', 'agent'))).toBe('qwen-plus');
+  it('assigns qwen3.7-plus to agent nodes', () => {
+    expect(getModelIdForNode(node('a1', 'agent'))).toBe('qwen3.7-plus');
   });
 
-  it('assigns qwen-plus to mcp_tool nodes', () => {
-    expect(getModelIdForNode(node('m1', 'mcp_tool'))).toBe('qwen-plus');
+  it('assigns qwen3.7-plus to mcp_tool nodes', () => {
+    expect(getModelIdForNode(node('m1', 'mcp_tool'))).toBe('qwen3.7-plus');
   });
 
-  it('assigns qwen-turbo to trigger nodes', () => {
-    expect(getModelIdForNode(node('t1', 'trigger'))).toBe('qwen-turbo');
+  it('assigns qwen3.6-flash to trigger nodes', () => {
+    expect(getModelIdForNode(node('t1', 'trigger'))).toBe('qwen3.6-flash');
   });
 
-  it('assigns qwen-turbo to logic nodes', () => {
-    expect(getModelIdForNode(node('l1', 'logic'))).toBe('qwen-turbo');
+  it('assigns qwen3.6-flash to logic nodes', () => {
+    expect(getModelIdForNode(node('l1', 'logic'))).toBe('qwen3.6-flash');
   });
 
   it('respects user-specified model override', () => {

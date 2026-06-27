@@ -1,14 +1,14 @@
-import { z } from 'zod';
-import { streamText, jsonSchema, tool, type Tool } from 'ai';
-import type { NodePayload, MCPAuthConfig } from '@qwenweaver/types';
-import type { AgentResult, UpstreamOutputs, StreamEmitter } from './types.js';
-import { getModelForNode, getModelIdForNode } from './model-router.js';
-import { discoverMCPTools, callMCPTool, buildHeadersFromAuthConfig } from './mcp-bridge.js';
 import { getQueryProvider } from '@qwenweaver/database';
-import { createModuleLogger } from '../logger.js';
-import { llm_tokens_total, agent_duration_ms } from '../metrics.js';
+import type { MCPAuthConfig, NodePayload } from '@qwenweaver/types';
+import { jsonSchema, streamText, tool, type Tool } from 'ai';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { z } from 'zod';
+import { createModuleLogger } from '../logger.js';
+import { agent_duration_ms, llm_tokens_total } from '../metrics.js';
+import { buildHeadersFromAuthConfig, callMCPTool, discoverMCPTools } from './mcp-bridge.js';
+import { getModelForNode, getModelIdForNode } from './model-router.js';
+import type { AgentResult, StreamEmitter, UpstreamOutputs } from './types.js';
 
 const log = createModuleLogger('engine/agent-runner');
 
@@ -117,7 +117,7 @@ export async function runAgent(
 
     // Handle Image Generation (Wanx)
     if (node.data.outputFormat === 'image') {
-      const prompt = node.data.label ?? 'Generates an image';
+      const prompt = node.data.systemPrompt || node.data.label || 'Generates an image';
       let buffer: Buffer;
 
       if (apiKey) {
@@ -156,7 +156,7 @@ export async function runAgent(
 
     // Handle Audio Generation (CosyVoice)
     if (node.data.outputFormat === 'audio') {
-      const prompt = node.data.label ?? 'Generates audio';
+      const prompt = node.data.systemPrompt || node.data.label || 'Generates audio';
       let buffer: Buffer;
 
       if (apiKey) {
@@ -195,7 +195,7 @@ export async function runAgent(
 
     // Handle Video Generation (Wanx Video)
     if (node.data.outputFormat === 'video') {
-      const prompt = node.data.label ?? 'Generates a video';
+      const prompt = node.data.systemPrompt || node.data.label || 'Generates a video';
       let buffer: Buffer;
 
       if (apiKey) {
@@ -523,78 +523,194 @@ async function generateWanxImage(
   apiKey: string,
   signal?: AbortSignal,
 ): Promise<Buffer> {
-  const submitUrl =
-    'https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis';
-  const headers = {
+  let baseUrl = apiKey.startsWith('sk-ws-')
+    ? 'https://dashscope-intl.aliyuncs.com'
+    : 'https://dashscope.aliyuncs.com';
+
+  if (process.env.DASHSCOPE_BASE_URL) {
+    try {
+      baseUrl = new URL(process.env.DASHSCOPE_BASE_URL).origin;
+    } catch {
+      // ignore
+    }
+  }
+  let submitUrl = `${baseUrl}/api/v1/services/aigc/multimodal-generation/generation`;
+
+  const headers: Record<string, string> = {
     Authorization: `Bearer ${apiKey}`,
     'Content-Type': 'application/json',
-    'X-DashScope-Async': 'enable',
   };
+  if (process.env.DASHSCOPE_WORKSPACE_ID) {
+    headers['X-DashScope-WorkSpace'] = process.env.DASHSCOPE_WORKSPACE_ID;
+  }
+
   const body = {
-    model: 'wanx-v1',
-    input: { prompt },
+    model: 'wan2.7-image-pro',
+    input: {
+      messages: [
+        {
+          role: 'user',
+          content: [{ text: prompt }],
+        },
+      ],
+    },
     parameters: {
-      style: '<auto>',
       size: '1024*1024',
       n: 1,
     },
   };
 
-  const response = await fetch(submitUrl, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-    signal,
-  });
+  let response: Response;
+  try {
+    response = await fetch(submitUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (err) {
+    // If it fails due to network error (e.g. IPv6 timeout on dashscope.aliyuncs.com), fallback to intl
+    if (baseUrl === 'https://dashscope.aliyuncs.com') {
+      log.info('Network error on domestic endpoint, retrying on international endpoint...');
+      submitUrl =
+        'https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation';
+      response = await fetch(submitUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+        signal,
+      });
+    } else {
+      throw err;
+    }
+  }
 
   if (!response.ok) {
-    throw new Error(`Failed to submit Wanx task: ${await response.text()}`);
+    const errorText = await response.text();
+    if (errorText.includes('InvalidApiKey') && baseUrl === 'https://dashscope.aliyuncs.com') {
+      log.info('Key rejected on domestic endpoint, retrying on international endpoint...');
+      submitUrl =
+        'https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation';
+      response = await fetch(submitUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+        signal,
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to submit Wan2.7 Image task: ${await response.text()}`);
+      }
+    } else {
+      throw new Error(`Failed to submit Wan2.7 Image task: ${errorText}`);
+    }
   }
 
-  const submitData = (await response.json()) as { output?: { task_id?: string } };
-  const taskId = submitData.output?.task_id;
-  if (!taskId) {
-    throw new Error(`Wanx task submission did not return a task_id: ${JSON.stringify(submitData)}`);
+  const data = (await response.json()) as any;
+  const imageUrl = data.output?.choices?.[0]?.message?.content?.[0]?.image;
+
+  if (!imageUrl) {
+    throw new Error(`Wan2.7 Image task did not return an image url: ${JSON.stringify(data)}`);
   }
 
-  return pollWithBackoff(
-    `https://dashscope.aliyuncs.com/api/v1/tasks/${taskId}`,
-    { Authorization: `Bearer ${apiKey}` },
-    {
-      maxAttempts: 20,
-      initialDelayMs: 1000,
-      maxDelayMs: 8000,
-      statusExtractor: (data: any) => data.output?.task_status,
-      resultExtractor: (data: any) => data.output?.results?.[0]?.url,
-      taskName: 'Wanx image generation',
-      signal,
-    },
-  );
+  const imageRes = await fetch(imageUrl, { signal });
+  if (!imageRes.ok) {
+    throw new Error(`Failed to download Wan2.7 image from ${imageUrl}`);
+  }
+  return Buffer.from(await imageRes.arrayBuffer());
 }
 
 async function generateCosyVoiceAudio(text: string, apiKey: string): Promise<Buffer> {
-  const ttsUrl = 'https://dashscope.aliyuncs.com/api/v1/services/audio/tts/cosyvoice-synthesis';
+  let baseUrl = apiKey.startsWith('sk-ws-')
+    ? 'https://dashscope-intl.aliyuncs.com'
+    : 'https://dashscope.aliyuncs.com';
+
+  if (process.env.DASHSCOPE_BASE_URL) {
+    try {
+      baseUrl = new URL(process.env.DASHSCOPE_BASE_URL).origin;
+    } catch {
+      // ignore
+    }
+  }
+
+  const isIntl = baseUrl === 'https://dashscope-intl.aliyuncs.com';
+
+  let ttsUrl = isIntl
+    ? `${baseUrl}/api/v1/services/aigc/multimodal-generation/generation`
+    : `${baseUrl}/api/v1/services/audio/tts/cosyvoice-synthesis`;
+
   const headers = {
     Authorization: `Bearer ${apiKey}`,
     'Content-Type': 'application/json',
   };
-  const body = {
-    model: 'cosyvoice-v1',
-    input: { text },
-    parameters: {
-      voice: 'longxiaochun',
-      format: 'mp3',
-    },
-  };
 
-  const response = await fetch(ttsUrl, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-  });
+  const body = isIntl
+    ? {
+        model: 'qwen3-tts-flash',
+        input: { text, voice: 'Cherry' },
+      }
+    : {
+        model: 'cosyvoice-v3-plus',
+        input: { text },
+        parameters: {
+          voice: 'longxiaochun',
+          format: 'mp3',
+        },
+      };
+
+  let response: Response;
+  try {
+    response = await fetch(ttsUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    if (baseUrl === 'https://dashscope.aliyuncs.com') {
+      log.info('Network error on domestic endpoint, retrying CosyVoice on intl endpoint...');
+      baseUrl = 'https://dashscope-intl.aliyuncs.com';
+      ttsUrl = `${baseUrl}/api/v1/services/aigc/multimodal-generation/generation`;
+      response = await fetch(ttsUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: 'qwen3-tts-flash',
+          input: { text, voice: 'Cherry' },
+        }),
+      });
+    } else {
+      throw err;
+    }
+  }
 
   if (!response.ok) {
-    throw new Error(`Failed to call CosyVoice: ${await response.text()}`);
+    const errorText = await response.text();
+    if (errorText.includes('InvalidApiKey') && baseUrl === 'https://dashscope.aliyuncs.com') {
+      log.info('Key rejected on domestic endpoint, retrying CosyVoice on intl endpoint...');
+      baseUrl = 'https://dashscope-intl.aliyuncs.com';
+      ttsUrl = `${baseUrl}/api/v1/services/aigc/multimodal-generation/generation`;
+      response = await fetch(ttsUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: 'qwen3-tts-flash',
+          input: { text, voice: 'Cherry' },
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to call TTS: ${await response.text()}`);
+      }
+    } else {
+      throw new Error(`Failed to call TTS: ${errorText}`);
+    }
+  }
+
+  if (baseUrl === 'https://dashscope-intl.aliyuncs.com') {
+    const data = (await response.json()) as any;
+    const resultUrl = data.output?.audio?.url;
+    if (!resultUrl) throw new Error(`Qwen-TTS returned no audio URL: ${JSON.stringify(data)}`);
+    const audioRes = await fetch(resultUrl);
+    if (!audioRes.ok) throw new Error(`Failed to download Qwen-TTS result from ${resultUrl}`);
+    return Buffer.from(await audioRes.arrayBuffer());
   }
 
   return Buffer.from(await response.arrayBuffer());
@@ -632,30 +748,97 @@ async function generateWanxVideo(
   apiKey: string,
   signal?: AbortSignal,
 ): Promise<Buffer> {
-  const submitUrl =
-    'https://dashscope.aliyuncs.com/api/v1/services/aigc/text2video/video-synthesis';
+  let baseUrl = apiKey.startsWith('sk-ws-')
+    ? 'https://dashscope-intl.aliyuncs.com'
+    : 'https://dashscope.aliyuncs.com';
+
+  if (process.env.DASHSCOPE_BASE_URL) {
+    try {
+      baseUrl = new URL(process.env.DASHSCOPE_BASE_URL).origin;
+    } catch {
+      // ignore
+    }
+  }
+
+  const isIntl = baseUrl === 'https://dashscope-intl.aliyuncs.com';
+
+  let submitUrl = isIntl
+    ? `${baseUrl}/api/v1/services/aigc/video-generation/video-synthesis`
+    : `${baseUrl}/api/v1/services/aigc/text2video/video-synthesis`;
+
   const headers = {
     Authorization: `Bearer ${apiKey}`,
     'Content-Type': 'application/json',
     'X-DashScope-Async': 'enable',
   };
-  const body = {
-    model: 'wanx-video-t2v-v1',
-    input: { prompt },
-    parameters: {
-      size: '1280*720',
-    },
-  };
 
-  const response = await fetch(submitUrl, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-    signal,
-  });
+  const body = isIntl
+    ? {
+        model: 'wan2.7-t2v',
+        input: { prompt },
+        parameters: {
+          resolution: '720P',
+          ratio: '16:9',
+        },
+      }
+    : {
+        model: 'wan2.7-t2v',
+        input: { prompt },
+        parameters: {
+          size: '1280*720',
+        },
+      };
+
+  let response: Response;
+  try {
+    response = await fetch(submitUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (err) {
+    if (baseUrl === 'https://dashscope.aliyuncs.com') {
+      log.info('Network error on domestic endpoint, retrying Wanx Video on intl endpoint...');
+      baseUrl = 'https://dashscope-intl.aliyuncs.com';
+      submitUrl = `${baseUrl}/api/v1/services/aigc/video-generation/video-synthesis`;
+      response = await fetch(submitUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: 'wan2.7-t2v',
+          input: { prompt },
+          parameters: { resolution: '720P', ratio: '16:9' },
+        }),
+        signal,
+      });
+    } else {
+      throw err;
+    }
+  }
 
   if (!response.ok) {
-    throw new Error(`Failed to submit Wanx Video task: ${await response.text()}`);
+    const errorText = await response.text();
+    if (errorText.includes('InvalidApiKey') && baseUrl === 'https://dashscope.aliyuncs.com') {
+      log.info('Key rejected on domestic endpoint, retrying Wanx Video on intl endpoint...');
+      baseUrl = 'https://dashscope-intl.aliyuncs.com';
+      submitUrl = `${baseUrl}/api/v1/services/aigc/video-generation/video-synthesis`;
+      response = await fetch(submitUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: 'wan2.7-t2v',
+          input: { prompt },
+          parameters: { resolution: '720P', ratio: '16:9' },
+        }),
+        signal,
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to submit Wanx Video task: ${await response.text()}`);
+      }
+    } else {
+      throw new Error(`Failed to submit Wanx Video task: ${errorText}`);
+    }
   }
 
   const submitData = (await response.json()) as { output?: { task_id?: string } };
@@ -667,7 +850,7 @@ async function generateWanxVideo(
   }
 
   return pollWithBackoff(
-    `https://dashscope.aliyuncs.com/api/v1/tasks/${taskId}`,
+    `${baseUrl}/api/v1/tasks/${taskId}`,
     { Authorization: `Bearer ${apiKey}` },
     {
       maxAttempts: 20,

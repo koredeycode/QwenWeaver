@@ -1,6 +1,6 @@
 import { createAlibaba } from '@ai-sdk/alibaba';
-import type { LanguageModel } from 'ai';
 import type { NodePayload } from '@qwenweaver/types';
+import type { LanguageModel } from 'ai';
 import { createModuleLogger } from '../logger.js';
 
 const log = createModuleLogger('engine/model-router');
@@ -10,12 +10,12 @@ const log = createModuleLogger('engine/model-router');
  * Users can override via `node.data.model`.
  */
 const MODEL_DEFAULTS: Record<string, string> = {
-  supervisor: 'qwen3-max',
-  agent: 'qwen-plus',
-  mcp_tool: 'qwen-plus',
-  trigger: 'qwen-turbo',
-  input_trigger: 'qwen-turbo',
-  logic: 'qwen-turbo',
+  supervisor: 'qwen3.7-max',
+  agent: 'qwen3.7-plus',
+  mcp_tool: 'qwen3.7-plus',
+  trigger: 'qwen3.6-flash',
+  input_trigger: 'qwen3.6-flash',
+  logic: 'qwen3.6-flash',
 };
 
 /**

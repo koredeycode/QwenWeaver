@@ -49,8 +49,12 @@ export const OutputRenderer = React.memo(
 
     if (!outputUrl && !streamingText && !thinkingText) return null;
 
+    const finalOutputUrl = outputUrl?.startsWith('/')
+      ? `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${outputUrl}`
+      : outputUrl;
+
     const isRunning = status === 'running';
-    const ext = outputUrl ? outputUrl.split('.').pop()?.toLowerCase() : undefined;
+    const ext = finalOutputUrl ? finalOutputUrl.split('.').pop()?.toLowerCase() : undefined;
 
     const handleDownloadStream = () => {
       if (!streamingText) return;
@@ -66,25 +70,25 @@ export const OutputRenderer = React.memo(
     };
 
     // Media outputs (image/video/audio) always render inline regardless of status
-    if (outputUrl && ext && isMediaExt(ext)) {
+    if (finalOutputUrl && ext && isMediaExt(ext)) {
       return (
         <div className="mt-2 bg-slate-50 border border-slate-200 p-2 rounded flex justify-center">
-          {getMediaElement(outputUrl, ext)}
+          {getMediaElement(finalOutputUrl, ext)}
         </div>
       );
     }
 
     // Text output: show content inline with a download button
-    if (streamingText || thinkingText || (outputUrl && ext)) {
+    if (streamingText || thinkingText || (finalOutputUrl && ext)) {
       const headerLabel = isRunning ? 'STREAMING' : 'OUTPUT';
       return (
         <div className="mt-2.5 bg-white border border-slate-200 p-4 font-sans text-sm text-slate-800 overflow-y-auto leading-relaxed shadow-sm">
           <div className="text-slate-400 border-b border-slate-100 pb-2 mb-3 flex items-center justify-between font-mono">
             <span className="text-[10px] font-bold tracking-wide">{headerLabel}</span>
             <div className="flex items-center gap-2">
-              {outputUrl && !isMediaExt(ext ?? '') ? (
+              {finalOutputUrl && !isMediaExt(ext ?? '') ? (
                 <a
-                  href={outputUrl}
+                  href={finalOutputUrl}
                   download
                   className="flex items-center gap-1 text-primary hover:text-primary/80 text-[10px] font-bold uppercase"
                 >

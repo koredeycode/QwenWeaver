@@ -54,7 +54,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         position: { x: 300, y: 100 },
         data: {
           label: 'Literature Searcher',
-          model: 'qwen-plus',
+          model: 'qwen3.7-plus',
           systemPrompt:
             'Search for recent academic papers and blog posts on the given topic. Summarize key findings, methodologies, and results.',
           outputFormat: 'markdown',
@@ -66,7 +66,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         position: { x: 300, y: 300 },
         data: {
           label: 'Industry Analyst',
-          model: 'qwen-plus',
+          model: 'qwen3.7-plus',
           systemPrompt:
             'Analyze industry trends, real-world applications, and production deployments related to the topic. Focus on practical insights.',
           outputFormat: 'markdown',
@@ -78,7 +78,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         position: { x: 600, y: 200 },
         data: {
           label: 'Synthesis Supervisor',
-          model: 'qwen3-max',
+          model: 'qwen3.7-max',
           systemPrompt:
             'Combine the literature review and industry analysis into a coherent synthesis. Identify conflicts and resolve them. Output a structured report with sections: Summary, Key Findings, Conflicts, Recommendations.',
           enableThinking: true,
@@ -144,7 +144,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         position: { x: 350, y: 200 },
         data: {
           label: 'Linguistic Translator',
-          model: 'qwen-plus',
+          model: 'qwen3.7-plus',
           systemPrompt:
             'Translate the text into the target language. Preserve technical terms, brand names, and formatting. Produce natural-sounding output.',
           outputFormat: 'markdown',
@@ -156,7 +156,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         position: { x: 650, y: 200 },
         data: {
           label: 'Translation Reviewer',
-          model: 'qwen3-max',
+          model: 'qwen3.7-max',
           systemPrompt:
             'Review the translation for accuracy, tone, and cultural appropriateness. Check that technical terms are correctly translated. If the translation has errors, reject it with specific feedback for the translator to fix.',
           enableThinking: true,
@@ -206,7 +206,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         position: { x: 300, y: 100 },
         data: {
           label: 'Code Style Analyzer',
-          model: 'qwen-plus',
+          model: 'qwen3.7-plus',
           systemPrompt:
             'Analyze the provided code for style issues, anti-patterns, and best practice violations. Check naming conventions, error handling, code organization.',
           outputFormat: 'markdown',
@@ -218,7 +218,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         position: { x: 300, y: 300 },
         data: {
           label: 'Security Vulnerability Scanner',
-          model: 'qwen-plus',
+          model: 'qwen3.7-plus',
           systemPrompt:
             'Scan the code for security vulnerabilities: SQL injection, hardcoded credentials, XSS, CSRF, insecure deserialization, and dependency vulnerabilities.',
           outputFormat: 'markdown',
@@ -230,7 +230,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         position: { x: 600, y: 200 },
         data: {
           label: 'Audit Consolidator',
-          model: 'qwen3-max',
+          model: 'qwen3.7-max',
           systemPrompt:
             'Combine the style analysis and security scan into a single report. Deduplicate findings, prioritize by severity, and provide actionable remediation steps.',
           enableThinking: true,
@@ -296,7 +296,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         position: { x: 300, y: 250 },
         data: {
           label: 'Triage Supervisor',
-          model: 'qwen3-max',
+          model: 'qwen3.7-max',
           systemPrompt:
             'Analyze the customer issue. Identify whether it involves billing, technical problems, or both. Dispatch to the appropriate specialist agents: Billing Specialist for payment issues, DevOps Specialist for technical errors. Always also dispatch the Support Agent for a holding response.',
           enableThinking: true,
@@ -310,7 +310,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         position: { x: 550, y: 100 },
         data: {
           label: 'Billing Specialist',
-          model: 'qwen-plus',
+          model: 'qwen3.7-plus',
           systemPrompt:
             'Investigate the billing issue: check for duplicate charges, verify payment history, calculate any refunds due, and draft a resolution.',
           outputFormat: 'markdown',
@@ -322,7 +322,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         position: { x: 550, y: 250 },
         data: {
           label: 'DevOps Specialist',
-          model: 'qwen-plus',
+          model: 'qwen3.7-plus',
           systemPrompt:
             'Investigate the technical issue: check server status, identify potential causes for error 503, suggest remediation steps.',
           outputFormat: 'markdown',
@@ -334,7 +334,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         position: { x: 550, y: 400 },
         data: {
           label: 'Support Agent',
-          model: 'qwen-plus',
+          model: 'qwen3.7-plus',
           systemPrompt:
             'Draft a polite, empathetic holding response acknowledging the customer issue and setting expectations for resolution timeline.',
           outputFormat: 'markdown',
@@ -346,7 +346,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         position: { x: 800, y: 250 },
         data: {
           label: 'Resolution Supervisor',
-          model: 'qwen3-max',
+          model: 'qwen3.7-max',
           systemPrompt:
             'Review the billing diagnosis, technical analysis, and holding response. Compose a comprehensive final resolution message that addresses all customer concerns professionally.',
           enableThinking: true,
@@ -408,6 +408,96 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         id: 'e-fa-rr',
         source: 'node-feedback-agent',
         target: 'node-resolution-reviewer',
+        sourceHandle: 'source-right',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+    ],
+  },
+  {
+    id: 'creative-content-studio',
+    name: 'Creative Content Studio',
+    description:
+      'Takes a marketing brief, drafts a blog post via a copywriter agent, and concurrently generates a feature image via a designer agent. A supervisor then reviews both assets.',
+    nodes: [
+      {
+        id: 'node-trigger-brief',
+        type: 'input_trigger',
+        position: { x: 50, y: 200 },
+        data: {
+          label:
+            'Marketing Brief: A new futuristic smart coffee machine that brews using anti-gravity technology.',
+          outputFormat: 'text',
+        },
+      },
+      {
+        id: 'node-copywriter',
+        type: 'agent',
+        position: { x: 300, y: 100 },
+        data: {
+          label: 'Copywriter Agent',
+          model: 'qwen3.7-plus',
+          systemPrompt:
+            'Write an engaging, 3-paragraph blog post about the product described in the brief. Focus on the innovative features and futuristic appeal.',
+          outputFormat: 'markdown',
+        },
+      },
+      {
+        id: 'node-designer',
+        type: 'agent',
+        position: { x: 300, y: 300 },
+        data: {
+          label: 'Design Agent',
+          model: 'wan2.7-image-pro',
+          systemPrompt:
+            'Generate a photorealistic 3D render of a futuristic anti-gravity smart coffee machine brewing coffee mid-air.',
+          outputFormat: 'image',
+        },
+      },
+      {
+        id: 'node-editor',
+        type: 'supervisor',
+        position: { x: 600, y: 200 },
+        data: {
+          label: 'Editorial Supervisor',
+          model: 'qwen3.7-max',
+          systemPrompt:
+            'Review the drafted blog post and the generated feature image. Combine them into a final markdown document with the image embedded at the top.',
+          enableThinking: true,
+          thinkingBudget: 1024,
+          outputFormat: 'markdown',
+        },
+      },
+    ],
+    edges: [
+      {
+        id: 'e-brief-copy',
+        source: 'node-trigger-brief',
+        target: 'node-copywriter',
+        sourceHandle: 'source',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+      {
+        id: 'e-brief-design',
+        source: 'node-trigger-brief',
+        target: 'node-designer',
+        sourceHandle: 'source',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+      {
+        id: 'e-copy-edit',
+        source: 'node-copywriter',
+        target: 'node-editor',
+        sourceHandle: 'source-right',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+      {
+        id: 'e-design-edit',
+        source: 'node-designer',
+        target: 'node-editor',
         sourceHandle: 'source-right',
         targetHandle: 'target-left',
         type: 'animated',

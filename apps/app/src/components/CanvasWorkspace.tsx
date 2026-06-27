@@ -1132,7 +1132,7 @@ export const CanvasWorkspace = () => {
                               className="absolute -top-2.5 right-0 z-10 bg-white border border-[#cbd5e1] p-0.5 hover:bg-slate-50 text-slate-400 hover:text-slate-700 shadow-sm transition-colors cursor-pointer"
                               title="Collapse minimap"
                             >
-                              <ChevronUp className="w-3 h-3" />
+                              <ChevronDown className="w-3 h-3" />
                             </button>
                             <MiniMap
                               style={{
@@ -1168,7 +1168,7 @@ export const CanvasWorkspace = () => {
                             className="bg-white border border-[#cbd5e1] p-1 hover:bg-slate-50 text-slate-400 hover:text-slate-700 shadow-sm transition-colors cursor-pointer"
                             title="Expand minimap"
                           >
-                            <ChevronDown className="w-3 h-3" />
+                            <ChevronUp className="w-3 h-3" />
                           </button>
                         )}
                       </Panel>
