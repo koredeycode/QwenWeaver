@@ -9,6 +9,13 @@ export const tourConfig: TourStep[] = [
     targets: [{ type: 'dom_selector', value: '[data-tour="palette"]' }],
   },
   {
+    id: 'worker-catalog',
+    title: 'Worker Agent Catalog',
+    description:
+      'Clicking a Worker Agent opens this catalog. You can choose from text, reasoning, and media generation workers.',
+    targets: [{ type: 'dom_selector', value: '[data-tour="worker-catalog"]' }],
+  },
+  {
     id: 'canvas-node',
     title: 'Select the Agent Node',
     description:

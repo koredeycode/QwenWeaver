@@ -3,7 +3,7 @@ import { Node, Edge, Connection, applyNodeChanges, applyEdgeChanges, addEdge } f
 import { StoreState, GraphSlice } from './types.js';
 import { toast } from 'sonner';
 import { EXAMPLE_WORKFLOWS } from '../lib/example-workflows.js';
-import { WorkflowPayload, NodeData } from '@qwenweaver/types';
+import { WorkflowPayload, NodeData, GraphAction } from '@qwenweaver/types';
 
 // Initial template for the "Research Workflow"
 const RESEARCH_WORKFLOW_TEMPLATE = {
@@ -111,8 +111,8 @@ const RESEARCH_WORKFLOW_TEMPLATE = {
 let _updateNodeDataTimer: ReturnType<typeof setTimeout> | undefined;
 
 export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (set, get) => ({
-  nodes: RESEARCH_WORKFLOW_TEMPLATE.nodes,
-  edges: RESEARCH_WORKFLOW_TEMPLATE.edges,
+  nodes: [],
+  edges: [],
   selectedNodeId: null,
   workflowId: null,
   workflowName: '',
@@ -662,5 +662,232 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
       toast.error(`Import failed: ${err.message || err}`);
       return false;
     }
+  },
+
+  applyActions: (actions) => {
+    get().pushHistory();
+
+    set((state) => {
+      let currentNodes = [...state.nodes];
+      let currentEdges = [...state.edges];
+      let selectedId = state.selectedNodeId;
+
+      const isAgent = (t?: string) => t === 'agent' || t === 'supervisor';
+      const isTrigger = (t?: string) => t === 'trigger' || t === 'input_trigger';
+
+      for (const action of actions) {
+        if (action.type === 'add_node') {
+          const { type, id, position, data } = action.payload;
+          const nodeType = type as any;
+          const finalId =
+            id ||
+            `node-${nodeType}-${Date.now().toString().slice(-4)}-${Math.random().toString(36).slice(-4)}`;
+          const label =
+            data?.label ||
+            (nodeType === 'input_trigger'
+              ? 'Initial workflow instruction'
+              : `${nodeType.toUpperCase()} Node`);
+
+          const newNode: Node<any> = {
+            id: finalId,
+            type: nodeType,
+            position: position || { x: 150, y: 150 },
+            data: {
+              label,
+              model:
+                nodeType === 'supervisor'
+                  ? 'qwen3.7-max'
+                  : nodeType === 'agent'
+                    ? 'qwen3.7-plus'
+                    : undefined,
+              systemPrompt:
+                nodeType === 'agent' || nodeType === 'supervisor'
+                  ? 'You are a helpful assistant.'
+                  : undefined,
+              outputFormat: 'text',
+              ...data,
+            },
+          };
+          currentNodes.push(newNode);
+          selectedId = finalId;
+        } else if (action.type === 'add_nodes') {
+          const nodesList = action.payload || [];
+          for (const n of nodesList) {
+            const nodeType = n.type as any;
+            const finalId =
+              n.id ||
+              `node-${nodeType}-${Date.now().toString().slice(-4)}-${Math.random().toString(36).slice(-4)}`;
+            const label =
+              n.data?.label ||
+              (nodeType === 'input_trigger'
+                ? 'Initial workflow instruction'
+                : `${nodeType.toUpperCase()} Node`);
+
+            const newNode: Node<any> = {
+              id: finalId,
+              type: nodeType,
+              position: n.position || { x: 150, y: 150 },
+              data: {
+                label,
+                model:
+                  nodeType === 'supervisor'
+                    ? 'qwen3.7-max'
+                    : nodeType === 'agent'
+                      ? 'qwen3.7-plus'
+                      : undefined,
+                systemPrompt:
+                  nodeType === 'agent' || nodeType === 'supervisor'
+                    ? 'You are a helpful assistant.'
+                    : undefined,
+                outputFormat: 'text',
+                ...n.data,
+              },
+            };
+            currentNodes.push(newNode);
+            selectedId = finalId;
+          }
+        } else if (action.type === 'delete_node') {
+          const { id } = action.payload;
+          currentNodes = currentNodes.filter((n) => n.id !== id);
+          currentEdges = currentEdges.filter((e) => e.source !== id && e.target !== id);
+          if (selectedId === id) selectedId = null;
+        } else if (action.type === 'delete_nodes') {
+          const ids = action.payload || [];
+          currentNodes = currentNodes.filter((n) => !ids.includes(n.id));
+          currentEdges = currentEdges.filter(
+            (e) => !ids.includes(e.source) && !ids.includes(e.target),
+          );
+          if (selectedId && ids.includes(selectedId)) selectedId = null;
+        } else if (action.type === 'update_node') {
+          const { id, data } = action.payload;
+          currentNodes = currentNodes.map((node) => {
+            if (node.id === id) {
+              return { ...node, data: { ...node.data, ...data } };
+            }
+            return node;
+          });
+        } else if (action.type === 'update_nodes') {
+          const updates = action.payload || [];
+          for (const u of updates) {
+            currentNodes = currentNodes.map((node) => {
+              if (node.id === u.id) {
+                return { ...node, data: { ...node.data, ...u.data } };
+              }
+              return node;
+            });
+          }
+        } else if (action.type === 'add_edge') {
+          const {
+            id,
+            source,
+            target,
+            sourceHandle: connSourceHandle,
+            targetHandle: connTargetHandle,
+          } = action.payload;
+          const sourceNode = currentNodes.find((n) => n.id === source);
+          const targetNode = currentNodes.find((n) => n.id === target);
+          if (sourceNode && targetNode) {
+            let sourceHandle = connSourceHandle;
+            let targetHandle = connTargetHandle;
+
+            if (!sourceHandle || !targetHandle) {
+              if (isAgent(sourceNode.type) && isAgent(targetNode.type)) {
+                sourceHandle = 'source-right';
+                targetHandle = 'target-left';
+              } else if (isAgent(sourceNode.type) && targetNode.type === 'mcp_tool') {
+                sourceHandle = 'source-bottom';
+                targetHandle = 'target';
+              } else if (isTrigger(sourceNode.type) && isAgent(targetNode.type)) {
+                sourceHandle = 'source';
+                targetHandle = 'target-left';
+              } else if (sourceNode.type === 'mcp_tool' && isAgent(targetNode.type)) {
+                sourceHandle = 'source-bottom';
+                targetHandle = 'target-bottom';
+              } else if (isAgent(targetNode.type)) {
+                targetHandle = 'target-left';
+              } else if (targetNode.type === 'mcp_tool') {
+                targetHandle = 'target';
+              }
+            }
+
+            const newEdgeId = id || `e-${source}-${target}`;
+            const exists = currentEdges.some((e) => e.id === newEdgeId);
+            if (!exists) {
+              currentEdges.push({
+                id: newEdgeId,
+                source,
+                target,
+                sourceHandle: sourceHandle || undefined,
+                targetHandle: targetHandle || undefined,
+                type: 'animated',
+              });
+            }
+          }
+        } else if (action.type === 'add_edges') {
+          const edgesList = action.payload || [];
+          for (const e of edgesList) {
+            const {
+              id,
+              source,
+              target,
+              sourceHandle: connSourceHandle,
+              targetHandle: connTargetHandle,
+            } = e;
+            const sourceNode = currentNodes.find((n) => n.id === source);
+            const targetNode = currentNodes.find((n) => n.id === target);
+            if (sourceNode && targetNode) {
+              let sourceHandle = connSourceHandle;
+              let targetHandle = connTargetHandle;
+
+              if (!sourceHandle || !targetHandle) {
+                if (isAgent(sourceNode.type) && isAgent(targetNode.type)) {
+                  sourceHandle = 'source-right';
+                  targetHandle = 'target-left';
+                } else if (isAgent(sourceNode.type) && targetNode.type === 'mcp_tool') {
+                  sourceHandle = 'source-bottom';
+                  targetHandle = 'target';
+                } else if (isTrigger(sourceNode.type) && isAgent(targetNode.type)) {
+                  sourceHandle = 'source';
+                  targetHandle = 'target-left';
+                } else if (sourceNode.type === 'mcp_tool' && isAgent(targetNode.type)) {
+                  sourceHandle = 'source-bottom';
+                  targetHandle = 'target-bottom';
+                } else if (isAgent(targetNode.type)) {
+                  targetHandle = 'target-left';
+                } else if (targetNode.type === 'mcp_tool') {
+                  targetHandle = 'target';
+                }
+              }
+
+              const newEdgeId = id || `e-${source}-${target}`;
+              const exists = currentEdges.some((edge) => edge.id === newEdgeId);
+              if (!exists) {
+                currentEdges.push({
+                  id: newEdgeId,
+                  source,
+                  target,
+                  sourceHandle: sourceHandle || undefined,
+                  targetHandle: targetHandle || undefined,
+                  type: 'animated',
+                });
+              }
+            }
+          }
+        } else if (action.type === 'delete_edge') {
+          const { id } = action.payload;
+          currentEdges = currentEdges.filter((e) => e.id !== id);
+        } else if (action.type === 'delete_edges') {
+          const ids = action.payload || [];
+          currentEdges = currentEdges.filter((e) => !ids.includes(e.id));
+        }
+      }
+
+      return {
+        nodes: currentNodes,
+        edges: currentEdges,
+        selectedNodeId: selectedId,
+        isDirty: true,
+      };
+    });
   },
 });

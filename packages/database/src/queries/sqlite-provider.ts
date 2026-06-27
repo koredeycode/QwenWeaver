@@ -455,8 +455,9 @@ export const sqliteProvider: QueryProvider = {
           eq(sqliteSchema.sqliteWorkflows.userId, userId),
         ),
       );
+
     const changes = (result as unknown as { changes: number }).changes;
-    return changes > 0;
+    return (changes ?? 0) > 0;
   },
 
   async createExecution(executionId: string, workflowId: string, userId: string): Promise<void> {

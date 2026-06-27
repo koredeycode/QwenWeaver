@@ -55,6 +55,7 @@ export const NodeData = z.object({
     .optional(),
   enableThinking: z.boolean().optional(),
   outputFormat: OutputFormat.optional(),
+  workerType: z.string().optional(),
   _executionStatus: z.string().optional(),
   _output: z.string().optional(),
   _outputUrl: z.string().optional(),
@@ -210,3 +211,73 @@ export const SSEEvent = z.object({
   data: z.unknown(),
 });
 export type SSEEvent = z.infer<typeof SSEEvent>;
+
+export type GraphAction =
+  | {
+      type: 'add_node';
+      payload: {
+        type: string;
+        id?: string;
+        position?: { x: number; y: number };
+        data?: any;
+      };
+    }
+  | {
+      type: 'add_nodes';
+      payload: Array<{
+        type: string;
+        id?: string;
+        position?: { x: number; y: number };
+        data?: any;
+      }>;
+    }
+  | {
+      type: 'delete_node';
+      payload: { id: string };
+    }
+  | {
+      type: 'delete_nodes';
+      payload: string[];
+    }
+  | {
+      type: 'update_node';
+      payload: {
+        id: string;
+        data: any;
+      };
+    }
+  | {
+      type: 'update_nodes';
+      payload: Array<{
+        id: string;
+        data: any;
+      }>;
+    }
+  | {
+      type: 'add_edge';
+      payload: {
+        id?: string;
+        source: string;
+        target: string;
+        sourceHandle?: string;
+        targetHandle?: string;
+      };
+    }
+  | {
+      type: 'add_edges';
+      payload: Array<{
+        id?: string;
+        source: string;
+        target: string;
+        sourceHandle?: string;
+        targetHandle?: string;
+      }>;
+    }
+  | {
+      type: 'delete_edge';
+      payload: { id: string };
+    }
+  | {
+      type: 'delete_edges';
+      payload: string[];
+    };

@@ -16,6 +16,7 @@ import { nodeTypes } from './CustomNodes.js';
 import { GanttMetrics } from './GanttMetrics.js';
 import { Inspector } from './Inspector.js';
 import { Sidebar } from './Sidebar.js';
+import { WorkerAgentCatalog } from './WorkerAgentCatalog.js';
 
 import {
   ChevronDown,
@@ -82,11 +83,25 @@ export const CanvasWorkspace = () => {
   const credits = useStore((s) => s.credits);
   const fetchCredits = useStore((s) => s.fetchCredits);
   const isTourActive = useStore((s) => s.isTourActive);
+  const currentStepIndex = useStore((s) => s.currentStepIndex);
+  const steps = useStore((s) => s.steps);
   const logout = useStore((s) => s.logout);
 
   const reactFlowInstance = useReactFlow();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+
+  const [workerCatalogOpen, setWorkerCatalogOpen] = useState(false);
+  const [catalogPosition, setCatalogPosition] = useState<{ x: number; y: number } | null>(null);
+
+  // Automatically trigger worker catalog when entering its tour step
+  useEffect(() => {
+    if (isTourActive && steps[currentStepIndex]?.id === 'worker-catalog') {
+      setWorkerCatalogOpen(true);
+    } else if (isTourActive && steps[currentStepIndex]?.id !== 'worker-catalog') {
+      setWorkerCatalogOpen(false);
+    }
+  }, [isTourActive, currentStepIndex, steps]);
 
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -557,9 +572,14 @@ export const CanvasWorkspace = () => {
         y: event.clientY,
       });
 
-      addNode(type, position);
+      if (type === 'agent') {
+        setCatalogPosition(position);
+        setWorkerCatalogOpen(true);
+      } else {
+        addNode(type, position);
+      }
     },
-    [reactFlowInstance, addNode, isLocked, status],
+    [reactFlowInstance, addNode, isLocked, status, setCatalogPosition, setWorkerCatalogOpen],
   );
 
   const handleNodeClick = useCallback(
@@ -590,7 +610,12 @@ export const CanvasWorkspace = () => {
   return (
     <div className="h-dvh w-screen flex flex-row bg-[#f8fafc] text-slate-800 select-none overflow-x-hidden overflow-y-auto">
       {/* Left Sidebar extends to the top/bottom of viewport */}
-      <Sidebar />
+      <Sidebar
+        onOpenWorkerCatalog={(pos) => {
+          setCatalogPosition(pos);
+          setWorkerCatalogOpen(true);
+        }}
+      />
 
       {/* Center Column: Header Toolbar, Canvas Workspace, Metrics Panel */}
       <div className="flex-1 h-full flex flex-col min-w-0 bg-[#f8fafc] relative">
@@ -1193,10 +1218,10 @@ export const CanvasWorkspace = () => {
                     {!isTourActive && (
                       <button
                         onClick={() => useStore.getState().startTour()}
-                        className="pointer-events-auto flex items-center gap-1.5 border border-[#cbd5e1] bg-white px-3 py-1.5 font-mono text-xs font-bold text-slate-600 shadow-lg hover:bg-slate-50 rounded-none"
+                        className="pointer-events-auto h-11 w-11 border border-[#cbd5e1] bg-white text-slate-600 flex items-center justify-center shadow-lg hover:bg-slate-50 rounded-none cursor-pointer"
+                        title="Start Help Tour"
                       >
-                        <HelpCircle className="h-3.5 w-3.5 text-[#f97316]" />
-                        Help
+                        <HelpCircle className="h-5 w-5 text-[#f97316]" />
                       </button>
                     )}
                   </div>
@@ -1380,6 +1405,12 @@ export const CanvasWorkspace = () => {
           }
         }}
       />
+      {workerCatalogOpen && (
+        <WorkerAgentCatalog
+          onClose={() => setWorkerCatalogOpen(false)}
+          dropPosition={catalogPosition}
+        />
+      )}
     </div>
   );
 };
