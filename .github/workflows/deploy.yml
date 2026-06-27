@@ -97,7 +97,7 @@ jobs:
         run: |
           scp docker-compose.prod.yml site-dist.tar.gz app-dist.tar.gz .env deploy@${{ secrets.VPS_HOST }}:/home/deploy/qwenweaver/
 
-          ssh deploy@${{ secrets.VPS_HOST }} << 'ENDSSH'
+            ssh deploy@${{ secrets.VPS_HOST }} << 'ENDSSH'
             set -euo pipefail
 
             mkdir -p /home/deploy/qwenweaver/www/{site,app}
@@ -106,6 +106,18 @@ jobs:
             tar xzf ../app-dist.tar.gz -C app --no-same-owner
             rm -f ../site-dist.tar.gz ../app-dist.tar.gz
             chmod -R o+rX /home/deploy/qwenweaver/www
+
+            # Nginx diagnostics
+            echo "=== Nginx config for app.qwenweaver.xyz ==="
+            sudo cat /etc/nginx/sites-enabled/app.qwenweaver.xyz 2>&1 || echo "FILE NOT FOUND"
+            echo "=== Nginx config for qwenweaver.xyz ==="
+            sudo cat /etc/nginx/sites-enabled/qwenweaver.xyz 2>&1 || echo "FILE NOT FOUND"
+            echo "=== Site files ==="
+            ls -la /home/deploy/qwenweaver/www/site/ 2>&1 || echo "DIR NOT FOUND"
+            echo "=== App files ==="
+            ls -la /home/deploy/qwenweaver/www/app/ 2>&1 || echo "DIR NOT FOUND"
+            echo "=== Nginx error log (last 20) ==="
+            sudo tail -20 /var/log/nginx/error.log 2>&1 || echo "NO ERROR LOG"
 
             cd /home/deploy/qwenweaver
             echo ${{ secrets.GHCR_PAT }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
