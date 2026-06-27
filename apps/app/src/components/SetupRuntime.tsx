@@ -65,7 +65,7 @@ export function SetupRuntime({ onSubmit }: SetupRuntimeProps) {
 
       <button
         type="submit"
-        className="w-full py-2.5 bg-[#9a3412] hover:bg-[#a73a00] text-white font-bold text-xs flex items-center justify-center gap-2 tracking-wide cursor-pointer"
+        className="w-full py-2.5 bg-[#ea580c] hover:bg-[#a73a00] text-white font-bold text-xs flex items-center justify-center gap-2 tracking-wide cursor-pointer"
       >
         Apply Configuration
       </button>

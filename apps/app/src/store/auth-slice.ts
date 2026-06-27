@@ -9,6 +9,7 @@ import {
   authHeaders,
 } from '../lib/api-client.js';
 import { toast } from 'sonner';
+import { clearDraft } from './auto-save.js';
 
 export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set, _get) => {
   if (typeof window !== 'undefined') {
@@ -103,6 +104,7 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
 
     logout: () => {
       clearAuth();
+      clearDraft();
       set({ token: null, refreshToken: null, user: null, credits: null });
     },
   };

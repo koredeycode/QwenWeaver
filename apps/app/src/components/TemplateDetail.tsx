@@ -83,7 +83,7 @@ export const TemplateDetailPage = () => {
   if (loading) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-[#f8fafc]">
-        <Loader2 className="w-6 h-6 text-[#ea580c] animate-spin" />
+        <Loader2 className="w-6 h-6 text-[#f97316] animate-spin" />
       </div>
     );
   }
@@ -136,7 +136,7 @@ export const TemplateDetailPage = () => {
           <button
             onClick={handleFork}
             disabled={forking}
-            className="px-4 py-1.5 bg-[#9a3412] hover:bg-[#a73a00] text-white text-[10px] font-mono font-bold flex items-center gap-1.5 transition-all disabled:opacity-50 cursor-pointer"
+            className="px-4 py-1.5 bg-[#ea580c] hover:bg-[#a73a00] text-white text-[10px] font-mono font-bold flex items-center gap-1.5 transition-all disabled:opacity-50 cursor-pointer"
           >
             {forking ? (
               <Loader2 className="w-3 h-3 animate-spin" />
@@ -175,7 +175,7 @@ export const TemplateDetailPage = () => {
                     {template.downloads} downloads
                   </span>
                   <span className="flex items-center gap-1">
-                    <Star className="w-3.5 h-3.5 text-[#ea580c]" />
+                    <Star className="w-3.5 h-3.5 text-[#f97316]" />
                     {template.avgRating.toFixed(1)}
                   </span>
                   {template.category && (
@@ -186,7 +186,7 @@ export const TemplateDetailPage = () => {
                 </div>
               </div>
               {template.featured && (
-                <span className="px-2 py-1 bg-orange-50 border border-orange-200 text-[#ea580c] text-[10px] font-mono font-bold">
+                <span className="px-2 py-1 bg-orange-50 border border-orange-200 text-[#f97316] text-[10px] font-mono font-bold">
                   ⭐ FEATURED
                 </span>
               )}
@@ -232,7 +232,7 @@ export const TemplateDetailPage = () => {
                       node.type === 'trigger' || node.type === 'input_trigger'
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         : node.type === 'agent'
-                          ? 'bg-orange-50 text-[#ea580c] border border-orange-200'
+                          ? 'bg-orange-50 text-[#f97316] border border-orange-200'
                           : node.type === 'supervisor'
                             ? 'bg-blue-50 text-[#2563eb] border border-blue-200'
                             : 'bg-purple-50 text-purple-700 border border-purple-200'
@@ -267,7 +267,7 @@ export const TemplateDetailPage = () => {
               <button
                 onClick={handleFork}
                 disabled={forking}
-                className="px-5 py-2 bg-[#9a3412] hover:bg-[#a73a00] text-white text-xs font-mono font-bold flex items-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
+                className="px-5 py-2 bg-[#ea580c] hover:bg-[#a73a00] text-white text-xs font-mono font-bold flex items-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
               >
                 {forking ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

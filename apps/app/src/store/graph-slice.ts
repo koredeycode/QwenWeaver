@@ -355,6 +355,18 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
     }));
   },
 
+  setNodeData: (id, data) =>
+    set((state) => ({
+      nodes: state.nodes.map((node) =>
+        node.id === id ? { ...node, data: { ...node.data, ...data } } : node,
+      ),
+    })),
+  setEdgeData: (id, data) =>
+    set((state) => ({
+      edges: state.edges.map((edge) =>
+        edge.id === id ? { ...edge, data: { ...edge.data, ...data } } : edge,
+      ),
+    })),
   selectNode: (id) => set({ selectedNodeId: id }),
 
   setWorkflowMeta: (name, description) =>

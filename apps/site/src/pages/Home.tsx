@@ -1,5 +1,15 @@
 import { useEffect, useState, useRef, type ReactNode } from 'react';
-import { Play, Bot, Brain, Wrench, Loader2, Square, CheckCircle2 } from 'lucide-react';
+import {
+  Play,
+  Bot,
+  Brain,
+  Wrench,
+  Loader2,
+  Square,
+  CheckCircle2,
+  Maximize2,
+  RotateCcw,
+} from 'lucide-react';
 
 const integrations = [
   {
@@ -187,17 +197,17 @@ const demoEdges = [
 ];
 
 const INITIAL_POSITIONS: Record<string, { x: number; y: number }> = {
-  trigger: { x: 150, y: 78 },
-  agent1: { x: 320, y: 12 },
-  agent2: { x: 320, y: 140 },
-  supervisor: { x: 520, y: 55 },
-  tool: { x: 582, y: 135 },
+  trigger: { x: 40, y: 70 },
+  agent1: { x: 250, y: 15 },
+  agent2: { x: 250, y: 125 },
+  supervisor: { x: 480, y: 65 },
+  tool: { x: 552, y: 195 },
 };
 
 const NODE_SIZES: Record<string, { w: number; h: number }> = {
-  trigger: { w: 150, h: 62 },
-  agent: { w: 165, h: 62 },
-  supervisor: { w: 180, h: 66 },
+  trigger: { w: 160, h: 72 },
+  agent: { w: 160, h: 56 },
+  supervisor: { w: 180, h: 56 },
   tool: { w: 56, h: 56 },
 };
 
@@ -280,7 +290,7 @@ function edgeColor(e: { source: string; target: string }) {
   if (srcType === 'supervisor') return '#2563eb';
   if (srcType === 'tool') return '#8b5cf6';
   if (demoNodeDefs.find((n) => n.id === e.target)?.type === 'tool') return '#8b5cf6';
-  return '#ea580c';
+  return '#f97316';
 }
 
 /* ── Status helpers ────────────────────────────────────────────────────── */
@@ -339,18 +349,33 @@ function DemoCompactStatus({ status }: { status: 'pending' | 'running' | 'comple
 function DemoTriggerNode({ status }: { status: 'pending' | 'running' | 'completed' }) {
   return (
     <div
-      className={`w-full h-full bg-white border-2 ${status === 'running' ? 'border-primary-container animate-[nodePulse_2s_ease-in-out_infinite]' : status === 'completed' ? 'border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.15)]' : 'border-emerald-500'} text-slate-800 font-sans shadow-sm flex flex-col rounded-none`}
+      className={`w-full h-full bg-white border-2 ${status === 'running' ? 'border-primary-container animate-[nodePulse_2s_ease-in-out_infinite]' : status === 'completed' ? 'border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.15)]' : 'border-emerald-500'} text-slate-800 font-sans shadow-sm flex flex-col rounded-none relative`}
     >
-      <div className="flex items-center justify-between border-b border-outline-variant px-2.5 py-1.5">
-        <div className="flex items-center gap-2">
-          <Play className="w-4 h-4 text-emerald-600 fill-emerald-600/10" />
-          <span className="text-[10px] font-mono font-bold tracking-wider text-emerald-600">
+      <div className="flex items-center justify-between border-b border-outline-variant px-1.5 py-1">
+        <div className="flex items-center gap-1.5">
+          <Play className="w-3 h-3 text-emerald-600 fill-emerald-600/10" />
+          <span className="text-[8px] font-mono font-bold tracking-wider text-emerald-600">
             TRIGGER
           </span>
         </div>
-        <DemoStatusBadge status={status} />
+        <div className="flex items-center gap-1">
+          <DemoStatusBadge status={status} />
+          <Maximize2 className="w-2.5 h-2.5 text-slate-300" />
+        </div>
       </div>
-      <div className="flex-1" />
+      <div className="px-2 py-1 flex-1 flex flex-col justify-center">
+        <div className="text-[10px] font-bold tracking-tight text-slate-900 leading-none">
+          Web Trigger
+        </div>
+        <div className="text-[8px] text-slate-500 font-mono mt-0.5">TEXT output</div>
+      </div>
+      <div className="flex items-center justify-between border-t border-slate-100 px-1.5 py-0.5 bg-slate-50">
+        <div className="flex items-center gap-1 text-[8px] font-mono font-bold text-emerald-700">
+          <Play className="w-2 h-2 fill-emerald-700" /> RUN
+        </div>
+        <span className="text-[7px] text-slate-400 font-mono">Click to execute</span>
+      </div>
+      <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-emerald-500 border-[1.5px] border-slate-700 rounded-full" />
     </div>
   );
 }
@@ -358,17 +383,28 @@ function DemoTriggerNode({ status }: { status: 'pending' | 'running' | 'complete
 function DemoAgentNode({ status }: { status: 'pending' | 'running' | 'completed' }) {
   return (
     <div
-      className={`w-full h-full bg-white border-2 ${status === 'completed' ? 'border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.15)]' : status === 'running' ? 'border-primary-container animate-[nodePulse_2s_ease-in-out_infinite]' : 'border-outline'} text-slate-800 font-sans shadow-sm flex flex-col rounded-none`}
+      className={`w-full h-full bg-white border-2 ${status === 'completed' ? 'border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.15)]' : status === 'running' ? 'border-primary-container animate-[nodePulse_2s_ease-in-out_infinite]' : 'border-outline'} text-slate-800 font-sans shadow-sm flex flex-col rounded-none relative`}
     >
-      <div className="flex items-center justify-between border-b border-outline-variant px-2.5 py-1.5">
-        <div className="flex items-center gap-2">
-          <Bot className="w-4 h-4 text-[#ea580c]" />
-          <span className="text-[10px] font-mono font-bold tracking-wider text-primary">
-            AGENT (qwen-plus)
-          </span>
+      <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-[#f97316] border-[1.5px] border-slate-700 rounded-full" />
+      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-purple-500 border-[1.5px] border-slate-700 rounded-full" />
+
+      <div className="flex items-center justify-between border-b border-outline-variant px-1.5 py-1">
+        <div className="flex items-center gap-1.5">
+          <Bot className="w-3 h-3 text-[#f97316]" />
+          <span className="text-[8px] font-mono font-bold tracking-wider text-primary">AGENT</span>
         </div>
-        <DemoStatusBadge status={status} />
+        <div className="flex items-center gap-1">
+          <DemoStatusBadge status={status} />
+          <Maximize2 className="w-2.5 h-2.5 text-slate-300" />
+        </div>
       </div>
+      <div className="px-1.5 py-1 flex-1 flex flex-col justify-center">
+        <div className="text-[10px] font-bold tracking-tight text-slate-900 leading-none">
+          Qwen Worker
+        </div>
+      </div>
+
+      <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-[#f97316] border-[1.5px] border-slate-700 rounded-full" />
     </div>
   );
 }
@@ -376,17 +412,30 @@ function DemoAgentNode({ status }: { status: 'pending' | 'running' | 'completed'
 function DemoSupervisorNode({ status }: { status: 'pending' | 'running' | 'completed' }) {
   return (
     <div
-      className={`w-full h-full bg-white border-2 ${status === 'completed' ? 'border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.15)]' : status === 'running' ? 'border-secondary-container animate-[supervisorPulse_2s_ease-in-out_infinite]' : 'border-outline'} text-slate-800 font-sans shadow-sm flex flex-col rounded-none`}
+      className={`w-full h-full bg-white border-2 ${status === 'completed' ? 'border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.15)]' : status === 'running' ? 'border-secondary-container animate-[supervisorPulse_2s_ease-in-out_infinite]' : 'border-outline'} text-slate-800 font-sans shadow-md flex flex-col rounded-none relative`}
     >
-      <div className="flex items-center justify-between border-b border-outline px-2.5 py-1.5">
-        <div className="flex items-center gap-2">
-          <Brain className="w-4 h-4 text-[#2563eb]" />
-          <span className="text-[10px] font-mono font-bold tracking-wider text-secondary">
-            SUPERVISOR (qwen3-max)
+      <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-[#2563eb] border-[1.5px] border-slate-700 rounded-full" />
+      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-purple-500 border-[1.5px] border-slate-700 rounded-full" />
+
+      <div className="flex items-center justify-between border-b border-outline px-1.5 py-1">
+        <div className="flex items-center gap-1.5">
+          <Brain className="w-3 h-3 text-[#2563eb]" />
+          <span className="text-[8px] font-mono font-bold tracking-wider text-secondary">
+            SUPERVISOR
           </span>
         </div>
-        <DemoStatusBadge status={status} />
+        <div className="flex items-center gap-1">
+          <DemoStatusBadge status={status} />
+          <Maximize2 className="w-2.5 h-2.5 text-slate-300" />
+        </div>
       </div>
+      <div className="px-1.5 py-1 flex-1 flex flex-col justify-center">
+        <div className="text-[10px] font-bold tracking-tight text-secondary-container leading-none">
+          Reviewer
+        </div>
+      </div>
+
+      <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-[#2563eb] border-[1.5px] border-slate-700 rounded-full" />
     </div>
   );
 }
@@ -394,18 +443,24 @@ function DemoSupervisorNode({ status }: { status: 'pending' | 'running' | 'compl
 function DemoToolNode({ status }: { status: 'pending' | 'running' | 'completed' }) {
   return (
     <div
-      className={`w-full h-full bg-white border-2 ${status === 'completed' ? 'border-emerald-500 shadow-[0_2px_6px_rgba(16,185,129,0.12)]' : status === 'running' ? 'border-purple-500 shadow-[0_2px_8px_rgba(168,85,247,0.15)]' : 'border-purple-200'} text-slate-800 font-sans shadow-sm flex flex-col rounded-none`}
+      className={`w-full h-full bg-white border-2 ${status === 'completed' ? 'border-emerald-500 shadow-[0_2px_6px_rgba(16,185,129,0.12)]' : status === 'running' ? 'border-purple-500 shadow-[0_2px_8px_rgba(168,85,247,0.15)]' : 'border-purple-200'} text-slate-800 font-sans shadow-sm flex flex-col rounded-none relative`}
     >
-      <div className="flex items-center justify-between px-1.5 py-1 border-b border-outline-variant">
-        <div className="flex items-center gap-1">
-          <Wrench className="w-2.5 h-2.5 text-purple-600" />
-          <span className="text-[6px] font-mono font-bold tracking-wider text-purple-600">MCP</span>
+      <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-purple-500 border border-white rounded-full" />
+      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-purple-500 border border-white rounded-full" />
+
+      <div className="flex items-center justify-between px-1 py-0.5 border-b border-outline-variant">
+        <div className="flex items-center gap-0.5">
+          <Wrench className="w-2 h-2 text-purple-600" />
+          <span className="text-[5px] font-mono font-bold tracking-wider text-purple-600">MCP</span>
         </div>
-        <DemoCompactStatus status={status} />
+        <div className="flex items-center gap-0.5">
+          <DemoCompactStatus status={status} />
+          <Maximize2 className="w-1.5 h-1.5 text-purple-300" />
+        </div>
       </div>
       <div className="flex items-center justify-center flex-1 min-h-0">
-        <div className="w-7 h-7 rounded bg-purple-100 flex items-center justify-center">
-          <Wrench className="w-3.5 h-3.5 text-purple-600" />
+        <div className="w-6 h-6 rounded bg-purple-100 flex items-center justify-center">
+          <Wrench className="w-3 h-3 text-purple-600" />
         </div>
       </div>
     </div>
@@ -631,7 +686,13 @@ function CanvasDemo() {
           <span>4 agents</span>
           <span>1 MCP tool</span>
         </div>
-        <div className="flex gap-2 text-[10px] font-mono text-slate-400">
+        <div className="flex gap-2 text-[10px] font-mono text-slate-400 items-center">
+          <button
+            onClick={() => setPositions(INITIAL_POSITIONS)}
+            className="flex items-center gap-1 px-2 py-0.5 hover:bg-slate-100 rounded transition-colors text-slate-500 cursor-pointer"
+          >
+            <RotateCcw className="w-3 h-3" /> Reset
+          </button>
           <span>Drag nodes · Run to execute</span>
         </div>
       </div>
@@ -937,7 +998,7 @@ function VisualBuilderSection() {
                     strokeWidth="1.5"
                     strokeDasharray="3 3"
                   />
-                  <circle cx="2" cy="4" r="3" fill="#ea580c" />
+                  <circle cx="2" cy="4" r="3" fill="#f97316" />
                 </svg>
 
                 <div className="absolute bottom-0 right-8 w-16 h-7 rounded border-2 border-purple-200 bg-white shadow-sm flex items-center justify-center">

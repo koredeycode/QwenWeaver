@@ -14,9 +14,10 @@ export const AnimatedEdge = memo(
     style = {},
     markerEnd,
     selected,
+    data,
   }: EdgeProps) => {
-    // Check if this specific edge is active/transferring data in store
-    const isActive = useStore((s) => s.activeEdges.has(id));
+    const storeActive = useStore((s) => s.activeEdges.has(id));
+    const isActive = data?._edgeActive === true || storeActive;
 
     // Get stepped/orthogonal path
     const [edgePath] = getSmoothStepPath({
@@ -35,7 +36,7 @@ export const AnimatedEdge = memo(
           id={id}
           style={{
             ...style,
-            stroke: selected ? '#2563eb' : isActive ? '#ea580c' : '#cbd5e1',
+            stroke: selected ? '#2563eb' : isActive ? '#f97316' : '#cbd5e1',
             strokeWidth: selected ? 3 : isActive ? 2.5 : 1.5,
             fill: 'none',
             transition: 'stroke 0.2s, stroke-width 0.2s',
@@ -49,7 +50,7 @@ export const AnimatedEdge = memo(
         {isActive && (
           <path
             style={{
-              stroke: '#ea580c', // primary orange
+              stroke: '#f97316', // primary orange
               strokeWidth: 2,
               fill: 'none',
             }}

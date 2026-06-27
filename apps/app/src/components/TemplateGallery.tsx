@@ -65,7 +65,7 @@ export const TemplateGallery = () => {
             <ArrowLeft className="w-4 h-4" />
             Workflows
           </button>
-          <span className="text-sm font-bold h-full px-1 border-b-2 border-[#ea580c] text-slate-900 flex items-center justify-center">
+          <span className="text-sm font-bold h-full px-1 border-b-2 border-[#f97316] text-slate-900 flex items-center justify-center">
             Template Library
           </span>
         </div>
@@ -101,7 +101,7 @@ export const TemplateGallery = () => {
         <div className="max-w-5xl mx-auto space-y-8">
           <div>
             <h1 className="text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-              🔀 TEMPLATE LIBRARY
+              TEMPLATE LIBRARY
             </h1>
             <p className="text-xs text-slate-500 font-mono mt-1 uppercase tracking-wide">
               Browse community-built multi-agent workflows. Fork any template to your workspace.
@@ -115,7 +115,7 @@ export const TemplateGallery = () => {
                 onClick={() => setActiveCategory(cat.id)}
                 className={`px-3 py-1.5 text-[10px] font-mono font-bold border transition-all cursor-pointer ${
                   activeCategory === cat.id
-                    ? 'bg-[#ea580c] text-white border-[#ea580c]'
+                    ? 'bg-[#f97316] text-white border-[#f97316]'
                     : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
                 }`}
               >
@@ -126,7 +126,7 @@ export const TemplateGallery = () => {
 
           {templatesLoading ? (
             <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-6 h-6 text-[#ea580c] animate-spin" />
+              <Loader2 className="w-6 h-6 text-[#f97316] animate-spin" />
             </div>
           ) : templates.length === 0 ? (
             <div className="text-center py-20">

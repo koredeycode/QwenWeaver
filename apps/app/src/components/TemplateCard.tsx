@@ -30,7 +30,7 @@ export const TemplateCard = React.memo(({ template, onSelect, onFork }: Template
 
   return (
     <div
-      className="bg-white border-2 border-slate-200 hover:border-[#ea580c] flex flex-col shadow-sm hover:shadow-md transition-all rounded-none group cursor-pointer relative"
+      className="bg-white border-2 border-slate-200 hover:border-[#f97316] flex flex-col shadow-sm hover:shadow-md transition-all rounded-none group cursor-pointer relative"
       onClick={() => onSelect(template.id)}
     >
       {template.thumbnail ? (
@@ -38,25 +38,25 @@ export const TemplateCard = React.memo(({ template, onSelect, onFork }: Template
           <img
             src={template.thumbnail}
             alt={template.name}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
           />
         </div>
       ) : (
-        <div className="w-full h-24 flex items-center justify-center bg-slate-50 border-b border-slate-200">
-          <FolderOpen className="w-8 h-8 text-slate-300 group-hover:text-[#ea580c] transition-colors" />
+        <div className="w-full h-36 flex items-center justify-center bg-slate-50 border-b border-slate-200 overflow-hidden">
+          <FolderOpen className="w-8 h-8 text-slate-300 group-hover:text-[#f97316] transition-all duration-500 group-hover:scale-110" />
         </div>
       )}
       {template.featured && (
         <div className="absolute top-3 right-3">
-          <span className="text-[9px] font-mono bg-orange-50 border border-orange-200 text-[#ea580c] px-1.5 py-0.5 font-bold">
+          <span className="text-[9px] font-mono bg-orange-50 border border-orange-200 text-[#f97316] px-1.5 py-0.5 font-bold">
             FEATURED
           </span>
         </div>
       )}
       <div className="p-6 flex flex-col justify-between flex-1 min-h-0">
         <div>
-          <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#ea580c] transition-colors">
+          <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#f97316] transition-colors">
             {template.name}
           </h3>
           {template.description && (
@@ -81,7 +81,7 @@ export const TemplateCard = React.memo(({ template, onSelect, onFork }: Template
             )}
             {counts.agents > 0 && (
               <span
-                className="flex items-center gap-0.5 text-[9px] font-mono bg-orange-50 border border-orange-200 text-[#ea580c] px-1 py-0.5"
+                className="flex items-center gap-0.5 text-[9px] font-mono bg-orange-50 border border-orange-200 text-[#f97316] px-1 py-0.5"
                 title="Agents"
               >
                 <Bot className="w-2.5 h-2.5" /> {counts.agents}
@@ -129,7 +129,7 @@ export const TemplateCard = React.memo(({ template, onSelect, onFork }: Template
               e.stopPropagation();
               onFork(template.id);
             }}
-            className="py-1.5 px-3 bg-[#9a3412] hover:bg-[#a73a00] text-white text-[10px] font-mono font-bold transition-all"
+            className="py-1.5 px-3 bg-[#ea580c] hover:bg-[#a73a00] text-white text-[10px] font-mono font-bold transition-all"
           >
             FORK →
           </button>

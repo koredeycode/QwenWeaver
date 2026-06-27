@@ -40,7 +40,7 @@ export const CreateWorkflowDialog = ({ isOpen, onClose, onConfirm }: CreateWorkf
         {/* Header */}
         <div className="bg-white text-slate-800 px-6 py-4 flex items-center justify-between border-b border-slate-200">
           <div className="flex items-center gap-2.5">
-            <Plus className="w-4 h-4 text-[#ea580c]" />
+            <Plus className="w-4 h-4 text-[#f97316]" />
             <h2 className="text-sm font-bold font-mono text-slate-800 tracking-tight">
               NEW WORKFLOW
             </h2>
@@ -95,7 +95,7 @@ export const CreateWorkflowDialog = ({ isOpen, onClose, onConfirm }: CreateWorkf
           <button
             onClick={handleSubmit}
             disabled={!name.trim()}
-            className="px-4 py-1.5 bg-slate-900 hover:bg-[#9a3412] text-white text-xs font-mono font-bold transition-all rounded-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+            className="px-4 py-1.5 bg-slate-900 hover:bg-[#ea580c] text-white text-xs font-mono font-bold transition-all rounded-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
           >
             CREATE WORKFLOW
           </button>

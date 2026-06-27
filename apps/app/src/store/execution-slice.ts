@@ -12,15 +12,35 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
   executionStatus: 'idle',
   nodeStatuses: {},
   nodeOutputs: {},
+  nodeThinking: {},
+  nodeOutputUrls: {},
   activeEdges: new Set(),
   metrics: null,
   abortController: null,
+  executionHistory: [],
+  historyLoading: false,
+
+  fetchExecutionHistory: async (limit = 20, offset = 0) => {
+    set({ historyLoading: true });
+    try {
+      const res = await fetchApi(`/api/execution?limit=${limit}&offset=${offset}`);
+      if (res.ok) {
+        const data = (await res.json()) as any;
+        set({ executionHistory: data.executions || [] });
+      }
+    } catch (err) {
+      console.error('Failed to fetch execution history:', err);
+    } finally {
+      set({ historyLoading: false });
+    }
+  },
 
   runWorkflow: async () => {
     set({
       executionStatus: 'pending',
       nodeStatuses: {},
       nodeOutputs: {},
+      nodeThinking: {},
       activeEdges: new Set(),
       metrics: null,
       activeExecutionId: null,
@@ -83,184 +103,200 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
 
       const abortController = new AbortController();
       set({ abortController });
-      const streamRes = await fetchApi(`/api/workflow/${executionId}/stream`, {
-        signal: abortController.signal,
-      });
+      const tokenParam = token ? `?token=${token}` : '';
+      const eventSourceUrl = `/api/workflow/${executionId}/stream${tokenParam}`;
 
-      if (!streamRes.ok) {
-        toast.error('Failed to connect to execution stream');
-        set({ executionStatus: 'idle' });
-        return;
-      }
-
-      let buffer = '';
       const nodeTimings: NodeTiming[] = [];
       const edgeActiveTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
-      const reader = streamRes.body?.getReader();
-      if (!reader) {
-        toast.error('Stream not available');
-        set({ executionStatus: 'idle' });
-        return;
-      }
 
-      const decoder = new TextDecoder();
+      const eventSource = new EventSource(eventSourceUrl);
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      console.log('[execution] EventSource connecting to', eventSourceUrl);
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+      eventSource.onopen = () => {
+        console.log('[execution] EventSource connected');
+      };
 
-        let currentEvent = '';
-        let currentData = '';
+      eventSource.onerror = (err) => {
+        console.error('[execution] EventSource error', err);
+        // Do not close immediately on error, EventSource auto-reconnects.
+      };
 
-        for (const line of lines) {
-          if (line.startsWith('event:')) {
-            currentEvent = line.slice(6).trim();
-          } else if (line.startsWith('data:')) {
-            currentData = line.slice(5).trim();
-          } else if (line.startsWith('id:')) {
-            continue;
-          } else if (line === '' && currentEvent && currentData) {
-            try {
-              const payload = JSON.parse(currentData);
+      // Add signal abort handling
+      abortController.signal.addEventListener('abort', () => {
+        console.log('[execution] Aborting EventSource');
+        eventSource.close();
+      });
 
-              switch (currentEvent) {
-                case 'token': {
-                  const { nodeId, chunk } = payload as { nodeId: string; chunk: string };
-                  set((s) => ({
-                    nodeOutputs: {
-                      ...s.nodeOutputs,
-                      [nodeId]: (s.nodeOutputs[nodeId] || '') + chunk,
-                    },
-                  }));
-                  break;
-                }
+      // Instead of an infinite while loop with TextDecoder, we listen to specific events
 
-                case 'status_update': {
-                  const { nodeId, status } = payload as {
-                    nodeId: string;
-                    status: string;
-                  };
-                  set((s) => ({
-                    nodeStatuses: {
-                      ...s.nodeStatuses,
-                      [nodeId]: status as 'pending' | 'running' | 'completed' | 'failed',
-                    },
-                  }));
-                  if (status === 'completed' || status === 'failed') {
-                    set((s) => {
-                      const edgesToActivate = get().edges.filter((e) => e.source === nodeId);
-                      const a = new Set(s.activeEdges);
-                      for (const edge of edgesToActivate) {
-                        a.add(edge.id);
-                      }
-                      return { activeEdges: a };
-                    });
-                    edges
-                      .filter((e) => e.source === nodeId)
-                      .forEach((edge) => {
-                        const existing = edgeActiveTimers.get(edge.id);
-                        if (existing) clearTimeout(existing);
-                        const timer = setTimeout(() => {
-                          set((s) => {
-                            const a = new Set(s.activeEdges);
-                            a.delete(edge.id);
-                            edgeActiveTimers.delete(edge.id);
-                            return { activeEdges: a };
-                          });
-                        }, 1200);
-                        edgeActiveTimers.set(edge.id, timer);
-                      });
+      const handleEvent = (currentEvent: string, currentData: string) => {
+        if (!currentEvent || !currentData) return;
+        try {
+          const payload = JSON.parse(currentData);
+
+          switch (currentEvent) {
+            case 'token': {
+              const { nodeId, chunk } = payload as { nodeId: string; chunk: string };
+              set((s) => ({
+                nodeOutputs: {
+                  ...s.nodeOutputs,
+                  [nodeId]: (s.nodeOutputs[nodeId] || '') + chunk,
+                },
+              }));
+              break;
+            }
+
+            case 'thinking': {
+              const { nodeId, chunk } = payload as { nodeId: string; chunk: string };
+              set((s) => ({
+                nodeThinking: {
+                  ...s.nodeThinking,
+                  [nodeId]: (s.nodeThinking[nodeId] || '') + chunk,
+                },
+              }));
+              break;
+            }
+
+            case 'status_update': {
+              const { nodeId, status, outputUrl } = payload as {
+                nodeId: string;
+                status: string;
+                outputUrl?: string;
+              };
+              set((s) => ({
+                nodeStatuses: {
+                  ...s.nodeStatuses,
+                  [nodeId]: status as 'pending' | 'running' | 'completed' | 'failed',
+                },
+                ...(outputUrl
+                  ? {
+                      nodeOutputUrls: {
+                        ...s.nodeOutputUrls,
+                        [nodeId]: outputUrl,
+                      },
+                    }
+                  : {}),
+              }));
+              if (status === 'completed' || status === 'failed') {
+                set((s) => {
+                  const edgesToActivate = get().edges.filter((e) => e.source === nodeId);
+                  const a = new Set(s.activeEdges);
+                  for (const edge of edgesToActivate) {
+                    a.add(edge.id);
                   }
-                  break;
-                }
-
-                case 'edge_active': {
-                  const { sourceId, targetId } = payload as {
-                    sourceId: string;
-                    targetId: string;
-                  };
-                  const edgeId = edges.find(
-                    (e) => e.source === sourceId && e.target === targetId,
-                  )?.id;
-                  if (edgeId) {
-                    set((s) => {
-                      const a = new Set(s.activeEdges);
-                      a.add(edgeId);
-                      return { activeEdges: a };
-                    });
-                    const existing = edgeActiveTimers.get(edgeId);
+                  return { activeEdges: a };
+                });
+                edges
+                  .filter((e) => e.source === nodeId)
+                  .forEach((edge) => {
+                    const existing = edgeActiveTimers.get(edge.id);
                     if (existing) clearTimeout(existing);
                     const timer = setTimeout(() => {
                       set((s) => {
                         const a = new Set(s.activeEdges);
-                        a.delete(edgeId);
-                        edgeActiveTimers.delete(edgeId);
+                        a.delete(edge.id);
+                        edgeActiveTimers.delete(edge.id);
                         return { activeEdges: a };
                       });
                     }, 1200);
-                    edgeActiveTimers.set(edgeId, timer);
-                  }
-                  break;
-                }
-
-                case 'complete': {
-                  const { metrics } = payload as {
-                    metrics: {
-                      speedupS: number;
-                      totalTokens: number;
-                      totalLatencyMs: number;
-                      parallelEfficiency: number;
-                      nodeTimings: NodeTiming[];
-                    };
-                  };
-                  if (metrics?.nodeTimings) {
-                    nodeTimings.push(...metrics.nodeTimings);
-                  }
-                  const finalMetrics = {
-                    speedupS: metrics?.speedupS ?? 1,
-                    totalTokens: metrics?.totalTokens ?? 0,
-                    totalLatencyMs: metrics?.totalLatencyMs ?? 0,
-                    nodeTimings,
-                  };
-                  set({ metrics: finalMetrics });
-                  toast.success(`Workflow completed! Tokens used: ${finalMetrics.totalTokens}`);
-                  break;
-                }
-
-                case 'error': {
-                  const { message, nodeId } = payload as {
-                    message: string;
-                    nodeId?: string;
-                  };
-                  if (nodeId) {
-                    set((s) => ({
-                      nodeStatuses: { ...s.nodeStatuses, [nodeId]: 'failed' },
-                    }));
-                  }
-                  toast.error(message || 'Workflow execution error');
-                  break;
-                }
+                    edgeActiveTimers.set(edge.id, timer);
+                  });
               }
-            } catch {
-              // skip malformed payloads
+              break;
             }
-            currentEvent = '';
-            currentData = '';
+
+            case 'edge_active': {
+              const { sourceId, targetId } = payload as {
+                sourceId: string;
+                targetId: string;
+              };
+              const edgeId = edges.find((e) => e.source === sourceId && e.target === targetId)?.id;
+              if (edgeId) {
+                set((s) => {
+                  const a = new Set(s.activeEdges);
+                  a.add(edgeId);
+                  return { activeEdges: a };
+                });
+                const existing = edgeActiveTimers.get(edgeId);
+                if (existing) clearTimeout(existing);
+                const timer = setTimeout(() => {
+                  set((s) => {
+                    const a = new Set(s.activeEdges);
+                    a.delete(edgeId);
+                    edgeActiveTimers.delete(edgeId);
+                    return { activeEdges: a };
+                  });
+                }, 1200);
+                edgeActiveTimers.set(edgeId, timer);
+              }
+              break;
+            }
+
+            case 'complete': {
+              const { metrics } = payload as {
+                metrics: {
+                  speedupS: number;
+                  totalTokens: number;
+                  totalLatencyMs: number;
+                  parallelEfficiency: number;
+                  nodeTimings: NodeTiming[];
+                };
+              };
+              if (metrics?.nodeTimings) {
+                nodeTimings.push(...metrics.nodeTimings);
+              }
+              const finalMetrics = {
+                speedupS: metrics?.speedupS ?? 1,
+                totalTokens: metrics?.totalTokens ?? 0,
+                totalLatencyMs: metrics?.totalLatencyMs ?? 0,
+                nodeTimings,
+              };
+              set({ metrics: finalMetrics });
+              toast.success(`Workflow completed! Tokens used: ${finalMetrics.totalTokens}`);
+              break;
+            }
+
+            case 'error': {
+              const { message, nodeId } = payload as {
+                message: string;
+                nodeId?: string;
+              };
+              if (nodeId) {
+                set((s) => ({
+                  nodeStatuses: { ...s.nodeStatuses, [nodeId]: 'failed' },
+                }));
+              }
+              toast.error(message || 'Workflow execution error');
+              break;
+            }
           }
+        } catch (err) {
+          // skip malformed payloads
         }
-      }
+      };
 
-      for (const timer of edgeActiveTimers.values()) {
-        clearTimeout(timer);
-      }
-      edgeActiveTimers.clear();
+      const eventTypes = ['token', 'thinking', 'status_update', 'edge_active', 'complete', 'error'];
+      for (const eventType of eventTypes) {
+        eventSource.addEventListener(eventType, (e) => {
+          handleEvent(eventType, e.data);
 
-      toast.success('Workflow completed');
-      set({ executionStatus: 'completed' });
+          if (eventType === 'complete' || eventType === 'error') {
+            eventSource.close();
+
+            for (const timer of edgeActiveTimers.values()) {
+              clearTimeout(timer);
+            }
+            edgeActiveTimers.clear();
+
+            if (eventType === 'complete') {
+              set({ executionStatus: 'completed' });
+            } else {
+              set({ executionStatus: 'failed' });
+            }
+          }
+        });
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Execution failed';
       toast.error(msg);

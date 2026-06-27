@@ -20,9 +20,9 @@ export const StarRating = React.memo(({ rating, count, size = 14 }: StarRatingPr
             size={size}
             className={
               i < fullStars
-                ? 'fill-[#ea580c] text-[#ea580c]'
+                ? 'fill-[#f97316] text-[#f97316]'
                 : i === fullStars && hasHalf
-                  ? 'fill-[#ea580c]/50 text-[#ea580c]'
+                  ? 'fill-[#f97316]/50 text-[#f97316]'
                   : 'fill-transparent text-slate-300'
             }
           />

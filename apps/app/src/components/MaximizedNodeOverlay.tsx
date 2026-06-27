@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store/index.js';
 import { X, Bot, Brain, Wrench, Play, PanelLeft, PanelRight } from 'lucide-react';
+import { OutputRenderer } from './OutputRenderer.js';
 
 export const MaximizedNodeOverlay = () => {
   const nodes = useStore((s) => s.nodes);
@@ -8,11 +9,27 @@ export const MaximizedNodeOverlay = () => {
   const maximizedNodeId = useStore((s) => s.maximizedNodeId);
   const setMaximizedNodeId = useStore((s) => s.setMaximizedNodeId);
 
-  const maximizedNodeOutput = useStore((s) => s.nodeOutputs[maximizedNodeId || ''] || '');
-  const maximizedNodeStatus = useStore((s) => s.nodeStatuses[maximizedNodeId || ''] || 'pending');
+  const storeOutput = useStore((s) => s.nodeOutputs[maximizedNodeId || ''] || '');
+  const storeThinking = useStore((s) => s.nodeThinking[maximizedNodeId || ''] || '');
+  const storeStatus = useStore((s) => s.nodeStatuses[maximizedNodeId || ''] || 'pending');
 
   const [showOverlayLeft, setShowOverlayLeft] = useState(false);
   const [showOverlayRight, setShowOverlayRight] = useState(true);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let rafId: number;
+    if (scrollRef.current) {
+      rafId = requestAnimationFrame(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+      });
+    }
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [storeOutput, storeThinking]);
 
   if (!maximizedNodeId) return null;
 
@@ -25,7 +42,7 @@ export const MaximizedNodeOverlay = () => {
       case 'input_trigger':
         return <Play className="w-4 h-4 text-emerald-600 fill-emerald-600/10" />;
       case 'agent':
-        return <Bot className="w-4 h-4 text-[#ea580c]" />;
+        return <Bot className="w-4 h-4 text-[#f97316]" />;
       case 'supervisor':
         return <Brain className="w-4 h-4 text-[#2563eb]" />;
       case 'mcp_tool':
@@ -57,7 +74,7 @@ export const MaximizedNodeOverlay = () => {
             <div>
               <div className="text-[10px] font-mono text-slate-400 font-bold tracking-wider uppercase">
                 {(maximizedNode.type || '').replace('_', ' ')} NODE &bull; STATUS:{' '}
-                {maximizedNodeStatus.toUpperCase()}
+                {(maximizedNode.data?._executionStatus || storeStatus).toUpperCase()}
               </div>
               <h2 className="text-sm font-bold font-mono text-slate-800 tracking-tight">
                 {maximizedNode.data.label || 'Node Details'}
@@ -69,7 +86,7 @@ export const MaximizedNodeOverlay = () => {
               onClick={() => setShowOverlayLeft(!showOverlayLeft)}
               className={`p-1.5 rounded-none transition-colors cursor-pointer border ${
                 showOverlayLeft
-                  ? 'bg-slate-100 text-[#ea580c] border-slate-200 hover:bg-slate-200'
+                  ? 'bg-slate-100 text-[#f97316] border-slate-200 hover:bg-slate-200'
                   : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50'
               }`}
               title={showOverlayLeft ? 'Hide Left Parameters Panel' : 'Show Left Parameters Panel'}
@@ -80,7 +97,7 @@ export const MaximizedNodeOverlay = () => {
               onClick={() => setShowOverlayRight(!showOverlayRight)}
               className={`p-1.5 rounded-none transition-colors cursor-pointer border ${
                 showOverlayRight
-                  ? 'bg-slate-100 text-[#ea580c] border-slate-200 hover:bg-slate-200'
+                  ? 'bg-slate-100 text-[#f97316] border-slate-200 hover:bg-slate-200'
                   : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50'
               }`}
               title={
@@ -172,31 +189,47 @@ export const MaximizedNodeOverlay = () => {
           )}
 
           {/* Middle Side: Log Console Terminal */}
-          <div className="flex-1 min-w-0 p-6 flex flex-col bg-slate-950 text-slate-100">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
+          <div
+            ref={scrollRef}
+            className="flex-1 min-w-0 p-6 flex flex-col bg-white text-slate-800 overflow-y-auto"
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 pb-2 mb-3">
               <div className="flex items-center gap-2 text-xs font-mono font-bold text-slate-400 tracking-wider">
-                <span>CONSOLE TELEMETRY OUTPUT</span>
-                {maximizedNodeStatus === 'running' && (
-                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse border border-slate-700" />
+                <span>MONITOR / OUTPUT</span>
+                {(maximizedNode.data?._executionStatus || storeStatus) === 'running' && (
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse border border-slate-200" />
                 )}
               </div>
-              <span className="text-[10px] font-mono text-slate-500">AUTO-SCROLL ENABLED</span>
+              <span className="text-[10px] font-mono text-slate-400">AUTO-SCROLL ENABLED</span>
             </div>
 
-            <div
-              className="flex-1 font-mono text-[11px] leading-relaxed overflow-y-auto whitespace-pre-wrap p-2 select-text scrollbar"
-              ref={(el) => {
-                if (el) {
-                  el.scrollTop = el.scrollHeight;
+            {(storeOutput ||
+              maximizedNode?.data?._output ||
+              (storeStatus || maximizedNode?.data?._executionStatus) !== 'running') && (
+              <OutputRenderer
+                outputUrl={
+                  (maximizedNodeId
+                    ? useStore.getState().nodeOutputUrls[maximizedNodeId]
+                    : undefined) || maximizedNode?.data?._outputUrl
                 }
-              }}
-            >
-              {maximizedNodeOutput ||
-                `[System] Node is in ${maximizedNodeStatus} state. Awaiting telemetry stream...`}
-              {maximizedNodeStatus === 'running' && (
-                <span className="animate-pulse text-orange-500 ml-0.5">_</span>
+                streamingText={storeOutput || maximizedNode?.data?._output}
+                thinkingText={storeThinking}
+                fileExtension={
+                  maximizedNode?.data?.outputFormat === 'markdown'
+                    ? 'md'
+                    : maximizedNode?.data?.outputFormat || 'txt'
+                }
+                status={storeStatus || maximizedNode?.data?._executionStatus}
+              />
+            )}
+            {!maximizedNode?.data?._output &&
+              !storeOutput &&
+              (maximizedNode?.data?._executionStatus || storeStatus) === 'running' && (
+                <div className="flex-1 font-mono text-[11px] leading-relaxed p-2 text-slate-500">
+                  Awaiting telemetry stream...
+                  <span className="animate-pulse text-orange-500 ml-0.5">_</span>
+                </div>
               )}
-            </div>
           </div>
 
           {/* Right Side: Connection Navigation */}
@@ -213,7 +246,7 @@ export const MaximizedNodeOverlay = () => {
                         <button
                           key={n.id}
                           onClick={() => setMaximizedNodeId(n.id)}
-                          className="w-full text-left p-2 hover:bg-slate-100 hover:text-[#ea580c] border border-slate-200 transition-all text-xs font-mono font-bold flex items-center gap-2 bg-white cursor-pointer rounded-none"
+                          className="w-full text-left p-2 hover:bg-slate-100 hover:text-[#f97316] border border-slate-200 transition-all text-xs font-mono font-bold flex items-center gap-2 bg-white cursor-pointer rounded-none"
                           title={`Jump to ${n.data.label || n.id}`}
                         >
                           <span className="flex-shrink-0">{getNodeIcon(n.type)}</span>
@@ -238,7 +271,7 @@ export const MaximizedNodeOverlay = () => {
                         <button
                           key={n.id}
                           onClick={() => setMaximizedNodeId(n.id)}
-                          className="w-full text-left p-2 hover:bg-slate-100 hover:text-[#ea580c] border border-slate-200 transition-all text-xs font-mono font-bold flex items-center gap-2 bg-white cursor-pointer rounded-none"
+                          className="w-full text-left p-2 hover:bg-slate-100 hover:text-[#f97316] border border-slate-200 transition-all text-xs font-mono font-bold flex items-center gap-2 bg-white cursor-pointer rounded-none"
                           title={`Jump to ${n.data.label || n.id}`}
                         >
                           <span className="flex-shrink-0">{getNodeIcon(n.type)}</span>
@@ -267,7 +300,7 @@ export const MaximizedNodeOverlay = () => {
           </span>
           <button
             onClick={() => setMaximizedNodeId(null)}
-            className="px-4 py-1.5 bg-slate-900 hover:bg-[#9a3412] text-white text-xs font-mono font-bold transition-all rounded-none cursor-pointer"
+            className="px-4 py-1.5 bg-slate-900 hover:bg-[#ea580c] text-white text-xs font-mono font-bold transition-all rounded-none cursor-pointer"
           >
             CLOSE OVERLAY
           </button>

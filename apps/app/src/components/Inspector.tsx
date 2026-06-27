@@ -188,7 +188,7 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
       case 'input_trigger':
         return 'bg-emerald-600';
       case 'agent':
-        return 'bg-[#ea580c]';
+        return 'bg-[#f97316]';
       case 'supervisor':
         return 'bg-[#2563eb]';
       default:
@@ -548,7 +548,7 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                         type="checkbox"
                         checked={selectedNode.data.enableThinking !== false}
                         onChange={handleThinkingToggle}
-                        className="w-3.5 h-3.5 accent-[#ea580c]"
+                        className="w-3.5 h-3.5 accent-[#f97316]"
                       />
                     </div>
                     <div>
@@ -595,7 +595,7 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                           type="checkbox"
                           checked={webBrowsing}
                           onChange={(e) => setWebBrowsing(e.target.checked)}
-                          className="accent-[#ea580c] w-3.5 h-3.5"
+                          className="accent-[#f97316] w-3.5 h-3.5"
                         />
                       </div>
                       <div className="flex items-center justify-between text-xs">
@@ -604,7 +604,7 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                           type="checkbox"
                           checked={fileAccess}
                           onChange={(e) => setFileAccess(e.target.checked)}
-                          className="accent-[#ea580c] w-3.5 h-3.5"
+                          className="accent-[#f97316] w-3.5 h-3.5"
                         />
                       </div>
                     </div>
@@ -657,7 +657,7 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                 </button>
                 <button
                   onClick={() => selectNode(null)}
-                  className="px-4 py-1.5 bg-[#9a3412] hover:bg-[#a73a00] text-white font-bold text-xs rounded-none shadow-sm transition-colors"
+                  className="px-4 py-1.5 bg-[#ea580c] hover:bg-[#a73a00] text-white font-bold text-xs rounded-none shadow-sm transition-colors"
                 >
                   Save Node
                 </button>

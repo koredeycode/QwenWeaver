@@ -153,7 +153,7 @@ export const GanttMetrics = () => {
                             ? 'bg-secondary'
                             : nodeObj?.type === 'trigger'
                               ? 'bg-emerald-500'
-                              : 'bg-[#ea580c]'
+                              : 'bg-[#f97316]'
                         }`}
                       />
                     </div>

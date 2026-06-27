@@ -62,7 +62,7 @@ export const ConfirmDialog = ({
           </button>
           <button
             onClick={onConfirm}
-            className={`px-4 py-1.5 text-white text-xs font-mono font-bold transition-all rounded-none cursor-pointer ${destructive ? 'bg-rose-600 hover:bg-rose-700' : 'bg-slate-900 hover:bg-[#9a3412]'}`}
+            className={`px-4 py-1.5 text-white text-xs font-mono font-bold transition-all rounded-none cursor-pointer ${destructive ? 'bg-rose-600 hover:bg-rose-700' : 'bg-slate-900 hover:bg-[#ea580c]'}`}
           >
             {confirmLabel}
           </button>

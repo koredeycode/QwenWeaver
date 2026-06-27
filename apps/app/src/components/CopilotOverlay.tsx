@@ -43,7 +43,7 @@ export const CopilotOverlay = ({
           {/* Header */}
           <div className="flex items-center justify-between border-b border-[#cbd5e1] bg-[#f8fafc] px-4 py-2.5 flex-shrink-0">
             <div className="flex items-center gap-1.5 text-xs font-mono font-bold tracking-wider text-slate-900">
-              <MessageSquareCode className="w-3.5 h-3.5 text-[#ea580c]" />
+              <MessageSquareCode className="w-3.5 h-3.5 text-[#f97316]" />
               QwenWeaver Copilot Assistant
             </div>
             <button
@@ -85,7 +85,7 @@ export const CopilotOverlay = ({
 
             {isTyping && (
               <div className="bg-slate-50 border border-slate-200 p-2.5 text-xs text-slate-500 mr-6 flex items-center gap-2">
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-[#ea580c]" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-[#f97316]" />
                 <span className="font-mono text-[10px]">Copilot building workflow...</span>
               </div>
             )}
@@ -106,7 +106,7 @@ export const CopilotOverlay = ({
             <button
               onClick={handleSend}
               disabled={isTyping || !input.trim()}
-              className="p-2 bg-[#9a3412] hover:bg-[#a73a00] text-white disabled:opacity-30 flex-shrink-0"
+              className="p-2 bg-[#ea580c] hover:bg-[#a73a00] text-white disabled:opacity-30 flex-shrink-0"
               title="Send Message"
             >
               <Send className="w-3.5 h-3.5" />
@@ -120,12 +120,12 @@ export const CopilotOverlay = ({
         onClick={() => setIsOpen((prev) => !prev)}
         className={`pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 shadow-lg border border-[#cbd5e1] font-mono text-xs font-bold transition-all rounded-none ${
           isOpen
-            ? 'bg-[#ea580c] border-[#ea580c] text-white'
+            ? 'bg-[#f97316] border-[#f97316] text-white'
             : 'bg-white hover:bg-slate-50 text-slate-600'
         }`}
         data-tour="copilot"
       >
-        <MessageSquareCode className={`w-4 h-4 ${isOpen ? 'text-white' : 'text-[#ea580c]'}`} />
+        <MessageSquareCode className={`w-4 h-4 ${isOpen ? 'text-white' : 'text-[#f97316]'}`} />
         <span>Qwen Copilot</span>
         <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
       </button>

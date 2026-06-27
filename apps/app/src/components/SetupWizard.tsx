@@ -108,8 +108,8 @@ export function SetupWizard() {
 
       <div className="w-full max-w-lg bg-white border-2 border-slate-200 p-8 shadow-xl relative z-10 my-8">
         <div className="flex items-center gap-2 mb-2">
-          <Cpu className="w-6 h-6 text-[#ea580c]" />
-          <span className="text-sm font-mono font-bold tracking-wider text-[#ea580c]">
+          <Cpu className="w-6 h-6 text-[#f97316]" />
+          <span className="text-sm font-mono font-bold tracking-wider text-[#f97316]">
             QWENWEAVER
           </span>
         </div>
@@ -131,7 +131,7 @@ export function SetupWizard() {
                 <div
                   className={`flex h-7 w-7 items-center justify-center border text-xs font-bold font-mono ${
                     i === step
-                      ? 'border-[#ea580c] bg-[#ea580c] text-white'
+                      ? 'border-[#f97316] bg-[#f97316] text-white'
                       : i < step
                         ? 'border-emerald-500 bg-emerald-50 text-emerald-600'
                         : 'border-slate-200 bg-white text-slate-400'
@@ -161,7 +161,7 @@ export function SetupWizard() {
         {/* Loading overlay during submission */}
         {submitting ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-[#ea580c]" />
+            <Loader2 className="h-6 w-6 animate-spin text-[#f97316]" />
           </div>
         ) : (
           <>

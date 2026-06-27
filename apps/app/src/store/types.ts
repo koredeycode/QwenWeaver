@@ -19,6 +19,7 @@ export interface CanvasSnapshot {
   workflowName: string;
   workflowDescription: string;
   timestamp: number;
+  workflowId?: string | null;
 }
 
 export interface AuthSlice {
@@ -58,6 +59,8 @@ export interface GraphSlice {
   deleteNode: (id: string) => void;
   duplicateNode: (id: string) => void;
   updateNodeData: (id: string, data: Partial<NodeData>) => void;
+  setNodeData: (id: string, data: Record<string, unknown>) => void;
+  setEdgeData: (id: string, data: Record<string, unknown>) => void;
   selectNode: (id: string | null) => void;
   setWorkflowMeta: (name: string, description: string) => void;
   maximizedNodeId: string | null;
@@ -78,16 +81,31 @@ export interface GraphSlice {
   ) => boolean;
 }
 
+export interface ExecutionSummary {
+  id: string;
+  workflowId: string;
+  workflowName: string | null;
+  status: string;
+  metrics?: ExecutionMetrics | null;
+  startedAt: string;
+  completedAt?: string;
+}
+
 export interface ExecutionSlice {
   activeExecutionId: string | null;
   executionStatus: 'idle' | 'pending' | 'running' | 'completed' | 'failed';
   nodeStatuses: Record<string, 'pending' | 'running' | 'completed' | 'failed'>;
   nodeOutputs: Record<string, string>;
+  nodeThinking: Record<string, string>;
+  nodeOutputUrls: Record<string, string>;
   activeEdges: Set<string>;
   metrics: ExecutionMetrics | null;
   abortController: AbortController | null;
+  executionHistory: ExecutionSummary[];
+  historyLoading: boolean;
   runWorkflow: () => Promise<void>;
   stopWorkflow: () => void;
+  fetchExecutionHistory: (limit?: number, offset?: number) => Promise<void>;
 }
 
 export interface CopilotSlice {

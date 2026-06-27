@@ -15,9 +15,7 @@ export function Navbar() {
     <nav className="sticky top-0 z-50 border-b border-outline/40 bg-surface-bright/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
         <Link to="/" className="flex items-center gap-2 text-xl font-bold tracking-tight">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-on-primary">
-            Q
-          </span>
+          <img src="/logo.png" alt="QwenWeaver Logo" className="h-8 w-8 object-contain" />
           {SITE.name}
         </Link>
 

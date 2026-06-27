@@ -86,8 +86,8 @@ export const AuthScreen = () => {
       {/* Main card */}
       <div className="w-96 bg-white border-2 border-slate-200 p-8 shadow-xl relative z-10">
         <div className="flex items-center gap-2 mb-2">
-          <Cpu className="w-6 h-6 text-[#ea580c]" />
-          <span className="text-sm font-mono font-bold tracking-wider text-[#ea580c]">
+          <Cpu className="w-6 h-6 text-[#f97316]" />
+          <span className="text-sm font-mono font-bold tracking-wider text-[#f97316]">
             QWENWEAVER v0.1.0
           </span>
         </div>
@@ -149,7 +149,7 @@ export const AuthScreen = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-2.5 bg-[#9a3412] hover:bg-[#a73a00] text-white font-bold text-xs flex items-center justify-center gap-2 tracking-wide disabled:opacity-50 cursor-pointer"
+            className="w-full py-2.5 bg-[#ea580c] hover:bg-[#a73a00] text-white font-bold text-xs flex items-center justify-center gap-2 tracking-wide disabled:opacity-50 cursor-pointer"
           >
             {isLoading ? 'Signing in...' : isLogin ? 'Sign in' : 'Create account'}
             <ArrowRight className="w-4 h-4" />

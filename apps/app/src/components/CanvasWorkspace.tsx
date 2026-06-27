@@ -344,6 +344,7 @@ export const CanvasWorkspace = () => {
         workflowName: state.workflowName,
         workflowDescription: state.workflowDescription,
         timestamp: Date.now(),
+        workflowId: state.workflowId,
       });
 
       // Also persist to backend if user is authenticated and has a saved workflowId
@@ -380,6 +381,7 @@ export const CanvasWorkspace = () => {
           .then(() => {
             setIsSaving(false);
             markClean();
+            clearDraft();
           })
           .catch((err) => {
             setIsSaving(false);
@@ -393,7 +395,8 @@ export const CanvasWorkspace = () => {
   // Restore draft on mount
   useEffect(() => {
     const draft = loadDraft();
-    if (draft) {
+    const currentId = id === 'unsaved' ? null : id || null;
+    if (draft && (draft.workflowId || null) === currentId) {
       const timer = setTimeout(() => {
         toast('Unsaved draft found. Restore?', {
           duration: Infinity,
@@ -784,7 +787,7 @@ export const CanvasWorkspace = () => {
             <button
               onClick={() => setSaveDialogOpen(true)}
               disabled={!isDirty || nodes.length === 0}
-              className="px-3.5 py-1.5 bg-[#9a3412] hover:bg-[#a73a00] text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+              className="px-3.5 py-1.5 bg-[#ea580c] hover:bg-[#a73a00] text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
               title={!isDirty ? 'No unsaved changes' : 'Save this workflow'}
               data-tour="save-workflow"
             >
@@ -833,7 +836,7 @@ export const CanvasWorkspace = () => {
               <button
                 onClick={runWorkflow}
                 disabled={nodes.length === 0}
-                className="px-4 py-1.5 bg-[#9a3412] hover:bg-[#a73a00] text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors disabled:opacity-30 cursor-pointer"
+                className="px-4 py-1.5 bg-[#ea580c] hover:bg-[#a73a00] text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors disabled:opacity-30 cursor-pointer"
                 data-tour="run-workflow"
               >
                 <Play className="w-3.5 h-3.5 fill-white text-white" />
@@ -1144,7 +1147,7 @@ export const CanvasWorkspace = () => {
                                   case 'trigger':
                                     return '#10b981'; // Green
                                   case 'agent':
-                                    return '#ea580c'; // Orange
+                                    return '#f97316'; // Orange
                                   case 'supervisor':
                                     return '#2563eb'; // Blue
                                   case 'mcp_tool':
@@ -1196,7 +1199,7 @@ export const CanvasWorkspace = () => {
                         onClick={() => useStore.getState().startTour()}
                         className="pointer-events-auto flex items-center gap-1.5 border border-[#cbd5e1] bg-white px-3 py-1.5 font-mono text-xs font-bold text-slate-600 shadow-lg hover:bg-slate-50 rounded-none"
                       >
-                        <HelpCircle className="h-3.5 w-3.5 text-[#ea580c]" />
+                        <HelpCircle className="h-3.5 w-3.5 text-[#f97316]" />
                         Help
                       </button>
                     )}
@@ -1319,6 +1322,7 @@ export const CanvasWorkspace = () => {
               workflowDescription: description,
             });
             markClean();
+            clearDraft();
             setSaveDialogOpen(false);
             navigate(`/workflows/${data.workflowId}`, { replace: true });
             toast.success('Workflow saved!');

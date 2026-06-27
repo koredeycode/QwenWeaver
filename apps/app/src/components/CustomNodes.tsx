@@ -102,7 +102,7 @@ export const TriggerNode = memo(({ id, data }: NodeProps<any>) => {
 
   return (
     <div
-      className={`w-64 bg-white border-2 ${isSelected ? 'border-primary shadow-[0_2px_12px_rgba(234,88,12,0.15)]' : getStatusStyles(status)} text-slate-800 p-3 relative font-sans shadow-sm`}
+      className={`w-64 bg-white border-2 ${isSelected ? 'border-primary shadow-[0_2px_12px_rgba(249, 115, 22,0.15)]' : getStatusStyles(status)} text-slate-800 p-3 relative font-sans shadow-sm`}
     >
       <div className="flex items-center justify-between border-b border-outline-variant pb-2 mb-2">
         <div className="flex items-center gap-2">
@@ -177,20 +177,20 @@ TriggerNode.displayName = 'TriggerNode';
 
 // --- 2. Worker Agent Node Component ---
 export const AgentNode = memo(({ id, data }: NodeProps<any>) => {
-  const status = useStore((s) => s.nodeStatuses[id] || 'pending');
-  const output = useStore((s) => s.nodeOutputs[id] || '');
+  const storeStatus = useStore((s) => s.nodeStatuses[id] || 'pending');
   const isSelected = useStore((s) => s.selectedNodeId === id);
   const setMaximizedNodeId = useStore((s) => s.setMaximizedNodeId);
+  const status = data._executionStatus || storeStatus;
 
   return (
     <div
-      className={`w-72 bg-white border-2 ${isSelected ? 'border-primary shadow-[0_2px_12px_rgba(234,88,12,0.15)]' : getStatusStyles(status)} text-slate-800 p-3 relative font-sans shadow-sm`}
+      className={`w-72 bg-white border-2 ${isSelected ? 'border-primary shadow-[0_2px_12px_rgba(249, 115, 22,0.15)]' : getStatusStyles(status)} text-slate-800 p-3 relative font-sans shadow-sm`}
     >
       <Handle
         type="target"
         position={Position.Left}
         id="target-left"
-        className="w-4 h-4 !bg-[#ea580c] !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
+        className="w-4 h-4 !bg-[#f97316] !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
       />
 
       <Handle
@@ -203,7 +203,7 @@ export const AgentNode = memo(({ id, data }: NodeProps<any>) => {
 
       <div className="flex items-center justify-between border-b border-outline-variant pb-2 mb-2">
         <div className="flex items-center gap-2">
-          <Bot className="w-4 h-4 text-[#ea580c]" />
+          <Bot className="w-4 h-4 text-[#f97316]" />
           <span className="text-[10px] font-mono font-bold tracking-wider text-primary">
             AGENT ({data.model || 'qwen-plus'})
           </span>
@@ -233,22 +233,13 @@ export const AgentNode = memo(({ id, data }: NodeProps<any>) => {
         </div>
       )}
 
-      {/* Terminal Output stream display */}
-      {output && (
-        <div className="mt-2.5 bg-slate-950 border border-slate-850 p-2 font-mono text-[11px] h-28 overflow-y-auto leading-relaxed scrollbar">
-          <div className="text-slate-500 border-b border-slate-800 pb-1 mb-1 flex items-center justify-between">
-            <span className="text-[9px] font-bold tracking-wide">CONSOLE OUTPUT</span>
-            <span className="animate-pulse text-primary">_</span>
-          </div>
-          <span className="text-slate-100 whitespace-pre-wrap">{output}</span>
-        </div>
-      )}
+      {/* Terminal Output stream display (Moved to MaximizedNodeOverlay per user request) */}
 
       <Handle
         type="source"
         position={Position.Right}
         id="source-right"
-        className="w-4 h-4 !bg-[#ea580c] !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
+        className="w-4 h-4 !bg-[#f97316] !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
       />
       <Handle
         type="target"
@@ -264,10 +255,10 @@ AgentNode.displayName = 'AgentNode';
 
 // --- 3. Supervisor Node Component ---
 export const SupervisorNode = memo(({ id, data }: NodeProps<any>) => {
-  const status = useStore((s) => s.nodeStatuses[id] || 'pending');
-  const output = useStore((s) => s.nodeOutputs[id] || '');
+  const storeStatus = useStore((s) => s.nodeStatuses[id] || 'pending');
   const isSelected = useStore((s) => s.selectedNodeId === id);
   const setMaximizedNodeId = useStore((s) => s.setMaximizedNodeId);
+  const status = data._executionStatus || storeStatus;
 
   return (
     <div
@@ -320,16 +311,7 @@ export const SupervisorNode = memo(({ id, data }: NodeProps<any>) => {
         </div>
       )}
 
-      {/* Terminal Output stream display with thinking parser */}
-      {output && (
-        <div className="mt-2.5 bg-slate-950 border border-slate-800 p-2 font-mono text-[11px] h-32 overflow-y-auto leading-relaxed scrollbar">
-          <div className="text-secondary border-b border-slate-800 pb-1 mb-1 flex items-center justify-between">
-            <span className="text-[9px] font-bold tracking-wide">SUPERVISOR TELEMETRY</span>
-            <span className="animate-pulse">_</span>
-          </div>
-          <span className="text-slate-100 whitespace-pre-wrap">{output}</span>
-        </div>
-      )}
+      {/* Terminal Output stream display (Moved to MaximizedNodeOverlay per user request) */}
 
       <Handle
         type="source"
@@ -442,7 +424,7 @@ export const InputTriggerNode = memo(({ id, data }: NodeProps<any>) => {
 
   return (
     <div
-      className={`w-72 bg-white border-2 ${isSelected ? 'border-primary shadow-[0_2px_12px_rgba(234,88,12,0.15)]' : getStatusStyles(status)} text-slate-800 p-3 relative font-sans shadow-sm`}
+      className={`w-72 bg-white border-2 ${isSelected ? 'border-primary shadow-[0_2px_12px_rgba(249, 115, 22,0.15)]' : getStatusStyles(status)} text-slate-800 p-3 relative font-sans shadow-sm`}
     >
       <div className="flex items-center justify-between border-b border-outline-variant pb-2 mb-2">
         <div className="flex items-center gap-2">

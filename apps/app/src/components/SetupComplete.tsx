@@ -25,7 +25,7 @@ export function SetupComplete() {
 
       <button
         onClick={() => navigate('/login')}
-        className="inline-flex items-center gap-2 py-2.5 px-6 bg-[#9a3412] hover:bg-[#a73a00] text-white font-bold text-xs tracking-wide cursor-pointer"
+        className="inline-flex items-center gap-2 py-2.5 px-6 bg-[#ea580c] hover:bg-[#a73a00] text-white font-bold text-xs tracking-wide cursor-pointer"
       >
         Go to Sign In
         <ArrowRight className="w-4 h-4" />

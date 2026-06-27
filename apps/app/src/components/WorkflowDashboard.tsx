@@ -116,7 +116,7 @@ export const WorkflowDashboard = () => {
         )}
         {agents > 0 && (
           <span
-            className="flex items-center gap-0.5 text-[9px] font-mono bg-orange-50 border border-orange-200 text-[#ea580c] px-1 py-0.5"
+            className="flex items-center gap-0.5 text-[9px] font-mono bg-orange-50 border border-orange-200 text-[#f97316] px-1 py-0.5"
             title="Agents"
           >
             {agents}A
@@ -150,7 +150,7 @@ export const WorkflowDashboard = () => {
         <div className="flex items-center gap-6 h-full">
           <Link
             to="/"
-            className="text-sm font-bold h-full px-1 border-b-2 border-[#ea580c] text-slate-900 flex items-center justify-center transition-all"
+            className="text-sm font-bold h-full px-1 border-b-2 border-[#f97316] text-slate-900 flex items-center justify-center transition-all"
           >
             Workflows
           </Link>
@@ -167,7 +167,7 @@ export const WorkflowDashboard = () => {
         <div className="flex items-center gap-4">
           <button
             onClick={handleCreateNew}
-            className="px-4 py-1.5 bg-[#9a3412] hover:bg-[#a73a00] text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors cursor-pointer"
+            className="px-4 py-1.5 bg-[#ea580c] hover:bg-[#a73a00] text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             New Workflow
@@ -245,7 +245,7 @@ export const WorkflowDashboard = () => {
           {/* Headline Title */}
           <div>
             <h1 className="text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-              <span className="text-[#ea580c]">🔀</span> QWENWEAVER WORKFLOWS
+              QWENWEAVER WORKFLOWS
             </h1>
             <p className="text-xs text-slate-500 font-mono mt-1 uppercase tracking-wide">
               Select or deploy a visual multi-agent workflow pipeline.
@@ -257,12 +257,12 @@ export const WorkflowDashboard = () => {
             {/* Create Blank Card */}
             <button
               onClick={handleCreateNew}
-              className="border-2 border-dashed border-slate-300 hover:border-[#ea580c] bg-white p-6 flex flex-col items-center justify-center text-center group transition-all rounded-none min-h-[220px] cursor-pointer"
+              className="border-2 border-dashed border-slate-300 hover:border-[#f97316] bg-white p-6 flex flex-col items-center justify-center text-center group transition-all rounded-none min-h-[220px] cursor-pointer"
             >
-              <div className="w-12 h-12 bg-slate-50 group-hover:bg-orange-50 flex items-center justify-center text-slate-400 group-hover:text-[#ea580c] border border-slate-200 group-hover:border-orange-200 transition-colors mb-4">
+              <div className="w-12 h-12 bg-slate-50 group-hover:bg-orange-50 flex items-center justify-center text-slate-400 group-hover:text-[#f97316] border border-slate-200 group-hover:border-orange-200 transition-colors mb-4">
                 <Plus className="w-6 h-6" />
               </div>
-              <h3 className="text-sm font-bold text-slate-800 group-hover:text-[#ea580c] transition-colors">
+              <h3 className="text-sm font-bold text-slate-800 group-hover:text-[#f97316] transition-colors">
                 Deploy Blank Workflow
               </h3>
               <p className="text-[11px] text-slate-400 mt-1 max-w-[200px] leading-relaxed">
@@ -280,18 +280,18 @@ export const WorkflowDashboard = () => {
                 <div
                   key={wf.id}
                   onClick={() => navigate(`/workflows/${wf.id}`)}
-                  className="bg-white border-2 border-slate-200 hover:border-[#ea580c] p-6 flex flex-col justify-between shadow-sm hover:shadow-md transition-all rounded-none min-h-[220px] group relative cursor-pointer"
+                  className="bg-white border-2 border-slate-200 hover:border-[#f97316] p-6 flex flex-col justify-between shadow-sm hover:shadow-md transition-all rounded-none min-h-[220px] group relative cursor-pointer"
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <FolderOpen className="w-5 h-5 text-[#ea580c] transition-colors" />
+                      <FolderOpen className="w-5 h-5 text-[#f97316] transition-colors" />
                       <div className="flex items-center gap-2">
                         {renderBadges(wf.nodeCounts)}
                         <span className="text-[9px] font-mono text-slate-400">saved</span>
                       </div>
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#ea580c] transition-colors">
+                      <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#f97316] transition-colors">
                         {wf.name}
                       </h3>
                       {wf.description && (
@@ -316,7 +316,7 @@ export const WorkflowDashboard = () => {
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                      <span className="px-3 py-1 bg-[#9a3412] text-white text-[10px] font-mono font-bold">
+                      <span className="px-3 py-1 bg-[#ea580c] text-white text-[10px] font-mono font-bold">
                         OPEN EDITOR →
                       </span>
                     </div>
@@ -345,11 +345,11 @@ export const WorkflowDashboard = () => {
                 <button
                   key={wf.id}
                   onClick={() => handleOpenExample(wf)}
-                  className="bg-white border-2 border-slate-200 hover:border-[#ea580c] p-6 flex flex-col justify-between shadow-sm hover:shadow-md transition-all rounded-none min-h-[220px] group text-left w-full cursor-pointer"
+                  className="bg-white border-2 border-slate-200 hover:border-[#f97316] p-6 flex flex-col justify-between shadow-sm hover:shadow-md transition-all rounded-none min-h-[220px] group text-left w-full cursor-pointer"
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <FolderOpen className="w-5 h-5 text-slate-400 group-hover:text-[#ea580c] transition-colors" />
+                      <FolderOpen className="w-5 h-5 text-slate-400 group-hover:text-[#f97316] transition-colors" />
                       <div className="flex gap-1.5">
                         {triggersCount > 0 && (
                           <span
@@ -361,7 +361,7 @@ export const WorkflowDashboard = () => {
                         )}
                         {agentsCount > 0 && (
                           <span
-                            className="flex items-center gap-0.5 text-[9px] font-mono bg-orange-50 border border-orange-200 text-[#ea580c] px-1 py-0.5"
+                            className="flex items-center gap-0.5 text-[9px] font-mono bg-orange-50 border border-orange-200 text-[#f97316] px-1 py-0.5"
                             title="Agents"
                           >
                             {agentsCount}A
@@ -386,7 +386,7 @@ export const WorkflowDashboard = () => {
                       </div>
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#ea580c] transition-colors">
+                      <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#f97316] transition-colors">
                         {wf.name}
                       </h3>
                       <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed font-sans line-clamp-3">
@@ -397,7 +397,7 @@ export const WorkflowDashboard = () => {
 
                   <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
                     <span className="text-[9px] font-mono text-slate-400">ID: {wf.id}</span>
-                    <span className="px-3 py-1 bg-slate-900 group-hover:bg-[#9a3412] text-white text-[10px] font-mono font-bold transition-all">
+                    <span className="px-3 py-1 bg-slate-900 group-hover:bg-[#ea580c] text-white text-[10px] font-mono font-bold transition-all">
                       OPEN EDITOR →
                     </span>
                   </div>

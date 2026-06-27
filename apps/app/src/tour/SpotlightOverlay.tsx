@@ -337,14 +337,14 @@ export const SpotlightOverlay = () => {
           {isLast ? (
             <button
               onClick={endTour}
-              className="bg-[#9a3412] px-4 py-1 font-mono text-xs font-bold text-white hover:bg-orange-700"
+              className="bg-[#ea580c] px-4 py-1 font-mono text-xs font-bold text-white hover:bg-orange-700"
             >
               Finish
             </button>
           ) : (
             <button
               onClick={nextStep}
-              className="bg-[#ea580c] px-4 py-1 font-mono text-xs font-bold text-white hover:bg-orange-600"
+              className="bg-[#f97316] px-4 py-1 font-mono text-xs font-bold text-white hover:bg-orange-600"
             >
               Next
             </button>

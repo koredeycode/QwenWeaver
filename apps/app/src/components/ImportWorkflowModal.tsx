@@ -61,7 +61,7 @@ export const ImportWorkflowModal = ({ isOpen, onClose }: ImportWorkflowModalProp
         {/* Header */}
         <div className="bg-white text-slate-800 px-6 py-4 flex items-center justify-between border-b border-slate-200">
           <div className="flex items-center gap-2.5">
-            <Download className="w-4 h-4 text-[#ea580c]" />
+            <Download className="w-4 h-4 text-[#f97316]" />
             <h2 className="text-sm font-bold font-mono text-slate-800 tracking-tight">
               IMPORT WORKFLOW
             </h2>
@@ -148,7 +148,7 @@ export const ImportWorkflowModal = ({ isOpen, onClose }: ImportWorkflowModalProp
           </button>
           <button
             onClick={handleImport}
-            className="px-4 py-1.5 bg-slate-900 hover:bg-[#9a3412] text-white text-xs font-mono font-bold transition-all rounded-none cursor-pointer"
+            className="px-4 py-1.5 bg-slate-900 hover:bg-[#ea580c] text-white text-xs font-mono font-bold transition-all rounded-none cursor-pointer"
           >
             RUN IMPORT
           </button>

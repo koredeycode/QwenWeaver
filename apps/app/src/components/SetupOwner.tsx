@@ -99,7 +99,7 @@ export function SetupOwner({ onSubmit, initialEmail = '' }: SetupOwnerProps) {
 
       <button
         type="submit"
-        className="w-full py-2.5 bg-[#9a3412] hover:bg-[#a73a00] text-white font-bold text-xs flex items-center justify-center gap-2 tracking-wide cursor-pointer"
+        className="w-full py-2.5 bg-[#ea580c] hover:bg-[#a73a00] text-white font-bold text-xs flex items-center justify-center gap-2 tracking-wide cursor-pointer"
       >
         Continue
         <ArrowRight className="w-4 h-4" />

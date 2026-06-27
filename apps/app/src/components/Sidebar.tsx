@@ -22,6 +22,7 @@ import { CreateWorkflowDialog } from './CreateWorkflowDialog.js';
 import { client, authHeaders, isSelfHosted, getSaaSUrl } from '../lib/api-client.js';
 import { SystemHealth } from './SystemHealth.js';
 import { MCPMarketplace } from './MCPMarketplace.js';
+import { ExecutionHistoryPanel } from './ExecutionHistoryPanel.js';
 
 export const Sidebar = () => {
   const addNode = useStore((s) => s.addNode);
@@ -70,6 +71,7 @@ export const Sidebar = () => {
   const [marketplaceTab, setMarketplaceTab] = useState<'registry' | 'myservers'>('registry');
   const [savedMcpServers, setSavedMcpServers] = useState<any[]>([]);
   const [mcpLoading, setMcpLoading] = useState(false);
+  const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
 
   const paletteItems = {
     triggers: [
@@ -113,13 +115,11 @@ export const Sidebar = () => {
           <ChevronRight className="w-3.5 h-3.5" />
         </button>
 
-        <div className="w-8 h-8 bg-[#ea580c] flex items-center justify-center text-white font-mono font-bold text-lg select-none">
-          🔀
-        </div>
+        <img src="/logo.png" alt="QwenWeaver Logo" className="w-8 h-8 object-contain select-none" />
 
         <button
           onClick={handleCreateNewWorkflow}
-          className="w-9 h-9 bg-[#9a3412] hover:bg-[#a73a00] text-white flex items-center justify-center transition-colors shadow-sm cursor-pointer"
+          className="w-9 h-9 bg-[#ea580c] hover:bg-[#a73a00] text-white flex items-center justify-center transition-colors shadow-sm cursor-pointer"
           title="New Workflow"
         >
           <Plus className="w-4 h-4" />
@@ -137,8 +137,9 @@ export const Sidebar = () => {
           <LayoutDashboard className="w-4 h-4" />
         </a>
         <button
-          className="w-9 h-9 flex items-center justify-center text-slate-400 cursor-not-allowed"
-          title="History logs coming soon"
+          onClick={() => setHistoryPanelOpen(true)}
+          className="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200 transition-all cursor-pointer"
+          title="Execution History"
         >
           <History className="w-4 h-4" />
         </button>
@@ -152,7 +153,7 @@ export const Sidebar = () => {
           }}
           className={`w-9 h-9 flex items-center justify-center transition-all cursor-pointer ${
             activeCategory === 'triggers'
-              ? 'text-white bg-[#ea580c]'
+              ? 'text-white bg-[#f97316]'
               : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200'
           }`}
           title="Triggers"
@@ -167,7 +168,7 @@ export const Sidebar = () => {
           }}
           className={`w-9 h-9 flex items-center justify-center transition-all cursor-pointer ${
             activeCategory === 'agents'
-              ? 'text-white bg-[#ea580c]'
+              ? 'text-white bg-[#f97316]'
               : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200'
           }`}
           title="Agents"
@@ -182,7 +183,7 @@ export const Sidebar = () => {
           }}
           className={`w-9 h-9 flex items-center justify-center transition-all cursor-pointer ${
             activeCategory === 'mcp'
-              ? 'text-white bg-[#ea580c]'
+              ? 'text-white bg-[#f97316]'
               : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200'
           }`}
           title="MCP Tools"
@@ -249,9 +250,11 @@ export const Sidebar = () => {
       <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">
         {/* Brand Block */}
         <div className="p-4 pb-2 flex items-center gap-3">
-          <div className="w-8 h-8 bg-[#ea580c] flex items-center justify-center text-white font-mono font-bold text-lg select-none">
-            🔀
-          </div>
+          <img
+            src="/logo.png"
+            alt="QwenWeaver Logo"
+            className="w-8 h-8 object-contain select-none"
+          />
           <div>
             <h1 className="text-sm font-bold text-slate-900 leading-tight">QwenWeaver</h1>
             <p className="text-[10px] text-slate-500 font-mono tracking-wide uppercase">
@@ -264,7 +267,7 @@ export const Sidebar = () => {
         <div className="px-4 py-2">
           <button
             onClick={handleCreateNewWorkflow}
-            className="w-full py-2 bg-[#9a3412] hover:bg-[#a73a00] text-white font-bold text-xs flex items-center justify-center gap-1.5 rounded-none transition-colors shadow-sm cursor-pointer"
+            className="w-full py-2 bg-[#ea580c] hover:bg-[#a73a00] text-white font-bold text-xs flex items-center justify-center gap-1.5 rounded-none transition-colors shadow-sm cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             New Workflow
@@ -283,10 +286,11 @@ export const Sidebar = () => {
             <span>Workflows</span>
           </a>
           <button
-            className="w-full flex items-center gap-3 px-3 py-2 text-xs font-mono font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-all rounded-none cursor-not-allowed"
-            title="History logs coming soon"
+            onClick={() => setHistoryPanelOpen(true)}
+            className="w-full flex items-center gap-3 px-3 py-2 text-xs font-mono font-bold text-slate-600 hover:bg-slate-200 transition-all rounded-none cursor-pointer"
+            title="Execution History"
           >
-            <History className="w-4 h-4 text-slate-400" />
+            <History className="w-4 h-4 text-slate-500" />
             <span>History</span>
           </button>
         </div>
@@ -301,7 +305,7 @@ export const Sidebar = () => {
             onClick={() => handleCategoryClick('triggers')}
             className={`w-full flex items-center justify-between px-3 py-2 text-xs font-mono font-bold transition-all rounded-none ${
               activeCategory === 'triggers'
-                ? 'bg-[#ea580c] text-white'
+                ? 'bg-[#f97316] text-white'
                 : 'text-slate-600 hover:bg-slate-200'
             }`}
           >
@@ -345,7 +349,7 @@ export const Sidebar = () => {
             onClick={() => handleCategoryClick('agents')}
             className={`w-full flex items-center justify-between px-3 py-2 text-xs font-mono font-bold transition-all rounded-none ${
               activeCategory === 'agents'
-                ? 'bg-[#ea580c] text-white'
+                ? 'bg-[#f97316] text-white'
                 : 'text-slate-600 hover:bg-slate-200'
             }`}
           >
@@ -389,7 +393,7 @@ export const Sidebar = () => {
             onClick={() => handleCategoryClick('mcp')}
             className={`w-full flex items-center justify-between px-3 py-2 text-xs font-mono font-bold transition-all rounded-none ${
               activeCategory === 'mcp'
-                ? 'bg-[#ea580c] text-white'
+                ? 'bg-[#f97316] text-white'
                 : 'text-slate-600 hover:bg-slate-200'
             }`}
           >
@@ -507,6 +511,8 @@ export const Sidebar = () => {
               initialTab={marketplaceTab}
             />
           )}
+
+          {historyPanelOpen && <ExecutionHistoryPanel onClose={() => setHistoryPanelOpen(false)} />}
         </div>
       </div>
 
