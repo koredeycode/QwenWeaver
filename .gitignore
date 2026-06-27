@@ -10,3 +10,4 @@ personal/
 *.log
 plan.md
 selfhost-plan.md
+apps/api/public/storage
