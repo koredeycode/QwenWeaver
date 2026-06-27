@@ -21,6 +21,7 @@ COPY apps/api/package.json apps/api/
 COPY apps/app/package.json apps/app/
 COPY packages/types/package.json packages/types/
 COPY packages/database/package.json packages/database/
+COPY packages/encryption/package.json packages/encryption/
 COPY packages/mcp-client/package.json packages/mcp-client/
 COPY packages/cli/package.json packages/cli/
 
@@ -31,6 +32,7 @@ COPY apps/api/ apps/api/
 COPY apps/app/ apps/app/
 COPY packages/types/ packages/types/
 COPY packages/database/ packages/database/
+COPY packages/encryption/ packages/encryption/
 COPY packages/mcp-client/ packages/mcp-client/
 COPY packages/cli/ packages/cli/
 
