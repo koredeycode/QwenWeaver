@@ -12,6 +12,31 @@ import * as path from 'node:path';
 
 const log = createModuleLogger('engine/agent-runner');
 
+const EXTENSION_MAP: Record<string, string> = {
+  markdown: 'md',
+  html: 'html',
+  json: 'json',
+  csv: 'csv',
+  xml: 'xml',
+  yaml: 'yaml',
+  text: 'txt',
+  code: 'txt',
+  image: 'png',
+  audio: 'mp3',
+  video: 'mp4',
+};
+
+const CONTENT_TYPE_MAP: Record<string, string> = {
+  markdown: 'text/markdown',
+  html: 'text/html',
+  json: 'application/json',
+  csv: 'text/csv',
+  xml: 'application/xml',
+  yaml: 'text/yaml',
+  text: 'text/plain',
+  code: 'text/plain',
+};
+
 export async function runAgent(
   node: NodePayload,
   upstreamOutputs: UpstreamOutputs,
@@ -22,7 +47,22 @@ export async function runAgent(
   const startTime = performance.now();
 
   if (node.type === 'trigger' || node.type === 'input_trigger' || node.type === 'logic') {
-    return createPassthroughResult(node, startTime);
+    const text = node.data.label ?? `[${node.type}] pass-through`;
+    const format = node.data.outputFormat ?? 'text';
+    const ext = EXTENSION_MAP[format] ?? 'txt';
+    const contentType = CONTENT_TYPE_MAP[format] ?? 'text/plain';
+    const buffer = Buffer.from(text, 'utf-8');
+    const runId = executionId ?? 'local-run';
+    const fileUrl = await writeBinaryAsset(runId, node.id, ext, buffer);
+    const durationMs = Math.round(performance.now() - startTime);
+    return {
+      nodeId: node.id,
+      outputs: [{ type: 'text', contentType, value: fileUrl }],
+      text,
+      tokensUsed: 0,
+      durationMs,
+      status: 'completed',
+    };
   }
 
   // Set up dynamic abort controller linked to SSE connection and a 120s timeout
@@ -251,15 +291,44 @@ export async function runAgent(
 
     let fullText = '';
     let tokensUsed = 0;
+    let reasoningText = '';
 
-    for await (const chunk of result.textStream) {
-      fullText += chunk;
-
-      if (emitter && !emitter.isClosed()) {
-        await emitter.emit('token', {
-          nodeId: node.id,
-          chunk,
-        });
+    if (enableThinking) {
+      for await (const part of result.fullStream) {
+        if (part.type === 'reasoning-delta') {
+          const textChunk =
+            (part as any).textDelta || (part as any).text || (part as any).reasoning || '';
+          if (textChunk) {
+            reasoningText += textChunk;
+            if (emitter && !emitter.isClosed()) {
+              await emitter.emit('thinking', {
+                nodeId: node.id,
+                chunk: textChunk,
+              });
+            }
+          }
+        } else if (part.type === 'text-delta') {
+          const textChunk = (part as any).textDelta || (part as any).text || '';
+          if (textChunk) {
+            fullText += textChunk;
+            if (emitter && !emitter.isClosed()) {
+              await emitter.emit('token', {
+                nodeId: node.id,
+                chunk: textChunk,
+              });
+            }
+          }
+        }
+      }
+    } else {
+      for await (const chunk of result.textStream) {
+        fullText += chunk;
+        if (emitter && !emitter.isClosed()) {
+          await emitter.emit('token', {
+            nodeId: node.id,
+            chunk,
+          });
+        }
       }
     }
 
@@ -268,6 +337,14 @@ export async function runAgent(
     tokensUsed = usage?.totalTokens ?? 0;
     const toolCalls = finalResult.toolCalls ? await finalResult.toolCalls : undefined;
     const toolResults = finalResult.toolResults ? await finalResult.toolResults : undefined;
+
+    // Write final text output to file
+    const format = node.data.outputFormat ?? 'markdown';
+    const ext = EXTENSION_MAP[format] ?? 'txt';
+    const contentType = CONTENT_TYPE_MAP[format] ?? 'text/markdown';
+    const runId = executionId ?? 'local-run';
+    const textBuffer = Buffer.from(fullText, 'utf-8');
+    const fileUrl = await writeBinaryAsset(runId, node.id, ext, textBuffer);
 
     const durationMs = Math.round(performance.now() - startTime);
 
@@ -280,30 +357,17 @@ export async function runAgent(
       'Agent execution completed',
     );
 
-    const contentTypeMap: Record<string, string> = {
-      markdown: 'text/markdown',
-      html: 'text/html',
-      json: 'application/json',
-      csv: 'text/csv',
-      xml: 'application/xml',
-      yaml: 'text/yaml',
-      text: 'text/plain',
-      code: 'text/plain',
-    };
-    const format = node.data.outputFormat ?? 'markdown';
-    const contentType = contentTypeMap[format] ?? 'text/markdown';
-
     return {
       nodeId: node.id,
       outputs: [
         {
           type: 'text',
           contentType,
-          value: fullText,
+          value: fileUrl,
         },
       ],
       text: fullText,
-      reasoning: undefined,
+      reasoning: reasoningText || undefined,
       toolCalls: toolCalls as unknown[],
       toolResults: toolResults as unknown[],
       tokensUsed,
@@ -332,25 +396,6 @@ export async function runAgent(
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
-
-function createPassthroughResult(node: NodePayload, startTime: number): AgentResult {
-  const durationMs = Math.round(performance.now() - startTime);
-  const text = node.data.label ?? `[${node.type}] pass-through`;
-  return {
-    nodeId: node.id,
-    outputs: [
-      {
-        type: 'text',
-        contentType: 'text/plain',
-        value: text,
-      },
-    ],
-    text,
-    tokensUsed: 0,
-    durationMs,
-    status: 'completed',
-  };
-}
 
 function buildSystemPrompt(node: NodePayload): string {
   let base = node.data.systemPrompt ?? '';

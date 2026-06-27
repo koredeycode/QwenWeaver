@@ -21,7 +21,7 @@ const MODEL_DEFAULTS: Record<string, string> = {
 /**
  * Node types that should use the thinking/reasoning mode.
  */
-const THINKING_ENABLED_TYPES = new Set(['supervisor']);
+const THINKING_ENABLED_TYPES = new Set(['supervisor', 'agent']);
 
 /** Default thinking budget tokens for supervisor nodes. */
 const DEFAULT_THINKING_BUDGET = 4096;
@@ -61,7 +61,9 @@ export function getModelForNode(node: NodePayload): ModelConfig {
   const modelId = node.data.model ?? MODEL_DEFAULTS[node.type] ?? 'qwen-plus';
   const model = provider(modelId);
 
-  const enableThinking = node.data.enableThinking ?? THINKING_ENABLED_TYPES.has(node.type);
+  const isThinkingModel = modelId.includes('max') || modelId.includes('qwq');
+  const enableThinking =
+    isThinkingModel && (node.data.enableThinking ?? THINKING_ENABLED_TYPES.has(node.type));
 
   const thinkingBudget = enableThinking
     ? (node.data.thinkingBudget ?? DEFAULT_THINKING_BUDGET)

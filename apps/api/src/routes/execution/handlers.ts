@@ -5,6 +5,19 @@ import type { Context } from 'hono';
 
 const log = createModuleLogger('routes/execution.handlers');
 
+export const handleListExecutions = async (c: Context<{ Variables: Variables }>) => {
+  const userId = c.get('jwtPayload').sub;
+  const limit = Math.min(Number(c.req.query('limit')) || 20, 100);
+  const offset = Number(c.req.query('offset')) || 0;
+
+  log.info({ userId, limit, offset }, 'List executions');
+
+  const provider = getQueryProvider();
+  const executions = await provider.listUserExecutions(userId, limit, offset);
+
+  return c.json({ executions }, 200);
+};
+
 // Use getQueryProvider() directly for consistency with all other handlers
 export const handleGetExecution = async (c: Context<{ Variables: Variables }>) => {
   const executionId = c.req.param('executionId')!;

@@ -147,8 +147,10 @@ export const handleSaveWorkflow = async (c: Context<{ Variables: Variables }>) =
 };
 
 export const handleExecute = async (c: Context<{ Variables: Variables }>) => {
-  // Validate body through Zod instead of blind cast
   const raw = await c.req.json();
+
+  // Accept optional workflowId alongside the DAG
+  const requestWorkflowId: string | undefined = raw.workflowId;
   const parsed = WorkflowPayload.safeParse(raw);
 
   if (!parsed.success) {
@@ -160,6 +162,7 @@ export const handleExecute = async (c: Context<{ Variables: Variables }>) => {
   const userId = c.get('jwtPayload').sub;
 
   const workflow: z.infer<typeof WorkflowPayload> = {
+    id: body.id,
     name: body.name,
     description: body.description,
     nodes: body.nodes,
@@ -167,7 +170,21 @@ export const handleExecute = async (c: Context<{ Variables: Variables }>) => {
   };
 
   const provider = getQueryProvider();
-  const workflowId = await provider.saveWorkflow(userId, workflow);
+  let workflowId: string;
+
+  if (requestWorkflowId) {
+    // Update existing workflow then execute it
+    const existing = await provider.getWorkflow(requestWorkflowId, userId);
+    if (!existing) {
+      return c.json({ error: 'Workflow not found' }, 404);
+    }
+    await provider.updateWorkflow(requestWorkflowId, userId, workflow);
+    workflowId = requestWorkflowId;
+  } else {
+    // Save as new workflow
+    workflowId = await provider.saveWorkflow(userId, workflow);
+  }
+
   await provider.createExecution(executionId, workflowId, userId);
 
   // ─── MCP auth validation ──────────────────────────────────────────────
@@ -228,7 +245,7 @@ export const handleExecute = async (c: Context<{ Variables: Variables }>) => {
     log.error({ executionId, error: (error as Error).message }, 'Execution crashed');
   });
 
-  return c.json({ executionId, status: 'pending' }, 201);
+  return c.json({ executionId, workflowId, status: 'pending' }, 201);
 };
 
 export const handleStream = async (c: Context<{ Variables: Variables }>) => {
@@ -255,6 +272,9 @@ export const handleStream = async (c: Context<{ Variables: Variables }>) => {
     };
     activeExecutions.set(executionId, execution);
   }
+
+  c.header('X-Accel-Buffering', 'no');
+  c.header('Cache-Control', 'no-cache, no-transform');
 
   return streamSSE(c, async (stream) => {
     active_sse_connections.inc();
@@ -290,6 +310,10 @@ export const handleStream = async (c: Context<{ Variables: Variables }>) => {
 
     execution!.emitters.add(emitter);
     execution!.hasEverHadEmitter = true;
+
+    // Send a 1KB ping payload immediately to forcefully flush any intermediate HTTP proxy buffers
+    // that might be waiting for a minimum chunk size before yielding to the fetch API.
+    await emitter.emit('ping', { data: ' '.repeat(1024) });
 
     if (dbExecution.status === 'completed' || dbExecution.status === 'failed') {
       await emitter.emit('complete', {

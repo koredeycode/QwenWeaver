@@ -119,6 +119,10 @@ export async function executeWorkflow(
           if (sourceResult) {
             upstream.set(sourceId, sourceResult);
 
+            if (sourceResult.status === 'failed') {
+              throw new Error(`Upstream dependency ${sourceId} failed`);
+            }
+
             await emitter.emit('edge_active', {
               sourceId,
               targetId: node.id,
@@ -221,6 +225,7 @@ export async function executeWorkflow(
         nodeId: result.nodeId,
         status: result.status,
         timestamp: Date.now(),
+        outputUrl: result.outputs?.[0]?.value,
       });
 
       if (result.status === 'failed') {

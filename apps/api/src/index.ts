@@ -84,6 +84,15 @@ app.use('/api/*', (c, next) => {
   ) {
     return next();
   }
+
+  // For SSE streams, EventSource doesn't support Authorization headers, so we allow tokens in the query string
+  if (path.endsWith('/stream')) {
+    const queryToken = c.req.query('token');
+    if (queryToken) {
+      c.req.raw.headers.set('Authorization', `Bearer ${queryToken}`);
+    }
+  }
+
   const jwtMiddleware = jwt({
     secret: JWT_SECRET,
     alg: 'HS256',

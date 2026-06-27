@@ -28,7 +28,7 @@ describe('agent-runner', () => {
     expect(result.status).toBe('completed');
     expect(result.outputs).toHaveLength(1);
     expect(result.outputs[0].type).toBe('text');
-    expect(result.outputs[0].value).toBe('Start Trigger');
+    expect(result.outputs[0].value).toContain('/public/storage/runs/');
   });
 
   it('generates placeholder mock image and writes to local disk when outputFormat is image', async () => {
