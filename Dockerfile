@@ -40,7 +40,7 @@ COPY packages/cli/ packages/cli/
 RUN pnpm build
 
 # Prune dev dependencies
-RUN pnpm prune --prod
+RUN pnpm prune --prod --config.confirmModulesPurge=false
 
 # =============================================================================
 # Stage 2: Runtime image
@@ -54,13 +54,14 @@ WORKDIR /app
 
 # Copy built artifacts and production node_modules
 COPY --from=builder /build/node_modules ./node_modules
+COPY --from=builder /build/apps/api/node_modules ./apps/api/node_modules
 COPY --from=builder /build/packages ./packages
 COPY --from=builder /build/apps/api/dist ./apps/api/dist
 COPY --from=builder /build/apps/app/dist ./apps/app/dist
 
 # Copy static assets for the API
 COPY --from=builder /build/apps/api/package.json ./apps/api/
-COPY --from=builder /build/apps/api/src/public/ ./apps/api/src/public/ 2>/dev/null || true
+COPY --from=builder /build/apps/api/src/public/ ./apps/api/src/public/
 
 # Copy CLI binary
 COPY --from=builder /build/packages/cli/dist ./packages/cli/dist

@@ -3,6 +3,17 @@ name: Deploy to VPS
 on:
   push:
     branches: [main]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'Dockerfile'
+      - 'docker-compose.prod.yml'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'package.json'
+      - 'tsconfig*.json'
+      - '.github/workflows/ci.yml'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
 concurrency:
@@ -59,6 +70,7 @@ jobs:
     needs: [build-and-push]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: builds
@@ -83,18 +95,21 @@ jobs:
 
       - name: Deploy to VPS
         run: |
-          scp site-dist.tar.gz app-dist.tar.gz .env deploy@${{ secrets.VPS_HOST }}:/home/deploy/qwenweaver/
+          scp docker-compose.prod.yml site-dist.tar.gz app-dist.tar.gz .env deploy@${{ secrets.VPS_HOST }}:/home/deploy/qwenweaver/
 
           ssh deploy@${{ secrets.VPS_HOST }} << 'ENDSSH'
             set -euo pipefail
 
+            mkdir -p /home/deploy/qwenweaver/www/{site,app}
             cd /home/deploy/qwenweaver/www
             tar xzf ../site-dist.tar.gz -C site --no-same-owner
             tar xzf ../app-dist.tar.gz -C app --no-same-owner
             rm -f ../site-dist.tar.gz ../app-dist.tar.gz
 
             cd /home/deploy/qwenweaver
+            echo ${{ secrets.GHCR_PAT }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml down
             docker compose -f docker-compose.prod.yml up -d --no-deps qwenweaver
             docker compose -f docker-compose.prod.yml exec -T qwenweaver \
               node apps/api/dist/migrate.js
