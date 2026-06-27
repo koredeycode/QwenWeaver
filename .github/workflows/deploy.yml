@@ -105,6 +105,7 @@ jobs:
             tar xzf ../site-dist.tar.gz -C site --no-same-owner
             tar xzf ../app-dist.tar.gz -C app --no-same-owner
             rm -f ../site-dist.tar.gz ../app-dist.tar.gz
+            chmod -R o+rX /home/deploy/qwenweaver/www
 
             cd /home/deploy/qwenweaver
             echo ${{ secrets.GHCR_PAT }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
