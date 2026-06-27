@@ -2,7 +2,7 @@ import { StateCreator } from 'zustand';
 import type { NodeTiming } from '@qwenweaver/types';
 import { StoreState, ExecutionSlice } from './types.js';
 import { toast } from 'sonner';
-import { getAccessToken, fetchApi } from '../lib/api-client.js';
+import { getAccessToken, client, authHeaders } from '../lib/api-client.js';
 
 export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSlice> = (
   set,
@@ -28,8 +28,15 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
     }
     set({ historyLoading: true });
     try {
-      const res = await fetchApi(
-        `/api/execution?limit=${limit}&offset=${offset}&workflowId=${workflowId}`,
+      const res = await client.api.execution.$get(
+        {
+          query: {
+            limit: String(limit),
+            offset: String(offset),
+            workflowId,
+          },
+        },
+        { headers: authHeaders() },
       );
       if (res.ok) {
         const data = (await res.json()) as any;
@@ -89,18 +96,20 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
         })),
       };
 
-      const execRes = await fetchApi('/api/workflow/execute', {
-        method: 'POST',
-        body: JSON.stringify(workflowPayload),
-      });
+      const execRes = await client.api.workflow.execute.$post(
+        {
+          json: workflowPayload,
+        },
+        { headers: authHeaders() },
+      );
       if (!execRes.ok) {
-        const errBody = await execRes.json().catch(() => ({}));
+        const errBody = (await execRes.json().catch(() => ({}))) as any;
         toast.error(errBody.error || 'Failed to execute workflow');
         set({ executionStatus: 'idle' });
         return;
       }
 
-      const execData = await execRes.json();
+      const execData = (await execRes.json()) as any;
       const executionId = execData.executionId;
       const returnedWorkflowId = execData.workflowId;
       if (!executionId) {

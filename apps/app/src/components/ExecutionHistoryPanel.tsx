@@ -12,7 +12,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
-import { fetchApi, API_URL } from '../lib/api-client.js';
+import { client, authHeaders, API_URL } from '../lib/api-client.js';
 import type { ExecutionSummary } from '../store/types.js';
 
 interface AgentLogEntry {
@@ -321,7 +321,10 @@ export const ExecutionHistoryPanel = ({ onClose }: { onClose: () => void }) => {
     setSelectedExecution(exec);
     setLogsLoading(true);
     try {
-      const res = await fetchApi(`/api/execution/${exec.id}/logs`);
+      const res = await client.api.execution[':executionId'].logs.$get(
+        { param: { executionId: exec.id } },
+        { headers: authHeaders() },
+      );
       if (!res.ok) {
         setAgentLogs([]);
         return;
