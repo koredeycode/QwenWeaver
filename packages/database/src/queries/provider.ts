@@ -34,6 +34,16 @@ export interface WorkflowDetail {
   nodesEdges: WorkflowPayload;
 }
 
+export interface ExecutionSummaryRow {
+  id: string;
+  workflowId: string;
+  workflowName: string | null;
+  status: string;
+  metrics?: ExecutionMetrics;
+  startedAt: string;
+  completedAt?: string;
+}
+
 export interface QueryProvider {
   // Auth
   createUser(id: string, email: string, passwordHash: string): Promise<void>;
@@ -85,6 +95,12 @@ export interface QueryProvider {
     tokensUsed?: number,
     error?: string | null,
   ): Promise<void>;
+  listUserExecutions(
+    userId: string,
+    limit?: number,
+    offset?: number,
+  ): Promise<ExecutionSummaryRow[]>;
+
   getExecution(executionId: string): Promise<{
     id: string;
     workflowId: string;

@@ -1,6 +1,5 @@
 import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
 import type {
-  NodeData,
   ExecutionMetrics,
   AgentLogInput,
   AgentLogOutput,
@@ -27,32 +26,6 @@ export const sqliteWorkflows = sqliteTable(
     createdAt: integer('created_at').notNull(),
   },
   (table) => [index('workflows_user_id_idx').on(table.userId)],
-);
-
-export const sqliteNodes = sqliteTable(
-  'nodes',
-  {
-    id: text('id').primaryKey(),
-    workflowId: text('workflow_id').references(() => sqliteWorkflows.id, { onDelete: 'cascade' }),
-    type: text('type').notNull(),
-    data: text('data', { mode: 'json' }).notNull().$type<NodeData>(),
-    positionX: integer('position_x').notNull(),
-    positionY: integer('position_y').notNull(),
-  },
-  (table) => [index('nodes_workflow_id_idx').on(table.workflowId)],
-);
-
-export const sqliteEdges = sqliteTable(
-  'edges',
-  {
-    id: text('id').primaryKey(),
-    workflowId: text('workflow_id').references(() => sqliteWorkflows.id, { onDelete: 'cascade' }),
-    source: text('source_node').notNull(),
-    target: text('target_node').notNull(),
-    sourceHandle: text('source_handle'),
-    targetHandle: text('target_handle'),
-  },
-  (table) => [index('edges_workflow_id_idx').on(table.workflowId)],
 );
 
 export const sqliteExecutions = sqliteTable(

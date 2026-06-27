@@ -9,7 +9,6 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 import type {
-  NodeData,
   ExecutionMetrics,
   AgentLogInput,
   AgentLogOutput,
@@ -36,32 +35,6 @@ export const pgWorkflows = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => [index('workflows_user_id_idx').on(table.userId)],
-);
-
-export const pgNodes = pgTable(
-  'nodes',
-  {
-    id: text('id').primaryKey(),
-    workflowId: uuid('workflow_id').references(() => pgWorkflows.id, { onDelete: 'cascade' }),
-    type: text('type').notNull(),
-    data: jsonb('data').notNull().$type<NodeData>(),
-    positionX: integer('position_x').notNull(),
-    positionY: integer('position_y').notNull(),
-  },
-  (table) => [index('nodes_workflow_id_idx').on(table.workflowId)],
-);
-
-export const pgEdges = pgTable(
-  'edges',
-  {
-    id: text('id').primaryKey(),
-    workflowId: uuid('workflow_id').references(() => pgWorkflows.id, { onDelete: 'cascade' }),
-    source: text('source_node').notNull(),
-    target: text('target_node').notNull(),
-    sourceHandle: text('source_handle'),
-    targetHandle: text('target_handle'),
-  },
-  (table) => [index('edges_workflow_id_idx').on(table.workflowId)],
 );
 
 export const pgExecutions = pgTable(

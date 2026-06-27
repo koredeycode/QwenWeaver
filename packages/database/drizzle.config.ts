@@ -1,6 +1,6 @@
 import { defineConfig } from 'drizzle-kit';
 
-const url = process.env.DATABASE_URL || './data/dev.db';
+const url = process.env.DATABASE_URL || '../../apps/api/data/dev.db';
 const isPostgres = url.startsWith('postgres://') || url.startsWith('postgresql://');
 const isMysql = url.startsWith('mysql://');
 const isSelfHosted = !!process.env.TEMPLATE_API_URL;

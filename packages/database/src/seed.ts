@@ -857,8 +857,6 @@ async function seed() {
   sqliteDb.delete(s.sqliteTemplateCategories).run();
   sqliteDb.delete(s.sqliteAgentLogs).run();
   sqliteDb.delete(s.sqliteExecutions).run();
-  sqliteDb.delete(s.sqliteEdges).run();
-  sqliteDb.delete(s.sqliteNodes).run();
   sqliteDb.delete(s.sqliteCredentials).run();
   sqliteDb.delete(s.sqliteWorkflows).run();
   sqliteDb.delete(s.sqliteMcpServers).run();
@@ -874,6 +872,19 @@ async function seed() {
       email: 'demo@qwenweaver.dev',
       passwordHash: PASSWORD_HASH,
       createdAt: NOW,
+    })
+    .run();
+
+  // Grant demo user 1000 credits
+  console.log('  Granting 1000 credits to demo user');
+  sqliteDb
+    .insert(s.sqliteUserCredits)
+    .values({
+      userId,
+      balance: 1000,
+      lifetimeEarned: 1000,
+      lifetimeSpent: 0,
+      updatedAt: NOW,
     })
     .run();
 

@@ -11,7 +11,7 @@
     "lint": "eslint src/",
     "drizzle:generate": "drizzle-kit generate",
     "drizzle:push": "drizzle-kit push",
-    "seed": "tsx src/seed.ts"
+    "seed": "DATABASE_URL=../../apps/api/data/dev.db tsx src/seed.ts"
   },
   "dependencies": {
     "@qwenweaver/encryption": "workspace:*",

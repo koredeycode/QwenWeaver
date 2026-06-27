@@ -1,7 +1,12 @@
 import { type MySql2Database } from 'drizzle-orm/mysql2';
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { getConnection, mysqlSchema } from '../index.js';
-import type { QueryProvider, WorkflowRow, WorkflowDetail } from './provider.js';
+import type {
+  QueryProvider,
+  WorkflowRow,
+  WorkflowDetail,
+  ExecutionSummaryRow,
+} from './provider.js';
 import type { SavedMCPServerInput, SavedMCPServer } from './mcp.js';
 import type {
   WorkflowPayload,
@@ -484,6 +489,44 @@ export const mysqlProvider: QueryProvider = {
       completedAt: new Date(),
       error: error || null,
     });
+  },
+
+  async listUserExecutions(
+    userId: string,
+    limit: number = 20,
+    offset: number = 0,
+  ): Promise<ExecutionSummaryRow[]> {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const rows = await mysqlDb
+      .select({
+        id: mysqlSchema.mysqlExecutions.id,
+        workflowId: mysqlSchema.mysqlExecutions.workflowId,
+        workflowName: mysqlSchema.mysqlWorkflows.name,
+        status: mysqlSchema.mysqlExecutions.status,
+        metrics: mysqlSchema.mysqlExecutions.metrics,
+        startedAt: mysqlSchema.mysqlExecutions.startedAt,
+        completedAt: mysqlSchema.mysqlExecutions.completedAt,
+      })
+      .from(mysqlSchema.mysqlExecutions)
+      .leftJoin(
+        mysqlSchema.mysqlWorkflows,
+        eq(mysqlSchema.mysqlExecutions.workflowId, mysqlSchema.mysqlWorkflows.id),
+      )
+      .where(eq(mysqlSchema.mysqlExecutions.userId, userId))
+      .orderBy(desc(mysqlSchema.mysqlExecutions.startedAt))
+      .limit(limit)
+      .offset(offset);
+
+    return rows.map((r) => ({
+      id: r.id,
+      workflowId: r.workflowId ?? '',
+      workflowName: r.workflowName ?? null,
+      status: r.status,
+      metrics: r.metrics ?? undefined,
+      startedAt: r.startedAt.toISOString(),
+      completedAt: r.completedAt ? r.completedAt.toISOString() : undefined,
+    }));
   },
 
   async getExecution(executionId: string) {

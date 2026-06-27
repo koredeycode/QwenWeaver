@@ -1,7 +1,12 @@
 import { type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { getConnection, sqliteSchema } from '../index.js';
-import type { QueryProvider, WorkflowRow, WorkflowDetail } from './provider.js';
+import type {
+  QueryProvider,
+  WorkflowRow,
+  WorkflowDetail,
+  ExecutionSummaryRow,
+} from './provider.js';
 import type { SavedMCPServerInput, SavedMCPServer } from './mcp.js';
 import type {
   WorkflowPayload,
@@ -507,6 +512,44 @@ export const sqliteProvider: QueryProvider = {
       completedAt: Date.now(),
       error: error || null,
     });
+  },
+
+  async listUserExecutions(
+    userId: string,
+    limit: number = 20,
+    offset: number = 0,
+  ): Promise<ExecutionSummaryRow[]> {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const rows = await sqliteDb
+      .select({
+        id: sqliteSchema.sqliteExecutions.id,
+        workflowId: sqliteSchema.sqliteExecutions.workflowId,
+        workflowName: sqliteSchema.sqliteWorkflows.name,
+        status: sqliteSchema.sqliteExecutions.status,
+        metrics: sqliteSchema.sqliteExecutions.metrics,
+        startedAt: sqliteSchema.sqliteExecutions.startedAt,
+        completedAt: sqliteSchema.sqliteExecutions.completedAt,
+      })
+      .from(sqliteSchema.sqliteExecutions)
+      .leftJoin(
+        sqliteSchema.sqliteWorkflows,
+        eq(sqliteSchema.sqliteExecutions.workflowId, sqliteSchema.sqliteWorkflows.id),
+      )
+      .where(eq(sqliteSchema.sqliteExecutions.userId, userId))
+      .orderBy(desc(sqliteSchema.sqliteExecutions.startedAt))
+      .limit(limit)
+      .offset(offset);
+
+    return rows.map((r) => ({
+      id: r.id,
+      workflowId: r.workflowId ?? '',
+      workflowName: r.workflowName ?? null,
+      status: r.status,
+      metrics: r.metrics ?? undefined,
+      startedAt: new Date(r.startedAt).toISOString(),
+      completedAt: r.completedAt ? new Date(r.completedAt).toISOString() : undefined,
+    }));
   },
 
   async getExecution(executionId: string) {

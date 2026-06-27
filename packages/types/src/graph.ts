@@ -55,6 +55,10 @@ export const NodeData = z.object({
     .optional(),
   enableThinking: z.boolean().optional(),
   outputFormat: OutputFormat.optional(),
+  _executionStatus: z.string().optional(),
+  _output: z.string().optional(),
+  _outputUrl: z.string().optional(),
+  _edgeActive: z.boolean().optional(),
 });
 export type NodeData = z.infer<typeof NodeData>;
 
@@ -190,7 +194,15 @@ export const AgentLogOutput = z.object({
 });
 export type AgentLogOutput = z.infer<typeof AgentLogOutput>;
 
-export const SSEEventType = z.enum(['token', 'status_update', 'edge_active', 'complete', 'error']);
+export const SSEEventType = z.enum([
+  'token',
+  'thinking',
+  'status_update',
+  'edge_active',
+  'complete',
+  'error',
+  'ping',
+]);
 export type SSEEventType = z.infer<typeof SSEEventType>;
 
 export const SSEEvent = z.object({

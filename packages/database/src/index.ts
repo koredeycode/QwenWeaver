@@ -35,7 +35,7 @@ let _dialect: Dialect | null = null;
 export async function createConnectionAsync(
   databaseUrl?: string,
 ): Promise<{ db: DB; dialect: Dialect }> {
-  const defaultPath = fileURLToPath(new URL('../data/dev.db', import.meta.url));
+  const defaultPath = fileURLToPath(new URL('../../apps/api/data/dev.db', import.meta.url));
   const url = databaseUrl ?? process.env.DATABASE_URL ?? defaultPath;
   const dialect = detectDialect(url);
 
@@ -73,7 +73,7 @@ export async function createConnectionAsync(
 // Keeping sync fallback for tests/compatibility where possible, but mysql is async.
 // If using MySQL, createConnectionAsync MUST be called during startup.
 export function createConnection(databaseUrl?: string): { db: DB; dialect: Dialect } {
-  const defaultPath = fileURLToPath(new URL('../data/dev.db', import.meta.url));
+  const defaultPath = fileURLToPath(new URL('../../apps/api/data/dev.db', import.meta.url));
   const url = databaseUrl ?? process.env.DATABASE_URL ?? defaultPath;
   const dialect = detectDialect(url);
 

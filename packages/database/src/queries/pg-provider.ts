@@ -1,7 +1,12 @@
 import { type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { getConnection, pgSchema } from '../index.js';
-import type { QueryProvider, WorkflowRow, WorkflowDetail } from './provider.js';
+import type {
+  QueryProvider,
+  WorkflowRow,
+  WorkflowDetail,
+  ExecutionSummaryRow,
+} from './provider.js';
 import type { SavedMCPServerInput, SavedMCPServer } from './mcp.js';
 import type {
   WorkflowPayload,
@@ -476,6 +481,41 @@ export const pgProvider: QueryProvider = {
       completedAt: new Date(),
       error: error || null,
     });
+  },
+
+  async listUserExecutions(
+    userId: string,
+    limit: number = 20,
+    offset: number = 0,
+  ): Promise<ExecutionSummaryRow[]> {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const rows = await pgDb
+      .select({
+        id: pgSchema.pgExecutions.id,
+        workflowId: pgSchema.pgExecutions.workflowId,
+        workflowName: pgSchema.pgWorkflows.name,
+        status: pgSchema.pgExecutions.status,
+        metrics: pgSchema.pgExecutions.metrics,
+        startedAt: pgSchema.pgExecutions.startedAt,
+        completedAt: pgSchema.pgExecutions.completedAt,
+      })
+      .from(pgSchema.pgExecutions)
+      .leftJoin(pgSchema.pgWorkflows, eq(pgSchema.pgExecutions.workflowId, pgSchema.pgWorkflows.id))
+      .where(eq(pgSchema.pgExecutions.userId, userId))
+      .orderBy(desc(pgSchema.pgExecutions.startedAt))
+      .limit(limit)
+      .offset(offset);
+
+    return rows.map((r) => ({
+      id: r.id,
+      workflowId: r.workflowId ?? '',
+      workflowName: r.workflowName ?? null,
+      status: r.status,
+      metrics: r.metrics ?? undefined,
+      startedAt: r.startedAt.toISOString(),
+      completedAt: r.completedAt ? r.completedAt.toISOString() : undefined,
+    }));
   },
 
   async getExecution(executionId: string) {
