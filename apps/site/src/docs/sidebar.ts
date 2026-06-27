@@ -9,7 +9,6 @@ export const sidebar: SidebarSection[] = [
     links: [
       { label: 'Overview', to: '/docs' },
       { label: 'Cloud Quickstart', to: '/docs/getting-started' },
-      { label: 'Self-Hosted Guide', to: '/docs/self-hosted' },
     ],
   },
   {

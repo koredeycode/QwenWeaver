@@ -15,7 +15,6 @@ import {
   COMPLETION_TOKEN_COST,
   MIN_COST,
   MAX_FREE_WORKFLOWS,
-  IS_SELF_HOSTED,
 } from '../../config.js';
 
 const log = createModuleLogger('routes/workflow.handlers');
@@ -133,14 +132,12 @@ export const handleSaveWorkflow = async (c: Context<{ Variables: Variables }>) =
     return c.json({ error: 'Invalid workflow', details: parsed.error.format() }, 400);
   }
   const provider = getQueryProvider();
-  if (!IS_SELF_HOSTED) {
-    const workflowCount = await provider.countUserWorkflows(jwtPayload.sub);
-    if (workflowCount >= MAX_FREE_WORKFLOWS) {
-      return c.json(
-        { error: `Workflow limit reached. Maximum ${MAX_FREE_WORKFLOWS} workflows allowed.` },
-        403,
-      );
-    }
+  const workflowCount = await provider.countUserWorkflows(jwtPayload.sub);
+  if (workflowCount >= MAX_FREE_WORKFLOWS) {
+    return c.json(
+      { error: `Workflow limit reached. Maximum ${MAX_FREE_WORKFLOWS} workflows allowed.` },
+      403,
+    );
   }
   const workflowId = await provider.saveWorkflow(jwtPayload.sub, parsed.data);
   return c.json({ workflowId }, 201);
@@ -206,13 +203,11 @@ export const handleExecute = async (c: Context<{ Variables: Variables }>) => {
   }
 
   // ─── Credit check ──────────────────────────────────────────────────────
-  if (!IS_SELF_HOSTED) {
-    const { balance } = await provider.getUserCredits(userId);
-    const estimatedCost = estimateExecutionCost(workflow);
-    if (balance < estimatedCost) {
-      log.warn({ userId, balance, estimatedCost }, 'Insufficient credits for execution');
-      return c.json({ error: 'Insufficient credits', balance, required: estimatedCost }, 402);
-    }
+  const { balance } = await provider.getUserCredits(userId);
+  const estimatedCost = estimateExecutionCost(workflow);
+  if (balance < estimatedCost) {
+    log.warn({ userId, balance, estimatedCost }, 'Insufficient credits for execution');
+    return c.json({ error: 'Insufficient credits', balance, required: estimatedCost }, 402);
   }
 
   let resolveExecution: () => void;
@@ -462,7 +457,7 @@ async function runExecutionAsync(
     execution.result = result;
 
     // ─── Credit deduction ────────────────────────────────────────────────
-    if (!IS_SELF_HOSTED && result.status === 'completed') {
+    if (result.status === 'completed') {
       try {
         const totalTokens = result.metrics?.totalTokens ?? 0;
         const cost = calculateFinalCost(workflow, totalTokens);

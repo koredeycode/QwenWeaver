@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, Mail, Cpu, ArrowRight, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Lock, Mail, Cpu, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useStore } from '../store/index.js';
-import { client2, authHeaders, isSelfHosted } from '../lib/api-client.js';
 
 export const AuthScreen = () => {
   const login = useStore((s) => s.login);
@@ -17,42 +16,13 @@ export const AuthScreen = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [checkingSetup, setCheckingSetup] = useState(true);
-
-  // Check if setup is complete; if not, redirect to /setup (self-host only)
-  useEffect(() => {
-    if (!isSelfHosted()) {
-      setCheckingSetup(false);
-      return;
-    }
-    client2.api.setup.status
-      .$get({}, { headers: authHeaders() })
-      .then((res: Response) => res.json())
-      .then((data: { complete: boolean }) => {
-        if (!data.complete) {
-          navigate('/setup', { replace: true });
-        }
-      })
-      .catch(() => {
-        // Server unreachable — stay on login page
-      })
-      .finally(() => setCheckingSetup(false));
-  }, [navigate]);
 
   // If already authenticated, redirect to dashboard automatically
   useEffect(() => {
-    if (token && !checkingSetup) {
+    if (token) {
       navigate('/');
     }
-  }, [token, navigate, checkingSetup]);
-
-  if (checkingSetup) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-slate-50">
-        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-      </div>
-    );
-  }
+  }, [token, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

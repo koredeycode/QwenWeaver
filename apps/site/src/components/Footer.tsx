@@ -22,9 +22,6 @@ export function Footer() {
               <Link to="/pricing" className="hover:text-on-surface transition-colors">
                 Pricing
               </Link>
-              <Link to="/self-hosted" className="hover:text-on-surface transition-colors">
-                Self-Hosted
-              </Link>
               <a href={URLS.app} className="hover:text-on-surface transition-colors">
                 Dashboard
               </a>

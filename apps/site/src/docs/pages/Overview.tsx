@@ -17,9 +17,7 @@ export function Overview() {
           <Link to="/docs/getting-started">Cloud Quickstart</Link> — sign up and run your first
           workflow in minutes
         </li>
-        <li>
-          <Link to="/docs/self-hosted">Self-Hosted Guide</Link> — deploy with Docker or npm CLI
-        </li>
+
         <li>
           <Link to="/docs/workflow-guide">Building Workflows</Link> — understand the DAG editor
         </li>
@@ -79,10 +77,6 @@ export function Overview() {
       <p>
         <strong>Cloud:</strong> Use our hosted version at <a href={URLS.app}>{URLS.app}</a>. 1000
         free credits on signup, no credit card required.
-      </p>
-      <p>
-        <strong>Self-Hosted:</strong> Run the full platform on your own infrastructure via Docker or
-        npm CLI. Use your own API keys and database. <Link to="/docs/self-hosted">Learn more.</Link>
       </p>
     </div>
   );

@@ -19,8 +19,7 @@ import {
 import { useStore } from '../store/index.js';
 import type { NodeType } from '@qwenweaver/types';
 import { CreateWorkflowDialog } from './CreateWorkflowDialog.js';
-import { client, authHeaders, isSelfHosted, getSaaSUrl } from '../lib/api-client.js';
-import { SystemHealth } from './SystemHealth.js';
+import { client, authHeaders } from '../lib/api-client.js';
 import { MCPMarketplace } from './MCPMarketplace.js';
 import { ExecutionHistoryPanel } from './ExecutionHistoryPanel.js';
 
@@ -518,15 +517,10 @@ export const Sidebar = () => {
 
       {/* Footer Section */}
       <div className="p-3 border-t border-[#cbd5e1] space-y-2 bg-[#edf2f7] flex-shrink-0 mt-auto">
-        {/* System Health (self-host only) */}
-        {isSelfHosted() && <SystemHealth />}
-
-        <div className="pt-2 border-t border-[#cbd5e1]/40" />
-
         {/* Community templates */}
         <div className="flex flex-col gap-1">
           <a
-            href={isSelfHosted() ? getSaaSUrl() + '/templates' : '/templates'}
+            href={'/templates'}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2.5 px-2 py-1 text-xs text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"

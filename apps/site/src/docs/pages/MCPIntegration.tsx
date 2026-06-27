@@ -64,10 +64,7 @@ export function MCPIntegration() {
       <h2>Security Notes</h2>
       <ul>
         <li>MCP servers have access to whatever the agent's prompt context includes</li>
-        <li>
-          For self-hosted deployments, MCP servers run locally — data never leaves your
-          infrastructure
-        </li>
+
         <li>Auth credentials are stored encrypted in the database</li>
       </ul>
 

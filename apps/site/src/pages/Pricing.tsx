@@ -36,8 +36,7 @@ export function Pricing() {
             className="mt-4 text-lg text-on-surface-variant animate-fade-in"
             style={{ animationDelay: '0.1s' }}
           >
-            No credit card required. Use credits to execute workflows, or self-host for unlimited
-            usage.
+            No credit card required. Use credits to execute workflows.
           </p>
         </div>
 
@@ -73,10 +72,6 @@ export function Pricing() {
             >
               Get Started Free
             </a>
-
-            <p className="mt-4 text-center text-xs text-on-surface-variant">
-              Self-hosted users manage their own API keys and database — no credits needed.
-            </p>
           </div>
         </div>
       </div>

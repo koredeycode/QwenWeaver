@@ -9,7 +9,6 @@ import {
   ACCESS_TOKEN_EXPIRY_SECONDS,
   REFRESH_TOKEN_EXPIRY_SECONDS,
   SIGNUP_CREDITS,
-  IS_SELF_HOSTED,
 } from '../../config.js';
 import type { Context } from 'hono';
 
@@ -36,9 +35,7 @@ export const handleRegister = async (c: Context<{ Variables: Variables }>) => {
     const passwordHash = await bcrypt.hash(password, 10);
 
     await provider.createUser(id, email, passwordHash);
-    if (!IS_SELF_HOSTED) {
-      await provider.grantCredits(id, SIGNUP_CREDITS, 'signup_bonus', 'Welcome credits');
-    }
+    await provider.grantCredits(id, SIGNUP_CREDITS, 'signup_bonus', 'Welcome credits');
 
     log.info({ userId: id, email }, 'User registered successfully');
 

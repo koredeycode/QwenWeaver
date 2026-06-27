@@ -143,7 +143,7 @@ Engine:
       </p>
       <ul>
         <li>
-          <strong>SQLite</strong> — local dev, self-hosted (zero config)
+          <strong>SQLite</strong> — local dev (zero config)
         </li>
         <li>
           <strong>PostgreSQL</strong> — cloud production (UUID PKs, JSONB, timestamps)
@@ -163,9 +163,7 @@ Engine:
         <li>
           <Link to="/docs/getting-started">Get started with the cloud version</Link>
         </li>
-        <li>
-          <Link to="/docs/self-hosted">Deploy your own instance</Link>
-        </li>
+
         <li>
           <Link to="/docs/api">Browse the API</Link>
         </li>

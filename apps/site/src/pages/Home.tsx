@@ -762,12 +762,6 @@ function Hero() {
                 →
               </span>
             </a>
-            <a
-              href="/self-hosted"
-              className="inline-flex items-center gap-2 rounded-lg border border-outline/60 bg-surface-bright/80 px-6 py-3 text-base font-semibold text-on-surface backdrop-blur-sm transition-all hover:border-outline hover:bg-surface-dim hover:shadow-sm"
-            >
-              Self-Host
-            </a>
           </div>
 
           <p

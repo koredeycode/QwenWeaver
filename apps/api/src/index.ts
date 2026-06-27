@@ -16,8 +16,7 @@ import { analyticsRoutes } from './routes/analytics/index.js';
 import { creditsRoutes } from './routes/credits/index.js';
 import { credentialsRoutes } from './routes/credentials/index.js';
 import { templateRoutes } from './routes/templates/index.js';
-import { setupRoutes } from './routes/setup/index.js';
-import { updateRoutes } from './routes/update/index.js';
+
 import { register } from './metrics.js';
 import { getQueryProvider } from '@qwenweaver/database';
 import { rateLimiter } from './middleware/rate-limiter.js';
@@ -79,7 +78,6 @@ app.use('/api/*', (c, next) => {
     path.startsWith('/api/openapi.json') ||
     path.startsWith('/api/auth') ||
     path === '/api/mcp/registry/search' ||
-    (path.startsWith('/api/setup') && !path.startsWith('/api/setup/reconfigure')) ||
     path.startsWith('/api/metrics')
   ) {
     return next();
@@ -119,18 +117,14 @@ app
   .route('/api/mcp/registry', registryRoutes)
   .route('/api/analytics', analyticsRoutes)
   .route('/api/credits', creditsRoutes)
-  .route('/api/credentials', credentialsRoutes)
-  .route('/api/setup', setupRoutes)
-  .route('/api/system/update', updateRoutes);
+  .route('/api/credentials', credentialsRoutes);
 
 // Separate chain for type export — plain Hono preserves route types
 const altRoutes = new Hono<{ Variables: Variables }>()
   .route('/api/mcp/registry', registryRoutes)
   .route('/api/analytics', analyticsRoutes)
   .route('/api/credits', creditsRoutes)
-  .route('/api/credentials', credentialsRoutes)
-  .route('/api/setup', setupRoutes)
-  .route('/api/system/update', updateRoutes);
+  .route('/api/credentials', credentialsRoutes);
 
 export type AppType = typeof routes;
 export type AppType2 = typeof altRoutes;

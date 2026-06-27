@@ -6,7 +6,7 @@ import { toPng } from 'html-to-image';
 
 import type { NodeType } from '@qwenweaver/types';
 import { EXAMPLE_WORKFLOWS } from '../lib/example-workflows.js';
-import { client, authHeaders, isSelfHosted, getSaaSUrl, withRefresh } from '../lib/api-client.js';
+import { client, authHeaders, withRefresh } from '../lib/api-client.js';
 import { useStore } from '../store/index.js';
 import { saveDraft, loadDraft, clearDraft, hasDraft } from '../store/auto-save.js';
 import { toast } from 'sonner';
@@ -753,11 +753,7 @@ export const CanvasWorkspace = () => {
                   {workflowId && nodes.length > 0 && (
                     <button
                       onClick={() => {
-                        if (isSelfHosted()) {
-                          window.location.href = getSaaSUrl() + '/login?redirect=/templates/new';
-                        } else {
-                          setPublishDialogOpen(true);
-                        }
+                        setPublishDialogOpen(true);
                         setToolsOpen(false);
                       }}
                       className="flex items-center gap-3 px-3 py-2 text-xs text-purple-700 hover:bg-purple-50 transition-colors cursor-pointer border-b border-slate-100"

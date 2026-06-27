@@ -5,7 +5,6 @@ const links = [
   { to: '/', label: 'Home' },
   { to: '/docs', label: 'Docs' },
   { to: '/pricing', label: 'Pricing' },
-  { to: '/self-hosted', label: 'Self-Hosted' },
 ];
 
 export function Navbar() {

@@ -2,7 +2,6 @@ import { hc } from 'hono/client';
 import type { AppType, AppType2 } from '@qwenweaver/api';
 
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-const TEMPLATE_API_URL = import.meta.env.VITE_TEMPLATE_API_URL || '';
 
 // Custom fetch that auto-retries on 401 by refreshing the token.
 // This wraps every hc client call so individual calls don't need `withRefresh()`.
@@ -154,14 +153,6 @@ export async function fetchApi(path: string, options: RequestInit = {}): Promise
   return res;
 }
 
-export function isSelfHosted(): boolean {
-  return !!TEMPLATE_API_URL;
-}
-
 export function getTemplateApiUrl(): string {
-  return TEMPLATE_API_URL || API_URL;
-}
-
-export function getSaaSUrl(): string {
-  return TEMPLATE_API_URL || 'https://app.qwenweaver.com';
+  return API_URL;
 }

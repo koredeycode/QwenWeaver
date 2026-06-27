@@ -56,9 +56,8 @@ export const ACCESS_TOKEN_EXPIRY_SECONDS = 60 * 60; // 1 hour
 export const REFRESH_TOKEN_EXPIRY_SECONDS = 60 * 60 * 24 * 7; // 7 days
 
 // ─── Credits & Limits ──────────────────────────────────────────────────────────
-export const IS_SELF_HOSTED = !!process.env.TEMPLATE_API_URL;
-export const SIGNUP_CREDITS = IS_SELF_HOSTED ? 0 : 1000;
-export const MAX_FREE_WORKFLOWS = IS_SELF_HOSTED ? Infinity : 2;
+export const SIGNUP_CREDITS = 1000;
+export const MAX_FREE_WORKFLOWS = 2;
 export const LOW_CREDIT_WARNING = 100;
 export const NODE_BASE_COST: Record<string, number> = {
   trigger: 0,

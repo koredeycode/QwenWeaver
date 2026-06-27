@@ -51,7 +51,7 @@ apps/app/          React 19 + Vite + @xyflow/react v12 + Zustand + Tailwind + sh
 
 apps/site/          React 19 + Vite + Tailwind v4
   src/docs/         MDX documentation pages
-  src/pages/        Marketing pages (home, pricing, self-hosted)
+  src/pages/        Marketing pages (home, pricing)
 
 apps/api/          Hono.js edge-optimized backend
   src/engine/      Kahn's Algorithm DAG compiler, parallel execution
