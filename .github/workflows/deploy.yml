@@ -55,6 +55,10 @@ jobs:
         with: { node-version: 20, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      - name: Push database schema
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm --filter @qwenweaver/database drizzle:push
       - run: |
           tar czf site-dist.tar.gz -C apps/site/dist .
           tar czf app-dist.tar.gz -C apps/app/dist .
