@@ -157,9 +157,10 @@ const normalizeAction = (act: any): any => {
   }
 
   if (type === 'delete_nodes') {
+    const finalIds = Array.isArray(act.payload) ? act.payload : ids || [id].filter(Boolean);
     return {
       type,
-      payload: ids || [id].filter(Boolean),
+      payload: finalIds,
     };
   }
 
@@ -230,9 +231,10 @@ const normalizeAction = (act: any): any => {
   }
 
   if (type === 'delete_edges') {
+    const finalIds = Array.isArray(act.payload) ? act.payload : ids || [id].filter(Boolean);
     return {
       type,
-      payload: ids || [id].filter(Boolean),
+      payload: finalIds,
     };
   }
 
@@ -273,8 +275,18 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
   };
 
   const handleApproveProposal = (msgIdx: number, proposal: any) => {
-    const rawActions = proposal.actions || [];
-    const actions = (rawActions || []).map(normalizeAction);
+    const rawActions = Array.isArray(proposal.actions)
+      ? proposal.actions
+      : proposal.actions &&
+          typeof proposal.actions === 'object' &&
+          typeof proposal.actions.type === 'string'
+        ? [proposal.actions]
+        : proposal.actions &&
+            typeof proposal.actions === 'object' &&
+            Array.isArray(proposal.actions.actions)
+          ? proposal.actions.actions
+          : [];
+    const actions = rawActions.map(normalizeAction);
 
     applyActions(actions);
     rearrangeGraph();
@@ -374,45 +386,59 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
 
                   {/* List Proposed Changes */}
                   <div className="space-y-1 max-h-32 overflow-y-auto font-mono text-[9px] leading-relaxed text-slate-600">
-                    {(msg.proposal.actions || []).map((act, aIdx) => {
-                      const norm = normalizeAction(act);
-                      if (norm.type === 'add_node') {
-                        return (
-                          <div key={aIdx} className="text-emerald-600">
-                            + Add Node: {norm.payload.data?.label || norm.payload.type}
-                          </div>
-                        );
-                      }
-                      if (norm.type === 'delete_node') {
-                        return (
-                          <div key={aIdx} className="text-rose-600">
-                            - Delete Node ID: {norm.payload.id}
-                          </div>
-                        );
-                      }
-                      if (norm.type === 'update_node') {
-                        return (
-                          <div key={aIdx} className="text-blue-600">
-                            ~ Update Node ID: {norm.payload.id}
-                          </div>
-                        );
-                      }
-                      if (norm.type === 'add_edge') {
-                        return (
-                          <div key={aIdx} className="text-emerald-600">
-                            + Connect: {norm.payload.source} → {norm.payload.target}
-                          </div>
-                        );
-                      }
-                      if (norm.type === 'delete_edges') {
-                        return (
-                          <div key={aIdx} className="text-rose-600">
-                            - Disconnect edges: {norm.payload.join(', ')}
-                          </div>
-                        );
-                      }
-                      return null;
-                    })}
+                    {(() => {
+                      const rawActions = (msg.proposal.actions || []) as any;
+                      const actionsList = Array.isArray(rawActions)
+                        ? rawActions
+                        : rawActions &&
+                            typeof rawActions === 'object' &&
+                            typeof rawActions.type === 'string'
+                          ? [rawActions]
+                          : rawActions &&
+                              typeof rawActions === 'object' &&
+                              Array.isArray(rawActions.actions)
+                            ? rawActions.actions
+                            : [];
+                      return actionsList.map((act: any, aIdx: number) => {
+                        const norm = normalizeAction(act);
+                        if (norm.type === 'add_node') {
+                          return (
+                            <div key={aIdx} className="text-emerald-600">
+                              + Add Node: {norm.payload.data?.label || norm.payload.type}
+                            </div>
+                          );
+                        }
+                        if (norm.type === 'delete_node') {
+                          return (
+                            <div key={aIdx} className="text-rose-600">
+                              - Delete Node ID: {norm.payload.id}
+                            </div>
+                          );
+                        }
+                        if (norm.type === 'update_node') {
+                          return (
+                            <div key={aIdx} className="text-blue-600">
+                              ~ Update Node ID: {norm.payload.id}
+                            </div>
+                          );
+                        }
+                        if (norm.type === 'add_edge') {
+                          return (
+                            <div key={aIdx} className="text-emerald-600">
+                              + Connect: {norm.payload.source} → {norm.payload.target}
+                            </div>
+                          );
+                        }
+                        if (norm.type === 'delete_edges') {
+                          return (
+                            <div key={aIdx} className="text-rose-600">
+                              - Disconnect edges: {norm.payload.join(', ')}
+                            </div>
+                          );
+                        }
+                        return null;
+                      });
+                    })()}
                   </div>
 
                   {msg.proposal.status === 'pending' && (

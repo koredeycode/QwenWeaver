@@ -1,6 +1,6 @@
 import { StateCreator } from 'zustand';
 import { StoreState, CopilotSlice, CopilotMessage } from './types.js';
-import { getAccessToken, API_URL } from '../lib/api-client.js';
+import { getAccessToken, API_URL, client, authHeaders } from '../lib/api-client.js';
 import type { CopilotHistoryMessage } from '@qwenweaver/types';
 
 export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> = (set, get) => ({
@@ -16,21 +16,45 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
 
   setCopilotModel: (model) => set({ copilotModel: model }),
 
-  updateProposalStatus: (messageIndex, status) => {
+  updateProposalStatus: async (messageIndex, status) => {
+    const list = [...get().copilotMessages];
+    const msg = list[messageIndex];
+    if (!msg || msg.role !== 'assistant' || !msg.proposal) return;
+
+    // 1. Update local Zustand state
     set((state) => {
-      const list = [...state.copilotMessages];
-      const msg = list[messageIndex];
-      if (msg && msg.role === 'assistant' && msg.proposal) {
-        list[messageIndex] = {
-          ...msg,
+      const newList = [...state.copilotMessages];
+      const target = newList[messageIndex];
+      if (target && target.role === 'assistant' && target.proposal) {
+        newList[messageIndex] = {
+          ...target,
           proposal: {
-            ...msg.proposal,
+            ...target.proposal,
             status,
           },
         };
       }
-      return { copilotMessages: list };
+      return { copilotMessages: newList };
     });
+
+    // 2. Persist to backend database
+    const workflowId = get().workflowId;
+    if (workflowId && msg.proposal.id) {
+      try {
+        await client.api.copilot.proposal.$put(
+          {
+            json: {
+              workflowId,
+              proposalId: msg.proposal.id,
+              status,
+            },
+          },
+          { headers: authHeaders() },
+        );
+      } catch (err) {
+        console.error('Failed to persist proposal status update:', err);
+      }
+    }
   },
 
   sendCopilotMessage: async (text) => {
@@ -151,12 +175,24 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
                   text: (msg.text || '') + payload.chunk,
                 }));
               } else if (eventName === 'proposal') {
+                const rawActions = payload.actions;
+                const actions = Array.isArray(rawActions)
+                  ? rawActions
+                  : rawActions &&
+                      typeof rawActions === 'object' &&
+                      typeof rawActions.type === 'string'
+                    ? [rawActions]
+                    : rawActions &&
+                        typeof rawActions === 'object' &&
+                        Array.isArray(rawActions.actions)
+                      ? rawActions.actions
+                      : [];
                 updateLastAssistantMessage((msg) => ({
                   ...msg,
                   proposal: {
                     id: payload.id,
                     status: 'pending',
-                    actions: payload.actions || [],
+                    actions,
                   },
                 }));
               } else if (eventName === 'error') {
@@ -201,7 +237,17 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
         ? {
             id: msg.proposal.id,
             status: msg.proposal.status || 'pending',
-            actions: msg.proposal.actions || [],
+            actions: Array.isArray(msg.proposal.actions)
+              ? msg.proposal.actions
+              : msg.proposal.actions &&
+                  typeof msg.proposal.actions === 'object' &&
+                  typeof msg.proposal.actions.type === 'string'
+                ? [msg.proposal.actions]
+                : msg.proposal.actions &&
+                    typeof msg.proposal.actions === 'object' &&
+                    Array.isArray(msg.proposal.actions.actions)
+                  ? msg.proposal.actions.actions
+                  : [],
           }
         : undefined,
     }));

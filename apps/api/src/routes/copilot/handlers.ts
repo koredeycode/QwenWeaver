@@ -372,3 +372,60 @@ export const handleCopilot = async (c: Context<{ Variables: Variables }>) => {
     }
   });
 };
+
+export const handleUpdateProposal = async (c: Context<{ Variables: Variables }>) => {
+  const jwtPayload = c.get('jwtPayload');
+  const userId = jwtPayload.sub;
+  const raw = await c.req.json();
+
+  const { workflowId, proposalId, status } = raw as {
+    workflowId: string;
+    proposalId: string;
+    status: 'approved' | 'rejected' | 'pending';
+  };
+
+  if (!workflowId || !proposalId || !status) {
+    return c.json(
+      { error: 'Missing parameters: workflowId, proposalId, and status are required' },
+      400,
+    );
+  }
+
+  const provider = getQueryProvider();
+  try {
+    const workflow = await provider.getWorkflow(workflowId, userId);
+    if (!workflow) {
+      return c.json({ error: 'Workflow not found' }, 404);
+    }
+
+    const history = workflow.copilotHistory || [];
+    let updated = false;
+
+    const updatedHistory = history.map((msg: any) => {
+      if (msg.role === 'assistant' && msg.proposal && msg.proposal.id === proposalId) {
+        updated = true;
+        return {
+          ...msg,
+          proposal: {
+            ...msg.proposal,
+            status,
+          },
+        };
+      }
+      return msg;
+    });
+
+    if (!updated) {
+      return c.json({ error: 'Proposal not found in history' }, 404);
+    }
+
+    await provider.updateCopilotHistory(workflowId, userId, updatedHistory);
+    return c.json({ success: true }, 200);
+  } catch (err) {
+    log.error({ error: (err as Error).message }, 'Failed to update proposal status');
+    return c.json(
+      { error: 'Failed to update proposal status', details: (err as Error).message },
+      500,
+    );
+  }
+};
