@@ -74,8 +74,11 @@ COPY --from=builder /build/packages ./packages
 COPY --from=builder /build/apps/api/dist ./apps/api/dist
 COPY --from=builder /build/apps/app/dist ./apps/app/dist
 
+# Create public storage directory for runtime outputs
+RUN mkdir -p /app/public/storage/runs
+
 # Copy static assets for the API
-COPY --from=builder /build/apps/api/src/public/ ./apps/api/src/public/
+COPY --from=builder /build/apps/api/src/public/ /app/public/
 
 # Copy CLI binary
 COPY --from=builder /build/packages/cli/dist ./packages/cli/dist

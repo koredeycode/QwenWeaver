@@ -44,7 +44,7 @@ app.use(
     maxAge: 600,
   }),
 );
-app.use('/public/*', serveStatic({ root: './' }));
+app.use('/public/*', serveStatic({ root: './public' }));
 app.use('*', requestLogger());
 
 app.use(
