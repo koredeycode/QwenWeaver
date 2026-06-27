@@ -32,10 +32,10 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/qwenweaver:latest
-            ghcr.io/${{ github.repository }}/qwenweaver:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/qwenweaver/qwenweaver:latest
+            ghcr.io/${{ github.repository_owner }}/qwenweaver/qwenweaver:${{ github.sha }}
           labels: |
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.source=${{ github.server_url }}/koredeycode/qwenweaver
             org.opencontainers.image.revision=${{ github.sha }}
 
       - uses: pnpm/action-setup@v4
