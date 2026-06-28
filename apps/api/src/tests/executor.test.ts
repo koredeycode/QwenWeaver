@@ -67,7 +67,10 @@ describe('executor', () => {
     );
 
     const emitter = createMockEmitter();
-    const result = await executeWorkflow(workflow, 'exec-1', emitter);
+    const result = await executeWorkflow(workflow, 'exec-1', emitter, {
+      maxNegotiationRounds: 3,
+      persistLogs: false,
+    });
 
     expect(result.status).toBe('completed');
     expect(result.outputs.size).toBe(3);
@@ -93,7 +96,10 @@ describe('executor', () => {
     );
 
     const emitter = createMockEmitter();
-    const result = await executeWorkflow(workflow, 'exec-2', emitter);
+    const result = await executeWorkflow(workflow, 'exec-2', emitter, {
+      maxNegotiationRounds: 3,
+      persistLogs: false,
+    });
 
     expect(result.status).toBe('completed');
     expect(result.outputs.size).toBe(4);
@@ -109,7 +115,10 @@ describe('executor', () => {
     );
 
     const emitter = createMockEmitter();
-    const result = await executeWorkflow(workflow, 'exec-3', emitter);
+    const result = await executeWorkflow(workflow, 'exec-3', emitter, {
+      maxNegotiationRounds: 3,
+      persistLogs: false,
+    });
 
     expect(result.status).toBe('failed');
     expect(result.error).toContain('Cycle detected');
@@ -129,7 +138,10 @@ describe('executor', () => {
     );
 
     const emitter = createMockEmitter();
-    const result = await executeWorkflow(workflow, 'exec-4', emitter);
+    const result = await executeWorkflow(workflow, 'exec-4', emitter, {
+      maxNegotiationRounds: 3,
+      persistLogs: false,
+    });
 
     expect(result.metrics).toBeDefined();
     expect(result.metrics.speedupS).toBeDefined();
@@ -144,7 +156,10 @@ describe('executor', () => {
     const workflow = createWorkflow([{ id: 'A' }, { id: 'B' }], [{ source: 'A', target: 'B' }]);
 
     const emitter = createMockEmitter();
-    await executeWorkflow(workflow, 'exec-5', emitter);
+    await executeWorkflow(workflow, 'exec-5', emitter, {
+      maxNegotiationRounds: 3,
+      persistLogs: false,
+    });
 
     const edgeEvents = emitter.events.filter((e) => e.event === 'edge_active');
     expect(edgeEvents.length).toBeGreaterThanOrEqual(1);
@@ -156,7 +171,10 @@ describe('executor', () => {
     const workflow = createWorkflow([], []);
 
     const emitter = createMockEmitter();
-    const result = await executeWorkflow(workflow, 'exec-6', emitter);
+    const result = await executeWorkflow(workflow, 'exec-6', emitter, {
+      maxNegotiationRounds: 3,
+      persistLogs: false,
+    });
 
     expect(result.status).toBe('completed');
     expect(result.outputs.size).toBe(0);

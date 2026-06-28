@@ -4,7 +4,7 @@ import type { NodePayload } from '@qwenweaver/types';
 
 function node(
   id: string,
-  type: 'trigger' | 'agent' | 'supervisor' | 'mcp_tool' | 'logic',
+  type: 'trigger' | 'input_trigger' | 'agent' | 'supervisor' | 'mcp_tool' | 'logic',
   data: Record<string, unknown> = {},
 ): NodePayload {
   return { id, type, position: { x: 0, y: 0 }, data };
@@ -25,6 +25,10 @@ describe('model-router', () => {
 
   it('assigns qwen3.6-flash to trigger nodes', () => {
     expect(getModelIdForNode(node('t1', 'trigger'))).toBe('qwen3.6-flash');
+  });
+
+  it('assigns qwen3.6-flash to input_trigger nodes', () => {
+    expect(getModelIdForNode(node('it1', 'input_trigger'))).toBe('qwen3.6-flash');
   });
 
   it('assigns qwen3.6-flash to logic nodes', () => {

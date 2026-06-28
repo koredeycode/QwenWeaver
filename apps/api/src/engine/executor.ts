@@ -21,9 +21,11 @@ export async function executeWorkflow(
   // Try fetching to verify execution exists
   const existing = await provider.getExecution(executionId).catch(() => null);
   if (existing) {
-    await provider.updateExecution(executionId, 'running').catch((err: Error) => {
-      log.error({ executionId, error: err.message }, 'Failed to set execution status to running');
-    });
+    if (options.persistLogs) {
+      await provider.updateExecution(executionId, 'running').catch((err: Error) => {
+        log.error({ executionId, error: err.message }, 'Failed to set execution status to running');
+      });
+    }
   } else {
     log.error({ executionId }, 'Execution not found at start');
   }
@@ -40,12 +42,14 @@ export async function executeWorkflow(
 
     log.error({ executionId, cycleNodeIds: dagResult.cycleNodeIds }, errorMsg);
 
-    await provider.updateExecution(executionId, 'failed').catch((err: Error) => {
-      log.error(
-        { executionId, error: err.message },
-        'Failed to set execution status to failed on cycle',
-      );
-    });
+    if (options.persistLogs) {
+      await provider.updateExecution(executionId, 'failed').catch((err: Error) => {
+        log.error(
+          { executionId, error: err.message },
+          'Failed to set execution status to failed on cycle',
+        );
+      });
+    }
 
     await emitter.emit('error', {
       message: errorMsg,
@@ -146,39 +150,41 @@ export async function executeWorkflow(
         const result = await runAgent(nodeToRun, upstream, emitter, executionId, userId);
 
         // Non-blocking log save
-        const logPromise = provider
-          .saveAgentLog(
-            executionId,
-            result.nodeId,
-            result.status,
-            {
-              prompt: nodeToRun.data.label || 'Agent Execution',
-              systemPrompt: nodeToRun.data.systemPrompt || undefined,
-              upstreamOutputs: Object.fromEntries(
-                Array.from(upstream.entries()).map(([k, v]) => [
-                  k,
-                  { text: v.text, status: v.status },
-                ]),
-              ),
-            },
-            {
-              text: result.text,
-              outputs: result.outputs,
-              reasoning: result.reasoning,
-              toolCalls: result.toolCalls,
-              toolResults: result.toolResults,
-            },
-            result.tokensUsed,
-            result.error,
-          )
-          .catch((err: Error) => {
-            log.error(
-              { executionId, nodeId: result.nodeId, error: err.message },
-              'Failed to save agent log',
-            );
-          });
+        if (options.persistLogs) {
+          const logPromise = provider
+            .saveAgentLog(
+              executionId,
+              result.nodeId,
+              result.status,
+              {
+                prompt: nodeToRun.data.label || 'Agent Execution',
+                systemPrompt: nodeToRun.data.systemPrompt || undefined,
+                upstreamOutputs: Object.fromEntries(
+                  Array.from(upstream.entries()).map(([k, v]) => [
+                    k,
+                    { text: v.text, status: v.status },
+                  ]),
+                ),
+              },
+              {
+                text: result.text,
+                outputs: result.outputs,
+                reasoning: result.reasoning,
+                toolCalls: result.toolCalls,
+                toolResults: result.toolResults,
+              },
+              result.tokensUsed,
+              result.error,
+            )
+            .catch((err: Error) => {
+              log.error(
+                { executionId, nodeId: result.nodeId, error: err.message },
+                'Failed to save agent log',
+              );
+            });
 
-        backgroundTasks.push(logPromise);
+          backgroundTasks.push(logPromise);
+        }
 
         return result;
       }),
@@ -322,9 +328,11 @@ export async function executeWorkflow(
   const hasFailures = nodeTimings.some((t) => t.status === 'failed');
   const status = hasFailures ? 'failed' : 'completed';
 
-  await provider.updateExecution(executionId, status, metrics).catch((err: Error) => {
-    log.error({ executionId, error: err.message }, 'Failed to update execution final status');
-  });
+  if (options.persistLogs) {
+    await provider.updateExecution(executionId, status, metrics).catch((err: Error) => {
+      log.error({ executionId, error: err.message }, 'Failed to update execution final status');
+    });
+  }
 
   executions_total.labels(status).inc();
 
