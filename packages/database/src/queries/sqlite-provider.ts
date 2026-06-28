@@ -91,6 +91,7 @@ export const sqliteProvider: QueryProvider = {
       registryOrigin: input.registryOrigin || 'manual',
       registryId: input.registryId || null,
       registryMetadata: input.registryMetadata || null,
+      isFavorite: input.isFavorite ? 1 : 0,
     };
     await sqliteDb.insert(sqliteSchema.sqliteMcpServers).values({
       ...baseValues,
@@ -110,6 +111,7 @@ export const sqliteProvider: QueryProvider = {
       registryOrigin: input.registryOrigin ?? undefined,
       registryId: input.registryId ?? undefined,
       registryMetadata: input.registryMetadata ?? undefined,
+      isFavorite: Boolean(input.isFavorite),
       createdAt: new Date().toISOString(),
     };
   },
@@ -134,8 +136,52 @@ export const sqliteProvider: QueryProvider = {
       registryOrigin: r.registryOrigin ?? undefined,
       registryId: r.registryId ?? undefined,
       registryMetadata: r.registryMetadata ?? undefined,
+      isFavorite: Boolean(r.isFavorite),
       createdAt: new Date(r.createdAt).toISOString(),
     }));
+  },
+
+  async toggleFavoriteMcpServer(id: string, userId: string): Promise<SavedMCPServer> {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const [current] = await sqliteDb
+      .select()
+      .from(sqliteSchema.sqliteMcpServers)
+      .where(
+        and(
+          eq(sqliteSchema.sqliteMcpServers.id, id),
+          eq(sqliteSchema.sqliteMcpServers.userId, userId),
+        ),
+      )
+      .limit(1);
+    if (!current) throw new Error('MCP server not found');
+    const newVal = current.isFavorite ? 0 : 1;
+    await sqliteDb
+      .update(sqliteSchema.sqliteMcpServers)
+      .set({ isFavorite: newVal })
+      .where(eq(sqliteSchema.sqliteMcpServers.id, id));
+    const [updated] = await sqliteDb
+      .select()
+      .from(sqliteSchema.sqliteMcpServers)
+      .where(eq(sqliteSchema.sqliteMcpServers.id, id))
+      .limit(1);
+    const r = updated;
+    return {
+      id: r.id,
+      name: r.name,
+      description: r.description ?? undefined,
+      transport: r.transport,
+      url: r.url ?? undefined,
+      command: r.command ?? undefined,
+      args: r.args ?? undefined,
+      iconUrl: r.iconUrl ?? undefined,
+      authConfig: r.authConfig ?? undefined,
+      registryOrigin: r.registryOrigin ?? undefined,
+      registryId: r.registryId ?? undefined,
+      registryMetadata: r.registryMetadata ?? undefined,
+      isFavorite: Boolean(r.isFavorite),
+      createdAt: new Date(r.createdAt).toISOString(),
+    };
   },
 
   async deleteMcpServer(id: string, userId: string): Promise<boolean> {
@@ -203,6 +249,7 @@ export const sqliteProvider: QueryProvider = {
       registryOrigin: r.registryOrigin ?? undefined,
       registryId: r.registryId ?? undefined,
       registryMetadata: r.registryMetadata ?? undefined,
+      isFavorite: Boolean(r.isFavorite),
       createdAt: new Date(r.createdAt).toISOString(),
     };
   },

@@ -231,6 +231,21 @@ export const handleUpdateServerAuth = async (c: Context<{ Variables: Variables }
   }
 };
 
+export const handleToggleFavorite = async (c: Context<{ Variables: Variables }>) => {
+  const id = c.req.param('id');
+  if (!id) return c.json({ error: 'Missing server id' }, 400);
+  const userId = c.get('jwtPayload').sub;
+  const provider = getQueryProvider();
+  try {
+    const server = await provider.toggleFavoriteMcpServer(id, userId);
+    log.info({ id, userId, isFavorite: server.isFavorite }, 'MCP server favorite toggled');
+    return c.json({ server }, 200);
+  } catch (err) {
+    log.warn({ id, error: (err as Error).message }, 'Failed to toggle MCP server favorite');
+    return c.json({ error: (err as Error).message }, 404);
+  }
+};
+
 /**
  * Parse registry metadata to detect which auth types a server supports.
  * Examines required headers on remotes and environment variables on packages.

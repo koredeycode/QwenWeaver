@@ -6,6 +6,7 @@ import {
   handleListServers,
   handleDeleteServer,
   handleUpdateServerAuth,
+  handleToggleFavorite,
   handleRegistrySearch,
   handleRegistryAdopt,
 } from './handlers.js';
@@ -15,7 +16,8 @@ export const mcpRoutes = new Hono<{ Variables: Variables }>()
   .post('/servers', handleSaveServer)
   .get('/servers', handleListServers)
   .delete('/servers/:id', handleDeleteServer)
-  .post('/servers/:id/auth', handleUpdateServerAuth);
+  .post('/servers/:id/auth', handleUpdateServerAuth)
+  .post('/servers/:id/favorite', handleToggleFavorite);
 
 export const registryRoutes = new Hono<{ Variables: Variables }>()
   .get('/search', handleRegistrySearch)

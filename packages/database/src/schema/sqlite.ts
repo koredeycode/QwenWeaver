@@ -87,6 +87,7 @@ export const sqliteMcpServers = sqliteTable(
     registryOrigin: text('registry_origin').default('manual').notNull(),
     registryId: text('registry_id'),
     registryMetadata: text('registry_metadata', { mode: 'json' }),
+    isFavorite: integer('is_favorite').default(0).notNull(),
     createdAt: integer('created_at').notNull(),
   },
   (table) => [index('mcp_servers_user_id_idx').on(table.userId)],

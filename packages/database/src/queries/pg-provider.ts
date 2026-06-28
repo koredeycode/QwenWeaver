@@ -91,6 +91,7 @@ export const pgProvider: QueryProvider = {
       registryOrigin: input.registryOrigin || 'manual',
       registryId: input.registryId || null,
       registryMetadata: input.registryMetadata || null,
+      isFavorite: input.isFavorite ? 1 : 0,
     };
     await pgDb.insert(pgSchema.pgMcpServers).values({
       ...baseValues,
@@ -109,6 +110,7 @@ export const pgProvider: QueryProvider = {
       registryOrigin: input.registryOrigin ?? undefined,
       registryId: input.registryId ?? undefined,
       registryMetadata: input.registryMetadata ?? undefined,
+      isFavorite: Boolean(input.isFavorite),
       createdAt: new Date().toISOString(),
     };
   },
@@ -132,8 +134,46 @@ export const pgProvider: QueryProvider = {
       registryOrigin: r.registryOrigin ?? undefined,
       registryId: r.registryId ?? undefined,
       registryMetadata: r.registryMetadata ?? undefined,
+      isFavorite: Boolean(r.isFavorite),
       createdAt: r.createdAt.toISOString(),
     }));
+  },
+
+  async toggleFavoriteMcpServer(id: string, userId: string): Promise<SavedMCPServer> {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const [current] = await pgDb
+      .select()
+      .from(pgSchema.pgMcpServers)
+      .where(and(eq(pgSchema.pgMcpServers.id, id), eq(pgSchema.pgMcpServers.userId, userId)))
+      .limit(1);
+    if (!current) throw new Error('MCP server not found');
+    const newVal = current.isFavorite ? 0 : 1;
+    await pgDb
+      .update(pgSchema.pgMcpServers)
+      .set({ isFavorite: newVal })
+      .where(eq(pgSchema.pgMcpServers.id, id));
+    const [r] = await pgDb
+      .select()
+      .from(pgSchema.pgMcpServers)
+      .where(eq(pgSchema.pgMcpServers.id, id))
+      .limit(1);
+    return {
+      id: r.id,
+      name: r.name,
+      description: r.description ?? undefined,
+      transport: r.transport,
+      url: r.url ?? undefined,
+      command: r.command ?? undefined,
+      args: r.args ?? undefined,
+      iconUrl: r.iconUrl ?? undefined,
+      authConfig: r.authConfig ?? undefined,
+      registryOrigin: r.registryOrigin ?? undefined,
+      registryId: r.registryId ?? undefined,
+      registryMetadata: r.registryMetadata ?? undefined,
+      isFavorite: Boolean(r.isFavorite),
+      createdAt: r.createdAt.toISOString(),
+    };
   },
 
   async deleteMcpServer(id: string, userId: string): Promise<boolean> {
@@ -185,6 +225,7 @@ export const pgProvider: QueryProvider = {
       registryOrigin: r.registryOrigin ?? undefined,
       registryId: r.registryId ?? undefined,
       registryMetadata: r.registryMetadata ?? undefined,
+      isFavorite: Boolean(r.isFavorite),
       createdAt: r.createdAt.toISOString(),
     };
   },
