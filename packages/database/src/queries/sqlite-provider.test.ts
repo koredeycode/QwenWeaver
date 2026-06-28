@@ -65,6 +65,7 @@ function createTables() {
     registry_origin TEXT DEFAULT 'manual' NOT NULL,
     registry_id TEXT,
     registry_metadata TEXT,
+    is_favorite INTEGER DEFAULT 0 NOT NULL,
     created_at INTEGER NOT NULL
   )`);
   db.run(`CREATE TABLE IF NOT EXISTS template_categories (

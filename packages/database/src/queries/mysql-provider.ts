@@ -90,6 +90,7 @@ export const mysqlProvider: QueryProvider = {
       registryOrigin: input.registryOrigin || 'manual',
       registryId: input.registryId || null,
       registryMetadata: input.registryMetadata || null,
+      isFavorite: input.isFavorite ? 1 : 0,
     };
     await mysqlDb.insert(mysqlSchema.mysqlMcpServers).values({
       ...baseValues,
@@ -108,6 +109,7 @@ export const mysqlProvider: QueryProvider = {
       registryOrigin: input.registryOrigin ?? undefined,
       registryId: input.registryId ?? undefined,
       registryMetadata: input.registryMetadata ?? undefined,
+      isFavorite: Boolean(input.isFavorite),
       createdAt: new Date().toISOString(),
     };
   },
@@ -131,8 +133,48 @@ export const mysqlProvider: QueryProvider = {
       registryOrigin: r.registryOrigin ?? undefined,
       registryId: r.registryId ?? undefined,
       registryMetadata: r.registryMetadata ?? undefined,
+      isFavorite: Boolean(r.isFavorite),
       createdAt: r.createdAt.toISOString(),
     }));
+  },
+
+  async toggleFavoriteMcpServer(id: string, userId: string): Promise<SavedMCPServer> {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const [current] = await mysqlDb
+      .select()
+      .from(mysqlSchema.mysqlMcpServers)
+      .where(
+        and(eq(mysqlSchema.mysqlMcpServers.id, id), eq(mysqlSchema.mysqlMcpServers.userId, userId)),
+      )
+      .limit(1);
+    if (!current) throw new Error('MCP server not found');
+    const newVal = current.isFavorite ? 0 : 1;
+    await mysqlDb
+      .update(mysqlSchema.mysqlMcpServers)
+      .set({ isFavorite: newVal })
+      .where(eq(mysqlSchema.mysqlMcpServers.id, id));
+    const [r] = await mysqlDb
+      .select()
+      .from(mysqlSchema.mysqlMcpServers)
+      .where(eq(mysqlSchema.mysqlMcpServers.id, id))
+      .limit(1);
+    return {
+      id: r.id,
+      name: r.name,
+      description: r.description ?? undefined,
+      transport: r.transport,
+      url: r.url ?? undefined,
+      command: r.command ?? undefined,
+      args: r.args ?? undefined,
+      iconUrl: r.iconUrl ?? undefined,
+      authConfig: r.authConfig ?? undefined,
+      registryOrigin: r.registryOrigin ?? undefined,
+      registryId: r.registryId ?? undefined,
+      registryMetadata: r.registryMetadata ?? undefined,
+      isFavorite: Boolean(r.isFavorite),
+      createdAt: r.createdAt.toISOString(),
+    };
   },
 
   async deleteMcpServer(id: string, userId: string): Promise<boolean> {
@@ -190,6 +232,7 @@ export const mysqlProvider: QueryProvider = {
       registryOrigin: r.registryOrigin ?? undefined,
       registryId: r.registryId ?? undefined,
       registryMetadata: r.registryMetadata ?? undefined,
+      isFavorite: Boolean(r.isFavorite),
       createdAt: r.createdAt.toISOString(),
     };
   },

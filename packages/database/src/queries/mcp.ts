@@ -14,6 +14,7 @@ export interface SavedMCPServerInput {
   registryOrigin?: string | null;
   registryId?: string | null;
   registryMetadata?: unknown | null;
+  isFavorite?: boolean | null;
 }
 
 export interface SavedMCPServer {
@@ -29,6 +30,7 @@ export interface SavedMCPServer {
   registryOrigin?: string;
   registryId?: string;
   registryMetadata?: unknown;
+  isFavorite?: boolean;
   createdAt: string;
 }
 

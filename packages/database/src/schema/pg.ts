@@ -94,6 +94,7 @@ export const pgMcpServers = pgTable(
     registryOrigin: text('registry_origin').default('manual').notNull(),
     registryId: text('registry_id'),
     registryMetadata: jsonb('registry_metadata'),
+    isFavorite: integer('is_favorite').default(0).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => [index('mcp_servers_user_id_idx').on(table.userId)],

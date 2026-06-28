@@ -62,6 +62,8 @@ export interface QueryProvider {
   saveMcpServer(id: string, userId: string, input: SavedMCPServerInput): Promise<SavedMCPServer>;
   getMcpServers(userId: string): Promise<SavedMCPServer[]>;
   deleteMcpServer(id: string, userId: string): Promise<boolean>;
+  /** Toggle favorite status for a user-owned server */
+  toggleFavoriteMcpServer(id: string, userId: string): Promise<SavedMCPServer>;
   /** Update auth config for a user-owned server */
   updateMcpServerAuth(
     id: string,

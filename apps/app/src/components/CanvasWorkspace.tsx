@@ -16,7 +16,8 @@ import { nodeTypes } from './CustomNodes.js';
 import { GanttMetrics } from './GanttMetrics.js';
 import { Inspector } from './Inspector.js';
 import { Sidebar } from './Sidebar.js';
-import { WorkerAgentCatalog } from './WorkerAgentCatalog.js';
+import { DockedPanel } from './DockedPanel.js';
+import { pendingTouchDrag, clearPendingTouchDrag } from '../lib/touch-drag.js';
 
 import {
   ChevronDown,
@@ -93,25 +94,38 @@ export const CanvasWorkspace = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const [workerCatalogOpen, setWorkerCatalogOpen] = useState(false);
-  const [catalogPosition, setCatalogPosition] = useState<{ x: number; y: number } | null>(null);
-  const [isCopilotOpen, setIsCopilotOpen] = useState(false);
+  const [dockedPanelMode, setDockedPanelMode] = useState<'triggers' | 'agents' | 'mcp' | null>(
+    null,
+  );
+  const [rightPanel, setRightPanel] = useState<'copilot' | 'inspector' | null>(null);
+  const openRightPanel = useCallback((panel: 'copilot' | 'inspector') => {
+    setDockedPanelMode(null);
+    setRightPanel(panel);
+  }, []);
 
-  // Automatically trigger worker catalog when entering its tour step
+  // Auto-fit view when side panels open/close
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      reactFlowInstance.fitView({ duration: 200 });
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [dockedPanelMode, rightPanel, reactFlowInstance]);
+
+  // Automatically open docked panel when entering its tour step
   useEffect(() => {
     if (isTourActive && steps[currentStepIndex]?.id === 'worker-catalog') {
-      setWorkerCatalogOpen(true);
+      setDockedPanelMode('agents');
     } else if (isTourActive && steps[currentStepIndex]?.id !== 'worker-catalog') {
-      setWorkerCatalogOpen(false);
+      setDockedPanelMode(null);
     }
   }, [isTourActive, currentStepIndex, steps]);
 
   // Automatically open copilot when entering its tour step
   useEffect(() => {
     if (isTourActive && steps[currentStepIndex]?.id === 'copilot-toggle') {
-      setIsCopilotOpen(true);
+      openRightPanel('copilot');
     } else if (isTourActive && steps[currentStepIndex]?.id !== 'copilot-toggle') {
-      setIsCopilotOpen(false);
+      setRightPanel(null);
     }
   }, [isTourActive, currentStepIndex, steps]);
 
@@ -245,7 +259,6 @@ export const CanvasWorkspace = () => {
     }
   }, [nodes.length, reactFlowInstance]);
 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isLocked, setIsLocked] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(() => {
     const saved = localStorage.getItem('qwenweaver_shortcuts_open');
@@ -625,22 +638,55 @@ export const CanvasWorkspace = () => {
         y: event.clientY,
       });
 
-      if (type === 'agent') {
-        setCatalogPosition(position);
-        setWorkerCatalogOpen(true);
+      // Check for pre-configured node data (from docked panel drags)
+      const nodeDataStr = event.dataTransfer.getData('application/qwenweaver-node-data');
+      const nodeData = nodeDataStr ? JSON.parse(nodeDataStr) : undefined;
+
+      if ((type === 'agent' || type === 'supervisor') && !nodeData) {
+        setDockedPanelMode('agents');
       } else {
-        addNode(type, position);
+        addNode(type, position, nodeData);
       }
     },
-    [reactFlowInstance, addNode, isLocked, status, setCatalogPosition, setWorkerCatalogOpen],
+    [reactFlowInstance, addNode, isLocked, status, setDockedPanelMode],
+  );
+
+  const onTouchEnd = useCallback(
+    (event: React.TouchEvent) => {
+      const drag = pendingTouchDrag;
+      if (!drag) return;
+      if (isLocked || status === 'running') {
+        clearPendingTouchDrag();
+        return;
+      }
+
+      const touch = event.changedTouches[0];
+      if (!touch) {
+        clearPendingTouchDrag();
+        return;
+      }
+
+      const position = reactFlowInstance.screenToFlowPosition({
+        x: touch.clientX,
+        y: touch.clientY,
+      });
+
+      if ((drag.type === 'agent' || drag.type === 'supervisor') && !drag.data) {
+        setDockedPanelMode('agents');
+      } else {
+        addNode(drag.type as NodeType, position, drag.data);
+      }
+      clearPendingTouchDrag();
+    },
+    [reactFlowInstance, addNode, isLocked, status, setDockedPanelMode],
   );
 
   const handleNodeClick = useCallback(
     (_: any, node: any) => {
       selectNode(node.id);
-      setIsSidebarOpen(true);
+      openRightPanel('inspector');
     },
-    [selectNode],
+    [selectNode, openRightPanel],
   );
 
   const [isDescOpen, setIsDescOpen] = useState(false);
@@ -691,9 +737,9 @@ export const CanvasWorkspace = () => {
       <div className="hidden md:flex h-dvh w-screen flex-row bg-[#f8fafc] text-slate-800 select-none overflow-x-hidden overflow-y-auto">
         {/* Left Sidebar extends to the top/bottom of viewport */}
         <Sidebar
-          onOpenWorkerCatalog={(pos) => {
-            setCatalogPosition(pos);
-            setWorkerCatalogOpen(true);
+          onOpenDockedPanel={(mode) => {
+            setDockedPanelMode(mode);
+            setRightPanel(null);
           }}
         />
 
@@ -1028,7 +1074,14 @@ export const CanvasWorkspace = () => {
                 {/* Canvas column: canvas + footer, width matches canvas (not behind inspector) */}
                 <div className="flex-1 flex flex-col min-w-0">
                   {/* React Flow Workspace Canvas */}
-                  <div ref={canvasRef} className="flex-1 min-h-0 relative">
+                  <div
+                    ref={canvasRef}
+                    className="flex-1 min-h-0 relative"
+                    onTouchMove={(e) => {
+                      if (pendingTouchDrag) e.preventDefault();
+                    }}
+                    onTouchEnd={onTouchEnd}
+                  >
                     <ReactFlow
                       nodes={nodes}
                       edges={edges}
@@ -1133,7 +1186,7 @@ export const CanvasWorkspace = () => {
                               Empty Canvas
                             </p>
                             <p className="text-[10px] text-slate-300 font-mono max-w-[240px] leading-relaxed">
-                              Drag nodes from the sidebar or use the MCP Marketplace to add tools.
+                              Drag nodes from the sidebar or open the MCP panel to add tools.
                             </p>
                           </div>
                         </div>
@@ -1297,12 +1350,12 @@ export const CanvasWorkspace = () => {
                       </div>
                     </ReactFlow>
 
-                    {/* Floating Sidebar Toggle Button (when collapsed) */}
-                    {!isSidebarOpen && (
+                    {/* Floating Inspector Toggle Button (when closed) */}
+                    {rightPanel !== 'inspector' && (
                       <button
-                        onClick={() => setIsSidebarOpen(true)}
+                        onClick={() => openRightPanel('inspector')}
                         className="absolute top-4 right-4 z-20 bg-white border border-[#cbd5e1] p-2 hover:bg-slate-50 text-slate-700 shadow-sm rounded-none transition-colors cursor-pointer"
-                        title="Open Properties Panel"
+                        title="Open Inspector"
                       >
                         <ChevronLeft className="w-4 h-4" />
                       </button>
@@ -1316,10 +1369,16 @@ export const CanvasWorkspace = () => {
                     </div>
                     <div className="flex flex-row items-center gap-2 p-2 bg-white border-t border-l border-[#cbd5e1]">
                       <button
-                        onClick={() => setIsCopilotOpen(!isCopilotOpen)}
+                        onClick={() => {
+                          if (rightPanel === 'copilot') {
+                            setRightPanel(null);
+                          } else {
+                            openRightPanel('copilot');
+                          }
+                        }}
                         data-tour="copilot"
                         className={`pointer-events-auto h-11 w-11 flex items-center justify-center shadow-lg transition-all select-none cursor-pointer border rounded-none ${
-                          isCopilotOpen
+                          rightPanel === 'copilot'
                             ? 'bg-orange-500 border-orange-400 text-white'
                             : 'bg-orange-600 border-orange-500 text-white hover:bg-orange-500'
                         }`}
@@ -1340,9 +1399,16 @@ export const CanvasWorkspace = () => {
                   </div>
                 </div>
 
-                {/* Docked panels on the right side of the canvas column */}
-                {isCopilotOpen && <CopilotPanel onClose={() => setIsCopilotOpen(false)} />}
-                {isSidebarOpen && <Inspector onClose={() => setIsSidebarOpen(false)} />}
+                {/* Right panels: only one at a time */}
+                {dockedPanelMode && (
+                  <DockedPanel mode={dockedPanelMode} onClose={() => setDockedPanelMode(null)} />
+                )}
+                {!dockedPanelMode && rightPanel === 'inspector' && (
+                  <Inspector onClose={() => setRightPanel(null)} />
+                )}
+                {!dockedPanelMode && rightPanel === 'copilot' && (
+                  <CopilotPanel onClose={() => setRightPanel(null)} />
+                )}
               </div>
             </div>
           </div>
@@ -1518,12 +1584,6 @@ export const CanvasWorkspace = () => {
             }
           }}
         />
-        {workerCatalogOpen && (
-          <WorkerAgentCatalog
-            onClose={() => setWorkerCatalogOpen(false)}
-            dropPosition={catalogPosition}
-          />
-        )}
       </div>
     </>
   );
