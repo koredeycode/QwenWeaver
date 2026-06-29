@@ -49,7 +49,7 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
               status,
             },
           },
-          { headers: authHeaders() },
+          { headers: authHeaders },
         );
       } catch (err) {
         console.error('Failed to persist proposal status update:', err);
@@ -95,7 +95,7 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
           ? 'modify'
           : 'generate';
 
-      const token = getAccessToken();
+      const token = await getAccessToken();
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };

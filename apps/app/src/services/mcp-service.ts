@@ -11,7 +11,7 @@ export async function discoverMCPTools(
       {
         json: { mcpServerUrl, authConfig } as any,
       },
-      { headers: authHeaders() },
+      { headers: authHeaders },
     );
     if (!res.ok) return [];
     const data = (await res.json()) as any;
@@ -23,7 +23,7 @@ export async function discoverMCPTools(
 
 export async function listUserServers(): Promise<any[]> {
   try {
-    const res = await client.api.mcp.servers.$get({}, { headers: authHeaders() });
+    const res = await client.api.mcp.servers.$get({}, { headers: authHeaders });
     if (!res.ok) return [];
     const data = (await res.json()) as any;
     return data.servers || [];
@@ -34,12 +34,12 @@ export async function listUserServers(): Promise<any[]> {
 
 export async function toggleFavorite(serverId: string): Promise<boolean> {
   try {
-    const res = await withRefresh(() =>
+    const res = (await withRefresh(() =>
       (client.api.mcp.servers[':id'] as any).favorite.$post(
         { param: { id: serverId } },
-        { headers: authHeaders() },
+        { headers: authHeaders },
       ),
-    );
+    )) as any;
     return res.ok;
   } catch {
     return false;
@@ -48,12 +48,12 @@ export async function toggleFavorite(serverId: string): Promise<boolean> {
 
 export async function adoptRegistryServer(registryId: string): Promise<boolean> {
   try {
-    const res = await withRefresh(() =>
+    const res = (await withRefresh(() =>
       (client2.api.mcp.registry as any).adopt.$post(
         { json: { registryId } },
-        { headers: authHeaders() },
+        { headers: authHeaders },
       ),
-    );
+    )) as any;
     return res.ok;
   } catch {
     return false;

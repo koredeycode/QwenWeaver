@@ -48,16 +48,16 @@ export interface ExecutionSummaryRow {
 
 export interface QueryProvider {
   // Auth
-  createUser(id: string, email: string, passwordHash: string): Promise<void>;
+  createUser(id: string, email: string, name: string): Promise<void>;
   getUserByEmail(email: string): Promise<{
     id: string;
     email: string;
-    passwordHash: string;
+    name: string;
     createdAt: Date | string | number;
   } | null>;
   getUserById(
     id: string,
-  ): Promise<{ id: string; email: string; createdAt: Date | string | number } | null>;
+  ): Promise<{ id: string; email: string; name: string; createdAt: Date | string | number } | null>;
 
   saveMcpServer(id: string, userId: string, input: SavedMCPServerInput): Promise<SavedMCPServer>;
   getMcpServers(userId: string): Promise<SavedMCPServer[]>;

@@ -43,7 +43,7 @@ export function useWorkflowLoader(id: string | undefined): void {
 
         // Try to load from API (saved workflow from the server)
         client.api.workflow.detail[':workflowId']
-          .$get({ param: { workflowId: id } }, { headers: authHeaders() })
+          .$get({ param: { workflowId: id } }, { headers: authHeaders })
           .then((r: Response) => (r.ok ? r.json() : null))
           .then((wf: any) => {
             if (!wf || !wf.nodesEdges || !wf.nodesEdges.nodes) {

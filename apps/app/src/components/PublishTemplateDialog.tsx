@@ -44,7 +44,7 @@ export const PublishTemplateDialog = ({
       setTagsStr('');
       setLoading(true);
       client.api.templates.categories
-        .$get({}, { headers: authHeaders() })
+        .$get({}, { headers: authHeaders })
         .then((r) => r.json())
         .then((data) => setCategories((data as any).categories))
         .catch(() => {})

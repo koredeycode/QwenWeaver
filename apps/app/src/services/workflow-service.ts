@@ -23,9 +23,9 @@ export async function createWorkflow(
   payload: WorkflowPayload,
 ): Promise<{ workflowId: string } | null> {
   try {
-    const res = await withRefresh(() =>
-      client.api.workflow.$post({ json: payload as any }, { headers: authHeaders() }),
-    );
+    const res = (await withRefresh(() =>
+      client.api.workflow.$post({ json: payload as any }, { headers: authHeaders }),
+    )) as any;
     if (!res.ok) {
       if (res.status === 403) {
         const errBody: Record<string, unknown> = await res.json().catch(() => ({}));
@@ -45,12 +45,12 @@ export async function updateWorkflow(
   payload: WorkflowPayload & { id: string },
 ): Promise<boolean> {
   try {
-    const res = await withRefresh(() =>
+    const res = (await withRefresh(() =>
       (client.api.workflow.detail[':workflowId'] as any).$put(
         { param: { workflowId }, json: payload as any },
-        { headers: authHeaders() },
+        { headers: authHeaders },
       ),
-    );
+    )) as any;
     return res.ok;
   } catch (err) {
     console.error('workflow-service: updateWorkflow failed', err);
@@ -71,7 +71,7 @@ export async function loadWorkflowFromApi(workflowId: string): Promise<{
   try {
     const res = await client.api.workflow.detail[':workflowId'].$get(
       { param: { workflowId } },
-      { headers: authHeaders() },
+      { headers: authHeaders },
     );
     if (!res.ok) return null;
     return await res.json();

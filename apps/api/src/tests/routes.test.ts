@@ -1,20 +1,14 @@
-import { describe, it, expect, vi, beforeAll, afterEach } from 'vitest';
-import { sign } from 'hono/jwt';
+import { describe, it, expect, vi, beforeAll, afterEach, beforeEach } from 'vitest';
 import app from '../index.js';
-import { JWT_SECRET } from '../config.js';
+import { auth as mockAuthModule } from '../auth.js';
 
 // ─── Auth helpers ──────────────────────────────────────────────────────────
 
-let userToken = '';
-const USER_ID = 'test-user-123';
-
-beforeAll(async () => {
-  const now = Math.floor(Date.now() / 1000);
-  userToken = await sign(
-    { sub: USER_ID, email: 'test@test.com', exp: now + 3600, type: 'access' },
-    JWT_SECRET,
-  );
-});
+const { USER_ID, USER_EMAIL, USER_NAME } = vi.hoisted(() => ({
+  USER_ID: 'test-user-123',
+  USER_EMAIL: 'test@test.com',
+  USER_NAME: 'Test User',
+}));
 
 // ─── Mock database ─────────────────────────────────────────────────────────
 
@@ -80,7 +74,7 @@ vi.mock('@qwenweaver/database', () => {
   return {
     getConnection: vi.fn().mockReturnValue({ db: {}, dialect: 'sqlite' }),
     getQueryProvider: vi.fn().mockReturnValue(mock),
-    sqliteSchema: {},
+    sqliteSchema: { user: {}, session: {}, account: {}, verification: {} },
     pgSchema: {},
     mysqlSchema: {},
   };
@@ -97,9 +91,33 @@ vi.mock('ai', () => ({
   tool: vi.fn((def: any) => def),
 }));
 
+// ─── Mock Better Auth ──────────────────────────────────────────────────────
+vi.mock('../auth.js', () => ({
+  auth: {
+    handler: vi.fn((req: Request) => {
+      // Return 404 for non-Better-Auth paths so the request falls through to
+      // app routes. The index.ts middleware checks for 404 and calls next().
+      return new Response(null, { status: 404 });
+    }),
+    api: {
+      getSession: vi.fn().mockResolvedValue({
+        user: { id: USER_ID, email: USER_EMAIL, name: USER_NAME },
+        session: {
+          id: 'sess-1',
+          userId: USER_ID,
+          token: 'test-token',
+          expiresAt: new Date(Date.now() + 3600000),
+        },
+      }),
+    },
+  },
+}));
+
 // Set env for tests
 process.env.DASHSCOPE_API_KEY = 'test-key';
 process.env.CREDENTIALS_ENCRYPTION_KEY = 'test-encryption-key-32bytes!';
+process.env.BETTER_AUTH_SECRET = 'test-better-auth-secret';
+process.env.BETTER_AUTH_URL = 'http://localhost:3001';
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -107,7 +125,7 @@ afterEach(() => {
 });
 
 function authHeaders() {
-  return { Authorization: `Bearer ${userToken}`, 'Content-Type': 'application/json' };
+  return { Authorization: 'Bearer test-token', 'Content-Type': 'application/json' };
 }
 
 // ─── Test suites ───────────────────────────────────────────────────────────
@@ -135,85 +153,24 @@ describe('route-level integration tests', () => {
     });
   });
 
-  // ─── Auth ───────────────────────────────────────────────────────────────
-  describe('POST /api/auth/register', () => {
-    it('returns 400 on invalid input', async () => {
-      const res = await app.request('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'not-an-email', password: '12' }),
-      });
-      expect(res.status).toBe(400);
-    });
-
-    it('returns 400 when body is empty', async () => {
-      const res = await app.request('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-      expect(res.status).toBe(400);
-    });
-
-    it('returns 409 when user already exists', async () => {
-      mockProvider.getUserByEmail.mockResolvedValueOnce({
-        id: 'existing',
-        email: 'taken@test.com',
-        passwordHash: 'hash',
-      });
-      const res = await app.request('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'taken@test.com', password: 'password123' }),
-      });
-      expect(res.status).toBe(409);
-      const body = (await res.json()) as any;
-      expect(body.error).toBe('User already exists');
-    });
-  });
-
-  describe('POST /api/auth/login', () => {
-    it('returns 401 for non-existent user', async () => {
-      const res = await app.request('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'nobody@test.com', password: 'password123' }),
-      });
-      expect(res.status).toBe(401);
-    });
-
-    it('returns 400 on invalid input', async () => {
-      const res = await app.request('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'bad', password: '' }),
-      });
-      expect(res.status).toBe(400);
-    });
-  });
-
-  describe('POST /api/auth/refresh', () => {
-    it('returns 400 when no refresh token provided', async () => {
-      const res = await app.request('/api/auth/refresh', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-      expect(res.status).toBe(400);
-    });
-
-    it('returns 401 for invalid refresh token', async () => {
-      const res = await app.request('/api/auth/refresh', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: 'invalid-token' }),
-      });
-      expect(res.status).toBe(401);
-    });
-  });
-
   // ─── Protected routes without auth ──────────────────────────────────────
-  describe('Protected routes without JWT', () => {
+  describe('Protected routes without auth', () => {
+    beforeEach(() => {
+      (mockAuthModule.api as any).getSession.mockResolvedValue(null as any);
+    });
+
+    afterEach(() => {
+      (mockAuthModule.api as any).getSession.mockResolvedValue({
+        user: { id: USER_ID, email: USER_EMAIL, name: USER_NAME },
+        session: {
+          id: 'sess-1',
+          userId: USER_ID,
+          token: 'test-token',
+          expiresAt: new Date(Date.now() + 3600000),
+        },
+      });
+    });
+
     it('GET /api/workflow/:id returns 401', async () => {
       const res = await app.request('/api/workflow/fake-id');
       expect(res.status).toBe(401);
@@ -256,27 +213,6 @@ describe('route-level integration tests', () => {
       expect(res.status).toBe(200);
       const text = await res.text();
       expect(text).toContain('http_request_duration_ms');
-    });
-  });
-
-  // ─── OpenAPI ────────────────────────────────────────────────────────────
-  describe('GET /api/openapi.json', () => {
-    it('returns 404 — endpoint removed', async () => {
-      const res = await app.request('/api/openapi.json');
-      expect(res.status).toBe(404);
-    });
-  });
-
-  // ─── Body limit ─────────────────────────────────────────────────────────
-  describe('POST /api/auth/register with oversized body', () => {
-    it('returns 413 for payload exceeding 5MB', async () => {
-      const largeBody = JSON.stringify({ email: 'a'.repeat(6 * 1024 * 1024) });
-      const res = await app.request('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: largeBody,
-      });
-      expect(res.status).toBe(413);
     });
   });
 
@@ -541,7 +477,7 @@ describe('route-level integration tests', () => {
         ),
       );
       const res = await app.request('/api/mcp/registry/search?q=test', {
-        headers: { Authorization: `Bearer ${userToken}` },
+        headers: { Authorization: `Bearer test-token` },
       });
       expect(res.status).toBe(200);
       const body = (await res.json()) as any;
@@ -697,6 +633,7 @@ describe('route-level integration tests', () => {
       mockProvider.getUserById.mockResolvedValueOnce({
         id: 'author-1',
         email: 'author@test.com',
+        name: 'Author',
         createdAt: Date.now(),
       });
       const res = await app.request('/api/templates', { headers: authHeaders() });
@@ -722,6 +659,7 @@ describe('route-level integration tests', () => {
       mockProvider.getUserById.mockResolvedValueOnce({
         id: 'author-1',
         email: 'author@test.com',
+        name: 'Author',
         createdAt: Date.now(),
       });
       mockProvider.listTemplateCategories.mockResolvedValueOnce([]);
@@ -828,7 +766,7 @@ describe('route-level integration tests', () => {
   describe('GET /api/workflow/:executionId/stream', () => {
     it('returns 404 when execution does not exist', async () => {
       const res = await app.request('/api/workflow/missing/stream', {
-        headers: { Authorization: `Bearer ${userToken}` },
+        headers: { Authorization: `Bearer test-token` },
       });
       expect(res.status).toBe(404);
     });

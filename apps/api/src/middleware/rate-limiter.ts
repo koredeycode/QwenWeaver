@@ -57,7 +57,7 @@ export function rateLimiter(name: string, options: RateLimitOptions): Middleware
     // Extract key: prefer JWT sub, fall back to IP
     const key = keyExtractor
       ? keyExtractor(c)
-      : ((c.get('jwtPayload') as any)?.sub ?? c.req.header('x-forwarded-for') ?? 'anonymous');
+      : ((c.get('user') as any)?.id ?? c.req.header('x-forwarded-for') ?? 'anonymous');
 
     let entry = entries.get(key);
 

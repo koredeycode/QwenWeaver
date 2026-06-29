@@ -8,18 +8,64 @@ import type {
 } from '@qwenweaver/types';
 import type { MCPAuthConfig } from '@qwenweaver/types';
 
-export const sqliteUsers = sqliteTable('users', {
+// ─── Better Auth tables ──────────────────────────────────────────────────────
+export const user = sqliteTable('user', {
   id: text('id').primaryKey(),
   email: text('email').notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
-  createdAt: integer('created_at').notNull(),
+  emailVerified: integer('emailVerified', { mode: 'boolean' }).notNull().default(false),
+  name: text('name').notNull(),
+  image: text('image'),
+  createdAt: integer('createdAt', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull(),
 });
+
+export const session = sqliteTable('session', {
+  id: text('id').primaryKey(),
+  userId: text('userId')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  expiresAt: integer('expiresAt', { mode: 'timestamp' }).notNull(),
+  token: text('token').notNull().unique(),
+  ipAddress: text('ipAddress'),
+  userAgent: text('userAgent'),
+  createdAt: integer('createdAt', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull(),
+});
+
+export const account = sqliteTable('account', {
+  id: text('id').primaryKey(),
+  accountId: text('accountId').notNull(),
+  providerId: text('providerId').notNull(),
+  userId: text('userId')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  accessToken: text('accessToken'),
+  refreshToken: text('refreshToken'),
+  idToken: text('idToken'),
+  accessTokenExpiresAt: integer('accessTokenExpiresAt', { mode: 'timestamp' }),
+  refreshTokenExpiresAt: integer('refreshTokenExpiresAt', { mode: 'timestamp' }),
+  scope: text('scope'),
+  password: text('password'),
+  createdAt: integer('createdAt', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull(),
+});
+
+export const verification = sqliteTable('verification', {
+  id: text('id').primaryKey(),
+  identifier: text('identifier').notNull(),
+  value: text('value').notNull(),
+  expiresAt: integer('expiresAt', { mode: 'timestamp' }).notNull(),
+  createdAt: integer('createdAt', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull(),
+});
+
+// ─── Application tables ──────────────────────────────────────────────────────
 
 export const sqliteWorkflows = sqliteTable(
   'workflows',
   {
     id: text('id').primaryKey(),
-    userId: text('user_id').references(() => sqliteUsers.id, { onDelete: 'cascade' }),
+    userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     description: text('description'),
     isActive: integer('is_active').default(1).notNull(),
@@ -35,7 +81,7 @@ export const sqliteExecutions = sqliteTable(
   {
     id: text('id').primaryKey(),
     workflowId: text('workflow_id').references(() => sqliteWorkflows.id, { onDelete: 'cascade' }),
-    userId: text('user_id').references(() => sqliteUsers.id, { onDelete: 'cascade' }),
+    userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }),
     status: text('status').notNull(),
     metrics: text('metrics', { mode: 'json' }).$type<ExecutionMetrics>(),
     startedAt: integer('started_at').notNull(),
@@ -75,7 +121,7 @@ export const sqliteMcpServers = sqliteTable(
   'mcp_servers',
   {
     id: text('id').primaryKey(),
-    userId: text('user_id').references(() => sqliteUsers.id, { onDelete: 'cascade' }),
+    userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     description: text('description'),
     transport: text('transport').notNull().default('http'),
@@ -114,7 +160,7 @@ export const sqliteTemplates = sqliteTable(
     tags: text('tags', { mode: 'json' }).$type<string[]>(),
     authorId: text('author_id')
       .notNull()
-      .references(() => sqliteUsers.id),
+      .references(() => user.id),
     thumbnail: text('thumbnail'),
     downloads: integer('downloads').default(0).notNull(),
     avgRating: integer('avg_rating').default(0).notNull(),
@@ -138,7 +184,7 @@ export const sqliteTemplateReviews = sqliteTable(
       .references(() => sqliteTemplates.id, { onDelete: 'cascade' }),
     userId: text('user_id')
       .notNull()
-      .references(() => sqliteUsers.id),
+      .references(() => user.id),
     rating: integer('rating').notNull(),
     review: text('review'),
     createdAt: integer('created_at').notNull(),
@@ -152,7 +198,7 @@ export const sqliteTemplateReviews = sqliteTable(
 export const sqliteUserCredits = sqliteTable('user_credits', {
   userId: text('user_id')
     .primaryKey()
-    .references(() => sqliteUsers.id, { onDelete: 'cascade' }),
+    .references(() => user.id, { onDelete: 'cascade' }),
   balance: integer('balance').notNull().default(0),
   lifetimeEarned: integer('lifetime_earned').notNull().default(0),
   lifetimeSpent: integer('lifetime_spent').notNull().default(0),
@@ -165,7 +211,7 @@ export const sqliteCredentials = sqliteTable(
     id: text('id').primaryKey(),
     userId: text('user_id')
       .notNull()
-      .references(() => sqliteUsers.id, { onDelete: 'cascade' }),
+      .references(() => user.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     type: text('type').notNull(),
     encryptedData: text('encrypted_data').notNull(),
@@ -182,9 +228,9 @@ export const sqliteCreditTransactions = sqliteTable(
     id: text('id').primaryKey(),
     userId: text('user_id')
       .notNull()
-      .references(() => sqliteUsers.id, { onDelete: 'cascade' }),
+      .references(() => user.id, { onDelete: 'cascade' }),
     amount: integer('amount').notNull(),
-    type: text('type').notNull(), // signup_bonus | execution_cost | admin_grant
+    type: text('type').notNull(),
     description: text('description'),
     executionId: text('execution_id'),
     createdAt: integer('created_at').notNull(),

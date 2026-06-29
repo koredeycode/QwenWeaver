@@ -323,7 +323,7 @@ export const ExecutionHistoryPanel = ({ onClose }: { onClose: () => void }) => {
     try {
       const res = await client.api.execution[':executionId'].logs.$get(
         { param: { executionId: exec.id } },
-        { headers: authHeaders() },
+        { headers: authHeaders },
       );
       if (!res.ok) {
         setAgentLogs([]);

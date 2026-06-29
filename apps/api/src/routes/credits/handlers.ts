@@ -4,7 +4,7 @@ import type { Variables } from '../../index.js';
 import type { Context } from 'hono';
 
 export const handleGetCredits = async (c: Context<{ Variables: Variables }>) => {
-  const userId = c.get('jwtPayload').sub;
+  const userId = c.get('user')!.id;
   const provider = getQueryProvider();
   const credits = await provider.getUserCredits(userId);
   return c.json(
@@ -19,7 +19,7 @@ export const handleGetCredits = async (c: Context<{ Variables: Variables }>) => 
 };
 
 export const handleListTransactions = async (c: Context<{ Variables: Variables }>) => {
-  const userId = c.get('jwtPayload').sub;
+  const userId = c.get('user')!.id;
   const provider = getQueryProvider();
   const transactions = await provider.listCreditTransactions(userId);
   return c.json({ transactions }, 200);

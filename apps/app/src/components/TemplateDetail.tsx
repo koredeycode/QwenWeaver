@@ -33,11 +33,11 @@ export const TemplateDetailPage = () => {
     setLoading(true);
     Promise.all([
       client.api.templates[':id']
-        .$get({ param: { id } }, { headers: authHeaders() })
+        .$get({ param: { id } }, { headers: authHeaders })
         .then(async (r) => (await r.json()) as any)
         .then((d) => d.template),
       client.api.templates[':id'].reviews
-        .$get({ param: { id } }, { headers: authHeaders() })
+        .$get({ param: { id } }, { headers: authHeaders })
         .then(async (r) => (await r.json()) as any)
         .then((d) => d.reviews),
     ])

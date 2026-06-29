@@ -35,9 +35,19 @@ export interface CanvasSnapshot {
 }
 
 export interface AuthSlice {
-  token: string | null;
-  refreshToken: string | null;
-  user: { id: string; email: string } | null;
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    image?: string | null;
+    emailVerified: boolean;
+  } | null;
+  session: {
+    id: string;
+    userId: string;
+    expiresAt: Date;
+    token: string;
+  } | null;
   credits: {
     balance: number;
     lifetimeEarned: number;
@@ -45,8 +55,7 @@ export interface AuthSlice {
     lowBalance: boolean;
   } | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (email: string, password: string) => Promise<boolean>;
-  refreshAccessToken: () => Promise<boolean>;
+  register: (email: string, password: string, name: string) => Promise<boolean>;
   fetchCredits: () => Promise<void>;
   logout: () => void;
 }

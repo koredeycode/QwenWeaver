@@ -2,7 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { createConnection, getConnection, sqliteSchema } from './index.js';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 
-const PASSWORD_HASH = '$2b$10$hCBF5cyRFv3jyo4bXoniJeEaN3SWUocwFchsBWbhFUrxeiucmWdO.';
+// scrypt hash for "password123" (compatible with better-auth's credential provider)
+const PASSWORD_HASH =
+  '9f7a6b3f9e4023628ffff4f93a43bfc6:efe90c4707b2810181301913b73021191e53cae7e51a004fa4c2a3780b281673edc90f007053d60ee3f6dc5f9258787ab4874bb1470936e7ebb3f675cbdd8289';
 const NOW = Date.now();
 
 function id(prefix: string): string {
@@ -858,20 +860,41 @@ async function seed() {
   sqliteDb.delete(s.sqliteAgentLogs).run();
   sqliteDb.delete(s.sqliteExecutions).run();
   sqliteDb.delete(s.sqliteCredentials).run();
+  sqliteDb.delete(s.sqliteCreditTransactions).run();
+  sqliteDb.delete(s.sqliteUserCredits).run();
   sqliteDb.delete(s.sqliteWorkflows).run();
   sqliteDb.delete(s.sqliteMcpServers).run();
-  sqliteDb.delete(s.sqliteUsers).run();
+  sqliteDb.delete(s.session).run();
+  sqliteDb.delete(s.account).run();
+  sqliteDb.delete(s.verification).run();
+  sqliteDb.delete(s.user).run();
 
   // Create demo user
   const userId = id('user');
   console.log('  Creating demo user: demo@qwenweaver.dev / password123');
   sqliteDb
-    .insert(s.sqliteUsers)
+    .insert(s.user)
     .values({
       id: userId,
       email: 'demo@qwenweaver.dev',
-      passwordHash: PASSWORD_HASH,
-      createdAt: NOW,
+      name: 'Demo User',
+      emailVerified: true,
+      createdAt: new Date(NOW),
+      updatedAt: new Date(NOW),
+    })
+    .run();
+
+  // Create email/password account for demo user
+  sqliteDb
+    .insert(s.account)
+    .values({
+      id: id('acct'),
+      accountId: 'demo@qwenweaver.dev',
+      providerId: 'credential',
+      userId: userId,
+      password: PASSWORD_HASH,
+      createdAt: new Date(NOW),
+      updatedAt: new Date(NOW),
     })
     .run();
 

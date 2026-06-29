@@ -11,7 +11,8 @@
     "lint": "eslint src/"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0"
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^25.0.0",

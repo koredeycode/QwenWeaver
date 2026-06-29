@@ -62,7 +62,7 @@ export const handleDiscoverTools = async (c: Context<{ Variables: Variables }>) 
     return c.json({ error: 'Invalid request body', details: parsed.error.format() }, 400);
   }
   const { serverId, serverUrl: serverUrlOverride, auth } = parsed.data;
-  const userId = c.get('jwtPayload').sub;
+  const userId = c.get('user')!.id;
 
   log.info({ serverId }, 'MCP tool discovery requested');
 
@@ -118,7 +118,7 @@ export const handleSaveServer = async (c: Context<{ Variables: Variables }>) => 
 
   const body = parsed.data;
   const id = crypto.randomUUID();
-  const userId = c.get('jwtPayload').sub;
+  const userId = c.get('user')!.id;
 
   const provider = getQueryProvider();
   const server = await provider.saveMcpServer(id, userId, {
@@ -136,7 +136,7 @@ export const handleSaveServer = async (c: Context<{ Variables: Variables }>) => 
 };
 
 export const handleListServers = async (c: Context<{ Variables: Variables }>) => {
-  const userId = c.get('jwtPayload').sub;
+  const userId = c.get('user')!.id;
   const provider = getQueryProvider();
   const servers = await provider.getMcpServers(userId);
   return c.json({ servers, count: servers.length }, 200);
@@ -147,7 +147,7 @@ export const handleDeleteServer = async (c: Context<{ Variables: Variables }>) =
   if (!id) {
     return c.json({ error: 'Missing server id parameter' }, 400);
   }
-  const userId = c.get('jwtPayload').sub;
+  const userId = c.get('user')!.id;
 
   const provider = getQueryProvider();
   const deleted = await provider.deleteMcpServer(id, userId);
@@ -168,7 +168,7 @@ export const handleRegistryAdopt = async (c: Context<{ Variables: Variables }>) 
     return c.json({ error: 'Invalid request body', details: parsed.error.format() }, 400);
   }
   const { registryId, authConfig } = parsed.data;
-  const userId = c.get('jwtPayload').sub;
+  const userId = c.get('user')!.id;
 
   // Fetch the server from the live registry API
   let cursor: string | undefined;
@@ -219,7 +219,7 @@ export const handleUpdateServerAuth = async (c: Context<{ Variables: Variables }
     return c.json({ error: 'Invalid request body', details: parsed.error.format() }, 400);
   }
   const { authConfig } = parsed.data;
-  const userId = c.get('jwtPayload').sub;
+  const userId = c.get('user')!.id;
   const provider = getQueryProvider();
   try {
     const server = await provider.updateMcpServerAuth(id, userId, authConfig as any);
@@ -234,7 +234,7 @@ export const handleUpdateServerAuth = async (c: Context<{ Variables: Variables }
 export const handleToggleFavorite = async (c: Context<{ Variables: Variables }>) => {
   const id = c.req.param('id');
   if (!id) return c.json({ error: 'Missing server id' }, 400);
-  const userId = c.get('jwtPayload').sub;
+  const userId = c.get('user')!.id;
   const provider = getQueryProvider();
   try {
     const server = await provider.toggleFavoriteMcpServer(id, userId);

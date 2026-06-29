@@ -1,4 +1,13 @@
-import { mysqlTable, text, int, timestamp, json, index, varchar } from 'drizzle-orm/mysql-core';
+import {
+  mysqlTable,
+  text,
+  int,
+  timestamp,
+  json,
+  index,
+  varchar,
+  boolean,
+} from 'drizzle-orm/mysql-core';
 import type {
   NodeData,
   ExecutionMetrics,
@@ -9,18 +18,64 @@ import type {
 } from '@qwenweaver/types';
 import type { MCPAuthConfig } from '@qwenweaver/types';
 
-export const mysqlUsers = mysqlTable('users', {
-  id: varchar('id', { length: 36 }).primaryKey(),
+// ─── Better Auth tables ──────────────────────────────────────────────────────
+export const user = mysqlTable('user', {
+  id: varchar('id', { length: 255 }).primaryKey(),
   email: varchar('email', { length: 255 }).notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
+  emailVerified: boolean('emailVerified').notNull().default(false),
+  name: varchar('name', { length: 255 }).notNull(),
+  image: text('image'),
+  createdAt: timestamp('createdAt').notNull(),
+  updatedAt: timestamp('updatedAt').notNull(),
 });
+
+export const session = mysqlTable('session', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  userId: varchar('userId', { length: 255 })
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  expiresAt: timestamp('expiresAt').notNull(),
+  token: text('token').notNull(),
+  ipAddress: text('ipAddress'),
+  userAgent: text('userAgent'),
+  createdAt: timestamp('createdAt').notNull(),
+  updatedAt: timestamp('updatedAt').notNull(),
+});
+
+export const account = mysqlTable('account', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  accountId: text('accountId').notNull(),
+  providerId: text('providerId').notNull(),
+  userId: varchar('userId', { length: 255 })
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  accessToken: text('accessToken'),
+  refreshToken: text('refreshToken'),
+  idToken: text('idToken'),
+  accessTokenExpiresAt: timestamp('accessTokenExpiresAt'),
+  refreshTokenExpiresAt: timestamp('refreshTokenExpiresAt'),
+  scope: text('scope'),
+  password: text('password'),
+  createdAt: timestamp('createdAt').notNull(),
+  updatedAt: timestamp('updatedAt').notNull(),
+});
+
+export const verification = mysqlTable('verification', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  identifier: text('identifier').notNull(),
+  value: text('value').notNull(),
+  expiresAt: timestamp('expiresAt').notNull(),
+  createdAt: timestamp('createdAt').notNull(),
+  updatedAt: timestamp('updatedAt').notNull(),
+});
+
+// ─── Application tables ──────────────────────────────────────────────────────
 
 export const mysqlWorkflows = mysqlTable(
   'workflows',
   {
     id: varchar('id', { length: 36 }).primaryKey(),
-    userId: varchar('user_id', { length: 36 }).references(() => mysqlUsers.id, {
+    userId: varchar('user_id', { length: 255 }).references(() => user.id, {
       onDelete: 'cascade',
     }),
     name: text('name').notNull(),
@@ -33,36 +88,6 @@ export const mysqlWorkflows = mysqlTable(
   (table) => [index('workflows_user_id_idx').on(table.userId)],
 );
 
-export const mysqlNodes = mysqlTable(
-  'nodes',
-  {
-    id: varchar('id', { length: 128 }).primaryKey(),
-    workflowId: varchar('workflow_id', { length: 36 }).references(() => mysqlWorkflows.id, {
-      onDelete: 'cascade',
-    }),
-    type: text('type').notNull(),
-    data: json('data').notNull().$type<NodeData>(),
-    positionX: int('position_x').notNull(),
-    positionY: int('position_y').notNull(),
-  },
-  (table) => [index('nodes_workflow_id_idx').on(table.workflowId)],
-);
-
-export const mysqlEdges = mysqlTable(
-  'edges',
-  {
-    id: varchar('id', { length: 128 }).primaryKey(),
-    workflowId: varchar('workflow_id', { length: 36 }).references(() => mysqlWorkflows.id, {
-      onDelete: 'cascade',
-    }),
-    source: text('source_node').notNull(),
-    target: text('target_node').notNull(),
-    sourceHandle: text('source_handle'),
-    targetHandle: text('target_handle'),
-  },
-  (table) => [index('edges_workflow_id_idx').on(table.workflowId)],
-);
-
 export const mysqlExecutions = mysqlTable(
   'executions',
   {
@@ -70,10 +95,8 @@ export const mysqlExecutions = mysqlTable(
     workflowId: varchar('workflow_id', { length: 36 }).references(() => mysqlWorkflows.id, {
       onDelete: 'cascade',
     }),
-    userId: varchar('user_id', { length: 36 }).references(() => mysqlUsers.id, {
-      onDelete: 'cascade',
-    }),
-    status: varchar('status', { length: 64 }).notNull(),
+    userId: varchar('user_id', { length: 255 }).references(() => user.id, { onDelete: 'cascade' }),
+    status: text('status').notNull(),
     metrics: json('metrics').$type<ExecutionMetrics>(),
     startedAt: timestamp('started_at').defaultNow().notNull(),
     completedAt: timestamp('completed_at'),
@@ -93,7 +116,7 @@ export const mysqlAgentLogs = mysqlTable(
       onDelete: 'cascade',
     }),
     nodeId: text('node_id').notNull(),
-    status: varchar('status', { length: 64 }).notNull(),
+    status: text('status').notNull(),
     input: json('input').$type<AgentLogInput>(),
     output: json('output').$type<AgentLogOutput>(),
     tokensUsed: int('tokens_used'),
@@ -112,19 +135,17 @@ export const mysqlMcpServers = mysqlTable(
   'mcp_servers',
   {
     id: varchar('id', { length: 36 }).primaryKey(),
-    userId: varchar('user_id', { length: 36 }).references(() => mysqlUsers.id, {
-      onDelete: 'cascade',
-    }),
+    userId: varchar('user_id', { length: 255 }).references(() => user.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     description: text('description'),
-    transport: varchar('transport', { length: 32 }).notNull().default('http'),
+    transport: text('transport').notNull().default('http'),
     url: text('url'),
     command: text('command'),
     args: json('args').$type<string[]>(),
     authConfig: json('auth_config').$type<MCPAuthConfig>(),
     iconUrl: text('icon_url'),
-    registryOrigin: varchar('registry_origin', { length: 32 }).default('manual').notNull(),
-    registryId: varchar('registry_id', { length: 255 }),
+    registryOrigin: text('registry_origin').default('manual').notNull(),
+    registryId: text('registry_id'),
     registryMetadata: json('registry_metadata'),
     isFavorite: int('is_favorite').default(0).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -134,8 +155,8 @@ export const mysqlMcpServers = mysqlTable(
 
 export const mysqlTemplateCategories = mysqlTable('template_categories', {
   id: varchar('id', { length: 36 }).primaryKey(),
-  name: varchar('name', { length: 255 }).notNull(),
-  slug: varchar('slug', { length: 255 }).notNull().unique(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
   icon: text('icon'),
   sortOrder: int('sort_order').default(0),
 });
@@ -151,9 +172,9 @@ export const mysqlTemplates = mysqlTable(
       .$type<import('@qwenweaver/types').WorkflowPayload>(),
     categoryId: varchar('category_id', { length: 36 }).references(() => mysqlTemplateCategories.id),
     tags: json('tags').$type<string[]>(),
-    authorId: varchar('author_id', { length: 36 })
+    authorId: varchar('author_id', { length: 255 })
       .notNull()
-      .references(() => mysqlUsers.id),
+      .references(() => user.id),
     thumbnail: text('thumbnail'),
     downloads: int('downloads').default(0).notNull(),
     avgRating: int('avg_rating').default(0).notNull(),
@@ -175,9 +196,9 @@ export const mysqlTemplateReviews = mysqlTable(
     templateId: varchar('template_id', { length: 36 })
       .notNull()
       .references(() => mysqlTemplates.id, { onDelete: 'cascade' }),
-    userId: varchar('user_id', { length: 36 })
+    userId: varchar('user_id', { length: 255 })
       .notNull()
-      .references(() => mysqlUsers.id),
+      .references(() => user.id),
     rating: int('rating').notNull(),
     review: text('review'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -189,9 +210,9 @@ export const mysqlTemplateReviews = mysqlTable(
 );
 
 export const mysqlUserCredits = mysqlTable('user_credits', {
-  userId: varchar('user_id', { length: 36 })
+  userId: varchar('user_id', { length: 255 })
     .primaryKey()
-    .references(() => mysqlUsers.id, { onDelete: 'cascade' }),
+    .references(() => user.id, { onDelete: 'cascade' }),
   balance: int('balance').notNull().default(0),
   lifetimeEarned: int('lifetime_earned').notNull().default(0),
   lifetimeSpent: int('lifetime_spent').notNull().default(0),
@@ -202,11 +223,11 @@ export const mysqlCredentials = mysqlTable(
   'credentials',
   {
     id: varchar('id', { length: 36 }).primaryKey(),
-    userId: varchar('user_id', { length: 36 })
+    userId: varchar('user_id', { length: 255 })
       .notNull()
-      .references(() => mysqlUsers.id, { onDelete: 'cascade' }),
+      .references(() => user.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
-    type: varchar('type', { length: 50 }).notNull(),
+    type: text('type').notNull(),
     encryptedData: text('encrypted_data').notNull(),
     description: text('description'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -219,19 +240,14 @@ export const mysqlCreditTransactions = mysqlTable(
   'credit_transactions',
   {
     id: varchar('id', { length: 36 }).primaryKey(),
-    userId: varchar('user_id', { length: 36 })
+    userId: varchar('user_id', { length: 255 })
       .notNull()
-      .references(() => mysqlUsers.id, { onDelete: 'cascade' }),
+      .references(() => user.id, { onDelete: 'cascade' }),
     amount: int('amount').notNull(),
-    type: varchar('type', { length: 50 }).notNull(),
+    type: text('type').notNull(),
     description: text('description'),
     executionId: varchar('execution_id', { length: 36 }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => [index('credit_transactions_user_id_idx').on(table.userId)],
 );
-
-export type MysqlMcpServer = typeof mysqlMcpServers.$inferSelect;
-export type MysqlUser = typeof mysqlUsers.$inferSelect;
-export type NewMysqlMcpServer = typeof mysqlMcpServers.$inferInsert;
-export type NewMysqlUser = typeof mysqlUsers.$inferInsert;

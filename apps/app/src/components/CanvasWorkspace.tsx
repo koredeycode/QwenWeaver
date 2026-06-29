@@ -1138,9 +1138,9 @@ export const CanvasWorkspace = () => {
                   type: e.type,
                 })),
               };
-              const res = await withRefresh(() =>
-                client.api.workflow.$post({ json: payload as any }, { headers: authHeaders() }),
-              );
+              const res = (await withRefresh(() =>
+                client.api.workflow.$post({ json: payload as any }, { headers: authHeaders }),
+              )) as any;
               if (res.status === 403) {
                 const errBody: Record<string, unknown> = await res.json().catch(() => ({}));
                 toast.error(
@@ -1207,7 +1207,7 @@ export const CanvasWorkspace = () => {
                 },
               };
               const res = await withRefresh(() =>
-                client.api.templates.$post({ json: payload as any }, { headers: authHeaders() }),
+                client.api.templates.$post({ json: payload as any }, { headers: authHeaders }),
               );
               if (!res.ok) {
                 const err: Record<string, unknown> = await res.json().catch(() => ({}));

@@ -58,7 +58,7 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
       }
       const res = await client.api.mcp.tools.discover.$post(
         { json: body as any },
-        { headers: authHeaders() },
+        { headers: authHeaders },
       );
       const data: any = await res.json();
       if (!res.ok) {
@@ -77,7 +77,7 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
               param: { id: userServerId },
               json: { authConfig: { type: authType, ...mcpSecrets } },
             },
-            { headers: authHeaders() },
+            { headers: authHeaders },
           )
           .catch(() => {});
       }
@@ -117,7 +117,7 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
     if (selectedNode?.type === 'mcp_tool') {
       setLoadingCreds(true);
       client2.api.credentials
-        .$get({}, { headers: authHeaders() })
+        .$get({}, { headers: authHeaders })
         .then((res) => res.json())
         .then((data: any) => {
           setCredentials(data.credentials || []);
@@ -374,7 +374,7 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                             description: newCredDesc || undefined,
                           },
                         },
-                        { headers: authHeaders() },
+                        { headers: authHeaders },
                       );
                       const data: any = await res.json();
                       if (res.ok && data.credential) {

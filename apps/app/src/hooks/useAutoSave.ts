@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../store/index.js';
-import { client, authHeaders, withRefresh } from '../lib/api-client.js';
+import { client, authHeaders } from '../lib/api-client.js';
 import { saveDraft, loadDraft, clearDraft } from '../store/auto-save.js';
 import { toast } from 'sonner';
 import type { NavigateFunction } from 'react-router-dom';
@@ -20,7 +20,7 @@ export function useAutoSave(id: string | undefined, navigate: NavigateFunction) 
   // Debounced auto-save to local draft + backend
   useEffect(() => {
     if (status === 'running') return;
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       const state = useStore.getState();
       saveDraft({
         nodes: state.nodes,
@@ -32,7 +32,7 @@ export function useAutoSave(id: string | undefined, navigate: NavigateFunction) 
       });
 
       // Also persist to backend if user is authenticated and has nodes
-      if (state.token && state.nodes.length > 0) {
+      if (state.user && state.nodes.length > 0) {
         setIsSaving(true);
         const payload = {
           name: state.workflowName || 'Untitled Workflow',
@@ -53,29 +53,28 @@ export function useAutoSave(id: string | undefined, navigate: NavigateFunction) 
           })),
         };
 
+        const headers = await authHeaders();
         if (state.workflowId) {
-          withRefresh(() =>
-            (client.api.workflow.detail[':workflowId'] as any).$put(
+          (client.api.workflow.detail[':workflowId'] as any)
+            .$put(
               {
                 param: { workflowId: state.workflowId! },
                 json: { ...payload, id: state.workflowId } as any,
               },
-              { headers: authHeaders() },
-            ),
-          )
+              { headers },
+            )
             .then(() => {
               setIsSaving(false);
               markClean();
               clearDraft();
             })
-            .catch((err) => {
+            .catch((err: unknown) => {
               setIsSaving(false);
               console.warn('Auto-save to backend failed:', err);
             });
         } else {
-          withRefresh(() =>
-            client.api.workflow.$post({ json: payload as any }, { headers: authHeaders() }),
-          )
+          client.api.workflow
+            .$post({ json: payload as any }, { headers })
             .then(async (res) => {
               if (!res.ok) throw new Error('Failed to auto-create workflow');
               const data = await res.json();
@@ -87,7 +86,7 @@ export function useAutoSave(id: string | undefined, navigate: NavigateFunction) 
               setIsSaving(false);
               navigate(`/workflows/${data.workflowId}`, { replace: true });
             })
-            .catch((err) => {
+            .catch((err: unknown) => {
               setIsSaving(false);
               console.warn('Auto-create to backend failed:', err);
             });

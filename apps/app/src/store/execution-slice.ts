@@ -36,7 +36,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
             workflowId,
           },
         },
-        { headers: authHeaders() },
+        { headers: authHeaders },
       );
       if (res.ok) {
         const data = (await res.json()) as any;
@@ -66,7 +66,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
       return;
     }
 
-    const token = getAccessToken();
+    const token = await getAccessToken();
     if (!token) {
       toast.error('Please log in to run workflows');
       set({ executionStatus: 'idle' });
@@ -100,7 +100,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
         {
           json: workflowPayload,
         },
-        { headers: authHeaders() },
+        { headers: authHeaders },
       );
       if (!execRes.ok) {
         const errBody = (await execRes.json().catch(() => ({}))) as any;
