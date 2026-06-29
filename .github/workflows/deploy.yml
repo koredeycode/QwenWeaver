@@ -101,6 +101,9 @@ jobs:
           GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
           GH_CLIENT_ID=${{ secrets.GH_CLIENT_ID }}
           GH_CLIENT_SECRET=${{ secrets.GH_CLIENT_SECRET }}
+          BREVO_API_KEY=${{ secrets.BREVO_API_KEY }}
+          BREVO_SENDER_EMAIL=${{ secrets.BREVO_SENDER_EMAIL }}
+          BREVO_SENDER_NAME=${{ secrets.BREVO_SENDER_NAME }}
           EOF
 
       - name: Deploy to VPS

@@ -9,7 +9,9 @@ import {
   GOOGLE_CLIENT_SECRET,
   GITHUB_CLIENT_ID,
   GITHUB_CLIENT_SECRET,
+  BREVO_API_KEY,
 } from './config.js';
+import { sendVerificationEmail } from './mail.js';
 
 const { db, dialect } = getConnection();
 
@@ -31,6 +33,14 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
+    requireEmailVerification: !!BREVO_API_KEY,
+  },
+  emailVerification: {
+    sendOnSignUp: !!BREVO_API_KEY,
+    autoSignInAfterVerification: true,
+    sendVerificationEmail: async ({ user, url }) => {
+      await sendVerificationEmail(user.email, url);
+    },
   },
   socialProviders: {
     ...(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET
