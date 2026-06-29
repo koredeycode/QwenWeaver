@@ -194,13 +194,15 @@ export const handleExecute = async (c: Context<{ Variables: Variables }>) => {
     }
   }
 
-  // ─── Credit check ──────────────────────────────────────────────────────
-  const { balance } = await provider.getUserCredits(userId);
+  // ─── Atomic credit reservation ──────────────────────────────────────────
   const estimatedCost = estimateExecutionCost(workflow);
-  if (balance < estimatedCost) {
+  const reserved = await provider.reserveCredits(userId, estimatedCost);
+  if (!reserved) {
+    const { balance } = await provider.getUserCredits(userId);
     log.warn({ userId, balance, estimatedCost }, 'Insufficient credits for execution');
     return c.json({ error: 'Insufficient credits', balance, required: estimatedCost }, 402);
   }
+  log.info({ executionId, userId, estimatedCost }, 'Credits reserved for execution');
 
   let resolveExecution: () => void;
   const promise = new Promise<void>((resolve) => {
@@ -228,7 +230,7 @@ export const handleExecute = async (c: Context<{ Variables: Variables }>) => {
     'Workflow execution created in database',
   );
 
-  runExecutionAsync(executionId, workflow, userId).catch((error) => {
+  runExecutionAsync(executionId, workflow, userId, estimatedCost).catch((error) => {
     log.error({ executionId, error: (error as Error).message }, 'Execution crashed');
   });
 
@@ -416,6 +418,7 @@ async function runExecutionAsync(
   executionId: string,
   workflow: WorkflowPayload,
   userId?: string,
+  reservedCredits?: number,
 ): Promise<void> {
   const execution = activeExecutions.get(executionId);
   if (!execution) return;
@@ -430,6 +433,7 @@ async function runExecutionAsync(
 
   // Wrap in try/finally to guarantee cleanup even on crash
   try {
+    const provider = getQueryProvider();
     const broadcastEmitter: StreamEmitter = {
       emit: async <K extends z.infer<typeof SSEEventType>>(event: K, data: SSEPayloadMap[K]) => {
         // Clone set to avoid iteration issues if emitters are removed
@@ -455,25 +459,46 @@ async function runExecutionAsync(
     execution.status = result.status;
     execution.result = result;
 
-    // ─── Credit deduction ────────────────────────────────────────────────
-    if (result.status === 'completed') {
-      try {
-        const totalTokens = result.metrics?.totalTokens ?? 0;
-        const cost = calculateFinalCost(workflow, totalTokens);
-        const provider = getQueryProvider();
-        const dbExec = await provider.getExecution(executionId);
-        if (dbExec) {
-          await provider.deductCredits(
-            dbExec.userId,
-            cost,
-            `Execution ${executionId}`,
+    // ─── Credit settlement (refund over-reservation) ──────────────────────
+    try {
+      const totalTokens = result.metrics?.totalTokens ?? 0;
+      const finalCost = calculateFinalCost(workflow, totalTokens);
+      const refund = (reservedCredits ?? 0) - finalCost;
+      if (result.status === 'completed') {
+        if (refund > 0) {
+          await provider.grantCredits(
+            userId!,
+            refund,
+            'credit_refund',
+            `Refund for execution ${executionId}`,
             executionId,
           );
-          log.info({ executionId, cost, totalTokens }, 'Credits deducted for execution');
+          log.info({ executionId, refund }, 'Over-reserved credits refunded');
+        } else if (refund < 0) {
+          await provider.deductCredits(
+            userId!,
+            Math.abs(refund),
+            `Additional cost for execution ${executionId}`,
+            executionId,
+          );
+          log.info(
+            { executionId, additionalCost: Math.abs(refund) },
+            'Additional credits deducted',
+          );
         }
-      } catch (err) {
-        log.error({ executionId, error: (err as Error).message }, 'Failed to deduct credits');
+      } else {
+        // Failed execution — full refund
+        await provider.grantCredits(
+          userId!,
+          reservedCredits ?? 0,
+          'execution_failed_refund',
+          `Refund for failed execution ${executionId}`,
+          executionId,
+        );
+        log.info({ executionId, refund: reservedCredits }, 'Failed execution — full refund');
       }
+    } catch (err) {
+      log.error({ executionId, error: (err as Error).message }, 'Failed to settle credits');
     }
 
     log.info({ executionId, status: result.status }, 'Execution finished');

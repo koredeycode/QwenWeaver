@@ -237,7 +237,7 @@ export async function runAgent(
       system: systemPrompt,
       prompt: userMessage,
       tools: Object.keys(tools).length > 0 ? tools : undefined,
-      maxSteps: 5,
+      maxSteps: Math.min(Math.max(Number(process.env.MAX_STEPS) || 5, 1), 25),
       providerOptions: providerOptions as Record<string, Record<string, any>> | undefined,
       abortSignal: abortController.signal,
     };
@@ -251,8 +251,7 @@ export async function runAgent(
     if (enableThinking) {
       for await (const part of result.fullStream) {
         if (part.type === 'reasoning-delta') {
-          const textChunk =
-            (part as any).textDelta || (part as any).text || (part as any).reasoning || '';
+          const textChunk = (part as any).text || '';
           if (textChunk) {
             reasoningText += textChunk;
             if (emitter && !emitter.isClosed()) {
@@ -260,7 +259,7 @@ export async function runAgent(
             }
           }
         } else if (part.type === 'text-delta') {
-          const textChunk = (part as any).textDelta || (part as any).text || '';
+          const textChunk = (part as any).text || '';
           if (textChunk) {
             fullText += textChunk;
             if (emitter && !emitter.isClosed()) {

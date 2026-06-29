@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { BarChart3, ChevronUp, ChevronDown, Gauge, Coins, Clock } from 'lucide-react';
 import { useStore } from '../store/index.js';
 
@@ -6,6 +6,13 @@ export const GanttMetrics = () => {
   const status = useStore((s) => s.executionStatus);
   const metrics = useStore((s) => s.metrics);
   const nodes = useStore((s) => s.nodes);
+  const nodeMeta = useMemo(() => {
+    const map: Record<string, { type: string; label: string }> = {};
+    for (const n of nodes) {
+      map[n.id] = { type: n.type || '', label: n.data?.label || '' };
+    }
+    return map;
+  }, [nodes]);
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -123,8 +130,8 @@ export const GanttMetrics = () => {
 
             <div className="border border-slate-200 bg-white p-3 space-y-3.5 max-h-60 overflow-y-auto scrollbar">
               {timings.map((item, idx) => {
-                const nodeObj = nodes.find((n) => n.id === item.nodeId);
-                const nodeLabel = nodeObj?.data?.label || item.nodeId;
+                const nodeObj = nodeMeta[item.nodeId];
+                const nodeLabel = nodeObj?.label || item.nodeId;
                 const percentage = Math.min((item.durationMs / maxMs) * 100, 100);
 
                 return (

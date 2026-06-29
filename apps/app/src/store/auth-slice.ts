@@ -1,14 +1,13 @@
 import { StateCreator } from 'zustand';
 import { StoreState, AuthSlice } from './types.js';
-import { authClient, client2, authHeaders } from '../lib/api-client.js';
+import { authClient, client2 } from '../lib/api-client.js';
 import { toast } from 'sonner';
 import { clearDraft } from './auto-save.js';
 
 export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set, _get) => {
   const fetchCredits = async () => {
     try {
-      const headers = await authHeaders();
-      const res = await client2.api.credits.$get({}, { headers });
+      const res = await client2.api.credits.$get();
       if (res.ok) {
         const data = (await res.json()) as any;
         set({ credits: data });
@@ -27,8 +26,11 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
       set({
         user: session.data.user,
         session: session.data.session,
+        authLoading: false,
       });
       fetchCredits();
+    } else {
+      set({ authLoading: false });
     }
   });
 
@@ -36,6 +38,7 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
     user: null,
     session: null,
     credits: null,
+    authLoading: true,
 
     login: async (email, password) => {
       try {

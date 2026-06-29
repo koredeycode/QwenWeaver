@@ -17,7 +17,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
-import { client, client2, authHeaders } from '../lib/api-client.js';
+import { client, client2 } from '../lib/api-client.js';
 import type { OutputFormat } from '@qwenweaver/types';
 
 export const Inspector = ({ onClose }: { onClose: () => void }) => {
@@ -56,10 +56,9 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
       if (authType && authType !== 'none') {
         body.auth = { type: authType, ...mcpSecrets };
       }
-      const res = await client.api.mcp.tools.discover.$post(
-        { json: body as any },
-        { headers: authHeaders },
-      );
+      const res = await client.api.mcp.tools.discover.$post({
+        json: body as any,
+      });
       const data: any = await res.json();
       if (!res.ok) {
         setMcpStatus('error');
@@ -72,13 +71,10 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
       const userServerId = (selectedNode?.data as any).mcpUserServerId;
       if (authType && authType !== 'none' && userServerId) {
         (client.api.mcp.servers[':id'] as any).auth
-          .$post(
-            {
-              param: { id: userServerId },
-              json: { authConfig: { type: authType, ...mcpSecrets } },
-            },
-            { headers: authHeaders },
-          )
+          .$post({
+            param: { id: userServerId },
+            json: { authConfig: { type: authType, ...mcpSecrets } },
+          })
           .catch(() => {});
       }
     } catch {
@@ -116,14 +112,17 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
   useEffect(() => {
     if (selectedNode?.type === 'mcp_tool') {
       setLoadingCreds(true);
-      client2.api.credentials
-        .$get({}, { headers: authHeaders })
-        .then((res) => res.json())
-        .then((data: any) => {
+      (async () => {
+        try {
+          const res = await client2.api.credentials.$get();
+          const data = (await res.json()) as any;
           setCredentials(data.credentials || []);
-        })
-        .catch(() => {})
-        .finally(() => setLoadingCreds(false));
+        } catch {
+          // ignore
+        } finally {
+          setLoadingCreds(false);
+        }
+      })();
     }
   }, [selectedNodeId]);
 
@@ -365,17 +364,14 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                         api_key: 'mcp_api_key',
                         basic: 'mcp_basic_auth',
                       };
-                      const res = await client2.api.credentials.$post(
-                        {
-                          json: {
-                            name: newCredName,
-                            type: (typeMap[authType || ''] || 'custom') as any,
-                            value: newCredValue,
-                            description: newCredDesc || undefined,
-                          },
+                      const res = await client2.api.credentials.$post({
+                        json: {
+                          name: newCredName,
+                          type: (typeMap[authType || ''] || 'custom') as any,
+                          value: newCredValue,
+                          description: newCredDesc || undefined,
                         },
-                        { headers: authHeaders },
-                      );
+                      });
                       const data: any = await res.json();
                       if (res.ok && data.credential) {
                         setCredentials((prev) => [...prev, data.credential]);
@@ -545,8 +541,8 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                   )}
                 </div>
 
-                {/* Supervisor Node Thinking Settings */}
-                {selectedNode.type === 'supervisor' && (
+                {/* Thinking Settings (Agent & Supervisor) */}
+                {(selectedNode.type === 'supervisor' || selectedNode.type === 'agent') && (
                   <div className="space-y-3 bg-slate-50 border border-slate-200 p-3">
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] font-mono font-bold text-slate-700">

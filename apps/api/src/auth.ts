@@ -1,6 +1,12 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { getConnection, sqliteSchema, pgSchema, mysqlSchema } from '@qwenweaver/database';
+import {
+  getConnection,
+  getQueryProvider,
+  sqliteSchema,
+  pgSchema,
+  mysqlSchema,
+} from '@qwenweaver/database';
 import {
   BETTER_AUTH_SECRET,
   BETTER_AUTH_URL,
@@ -10,6 +16,7 @@ import {
   GITHUB_CLIENT_ID,
   GITHUB_CLIENT_SECRET,
   BREVO_API_KEY,
+  SIGNUP_CREDITS,
 } from './config.js';
 import { sendVerificationEmail } from './mail.js';
 
@@ -33,13 +40,37 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: !!BREVO_API_KEY,
+    requireEmailVerification: true,
   },
   emailVerification: {
-    sendOnSignUp: !!BREVO_API_KEY,
+    sendOnSignUp: true,
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) => {
+      if (!BREVO_API_KEY) {
+        console.warn(
+          `[auth] BREVO_API_KEY not set — cannot send verification email to ${user.email}. Would have sent: ${url}`,
+        );
+        return;
+      }
       await sendVerificationEmail(user.email, url);
+    },
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          try {
+            await getQueryProvider().grantCredits(
+              user.id,
+              SIGNUP_CREDITS,
+              'signup',
+              'Welcome bonus',
+            );
+          } catch {
+            // non-critical
+          }
+        },
+      },
     },
   },
   socialProviders: {
@@ -62,5 +93,8 @@ export const auth = betterAuth({
   },
   session: {
     expiresIn: 60 * 60 * 24 * 7, // 7 days
+    cookie: {
+      sameSite: 'strict',
+    },
   },
 });

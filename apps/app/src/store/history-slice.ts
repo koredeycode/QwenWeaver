@@ -10,8 +10,31 @@ export function serializeSnapshot(
   description: string,
 ): CanvasSnapshot {
   return {
-    nodes: JSON.parse(JSON.stringify(nodes.map((n) => ({ ...n, selected: false })))),
-    edges: JSON.parse(JSON.stringify(edges.map((e) => ({ ...e, selected: false })))),
+    nodes: nodes.map((n) => ({
+      id: n.id,
+      type: n.type,
+      position: { ...n.position },
+      data: {
+        label: n.data.label,
+        systemPrompt: n.data.systemPrompt,
+        model: n.data.model,
+        thinkingBudget: n.data.thinkingBudget,
+        mcpServerUrl: n.data.mcpServerUrl,
+        mcpServerId: n.data.mcpServerId,
+        mcpAuthConfig: n.data.mcpAuthConfig ? { ...n.data.mcpAuthConfig } : undefined,
+        enableThinking: n.data.enableThinking,
+        outputFormat: n.data.outputFormat,
+        workerType: n.data.workerType,
+      },
+    })),
+    edges: edges.map((e) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      sourceHandle: e.sourceHandle,
+      targetHandle: e.targetHandle,
+      type: e.type,
+    })),
     workflowName: name,
     workflowDescription: description,
     timestamp: Date.now(),

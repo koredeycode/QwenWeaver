@@ -8,7 +8,7 @@ describe('encryption', () => {
     const original = 'sk-ant-api03-secret-key-value-here';
     const encoded = encrypt(original);
     expect(encoded).not.toBe(original);
-    expect(encoded.split(':')).toHaveLength(3);
+    expect(encoded.split(':')).toHaveLength(4);
 
     const decoded = decrypt(encoded);
     expect(decoded).toBe(original);
@@ -37,7 +37,7 @@ describe('encryption', () => {
   it('throws on invalid encoded payload', () => {
     expect(() => decrypt('not-encoded')).toThrow('Invalid encrypted payload');
     expect(() => decrypt('only:two')).toThrow('Invalid encrypted payload');
-    expect(() => decrypt('a:b:c:d:e')).toThrow('Invalid encrypted payload');
+    expect(() => decrypt('a:b:c')).toThrow('Invalid encrypted payload');
   });
 
   it('encrypts and decrypts with a custom key', () => {

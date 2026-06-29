@@ -104,6 +104,15 @@ jobs:
           BREVO_API_KEY=${{ secrets.BREVO_API_KEY }}
           BREVO_SENDER_EMAIL=${{ secrets.BREVO_SENDER_EMAIL }}
           BREVO_SENDER_NAME=${{ secrets.BREVO_SENDER_NAME }}
+          STORAGE_DRIVER=${{ secrets.STORAGE_DRIVER }}
+          OSS_REGION=${{ secrets.OSS_REGION }}
+          OSS_ACCESS_KEY_ID=${{ secrets.OSS_ACCESS_KEY_ID }}
+          OSS_ACCESS_KEY_SECRET=${{ secrets.OSS_ACCESS_KEY_SECRET }}
+          OSS_BUCKET=${{ secrets.OSS_BUCKET }}
+          OSS_ENDPOINT=${{ secrets.OSS_ENDPOINT }}
+          REDIS_URL=${{ secrets.REDIS_URL }}
+          MAX_STEPS=${{ secrets.MAX_STEPS }}
+          METRICS_TOKEN=${{ secrets.METRICS_TOKEN }}
           EOF
 
       - name: Deploy to VPS

@@ -1,8 +1,8 @@
-import { client2, authHeaders, withRefresh } from '../lib/api-client.js';
+import { client2, withRefresh } from '../lib/api-client.js';
 
 export async function listCredentials(): Promise<any[]> {
   try {
-    const res = await client2.api.credentials.$get({}, { headers: authHeaders });
+    const res: any = await client2.api.credentials.$get();
     if (!res.ok) return [];
     const data = (await res.json()) as any;
     return data.credentials || [];
@@ -17,9 +17,7 @@ export async function createCredential(data: {
   value: string;
 }): Promise<any | null> {
   try {
-    const res = await withRefresh(() =>
-      client2.api.credentials.$post({ json: data as any }, { headers: authHeaders }),
-    );
+    const res: any = await withRefresh(() => client2.api.credentials.$post({ json: data as any }));
     if (!res.ok) return null;
     return await res.json();
   } catch {
@@ -30,10 +28,9 @@ export async function createCredential(data: {
 export async function deleteCredential(credentialId: string): Promise<boolean> {
   try {
     const res = (await withRefresh(() =>
-      (client2.api.credentials as any)[':credentialId'].$delete(
-        { param: { credentialId } },
-        { headers: authHeaders },
-      ),
+      (client2.api.credentials as any)[':credentialId'].$delete({
+        param: { credentialId },
+      }),
     )) as any;
     return res.ok;
   } catch {

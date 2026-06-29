@@ -1,6 +1,6 @@
 import { StateCreator } from 'zustand';
 import { StoreState, CopilotSlice, CopilotMessage } from './types.js';
-import { getAccessToken, API_URL, client, authHeaders } from '../lib/api-client.js';
+import { client, getAccessToken } from '../lib/api-client.js';
 import type { CopilotHistoryMessage } from '@qwenweaver/types';
 
 export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> = (set, get) => ({
@@ -41,16 +41,13 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
     const workflowId = get().workflowId;
     if (workflowId && msg.proposal.id) {
       try {
-        await client.api.copilot.proposal.$put(
-          {
-            json: {
-              workflowId,
-              proposalId: msg.proposal.id,
-              status,
-            },
+        await client.api.copilot.proposal.$put({
+          json: {
+            workflowId,
+            proposalId: msg.proposal.id,
+            status,
           },
-          { headers: authHeaders },
-        );
+        });
       } catch (err) {
         console.error('Failed to persist proposal status update:', err);
       }
@@ -96,25 +93,16 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
           : 'generate';
 
       const token = await getAccessToken();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
       const workflowId = get().workflowId;
 
-      const response = await fetch(`${API_URL}/api/copilot`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
+      const response = await client.api.copilot.$post({
+        json: {
           prompt: text,
           canvasState,
-          mode,
+          mode: mode as any,
           model: copilotModel,
           workflowId: workflowId || undefined,
-        }),
+        },
       });
 
       if (!response.ok) {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../store/index.js';
-import { client, authHeaders } from '../lib/api-client.js';
+import { client } from '../lib/api-client.js';
 import { saveDraft, loadDraft, clearDraft } from '../store/auto-save.js';
 import { toast } from 'sonner';
 import type { NavigateFunction } from 'react-router-dom';
@@ -53,16 +53,12 @@ export function useAutoSave(id: string | undefined, navigate: NavigateFunction) 
           })),
         };
 
-        const headers = await authHeaders();
         if (state.workflowId) {
           (client.api.workflow.detail[':workflowId'] as any)
-            .$put(
-              {
-                param: { workflowId: state.workflowId! },
-                json: { ...payload, id: state.workflowId } as any,
-              },
-              { headers },
-            )
+            .$put({
+              param: { workflowId: state.workflowId! },
+              json: { ...payload, id: state.workflowId } as any,
+            })
             .then(() => {
               setIsSaving(false);
               markClean();
@@ -73,9 +69,8 @@ export function useAutoSave(id: string | undefined, navigate: NavigateFunction) 
               console.warn('Auto-save to backend failed:', err);
             });
         } else {
-          client.api.workflow
-            .$post({ json: payload as any }, { headers })
-            .then(async (res) => {
+          (client.api.workflow.$post({ json: payload as any }) as Promise<any>)
+            .then(async (res: any) => {
               if (!res.ok) throw new Error('Failed to auto-create workflow');
               const data = await res.json();
               useStore.setState({

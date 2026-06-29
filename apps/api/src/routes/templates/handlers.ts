@@ -81,6 +81,11 @@ export async function handleDeleteTemplate(c: C) {
   const template = await provider.getTemplate(id);
   if (!template) return c.json({ error: 'Template not found' }, 404);
 
+  const user = c.get('user');
+  if (template.authorId !== user!.id) {
+    return c.json({ error: 'Forbidden' }, 403);
+  }
+
   await provider.deleteTemplate(id);
   return c.json({ deleted: true }, 200);
 }

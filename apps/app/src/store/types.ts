@@ -54,6 +54,7 @@ export interface AuthSlice {
     lifetimeSpent: number;
     lowBalance: boolean;
   } | null;
+  authLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   register: (email: string, password: string, name: string) => Promise<boolean>;
   fetchCredits: () => Promise<void>;

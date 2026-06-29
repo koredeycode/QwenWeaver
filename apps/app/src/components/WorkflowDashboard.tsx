@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, User, FolderOpen, Users, LogOut, ChevronDown, Loader2, Trash2 } from 'lucide-react';
 import { useStore } from '../store/index.js';
-import { client, authHeaders, withRefresh } from '../lib/api-client.js';
+import { client, withRefresh } from '../lib/api-client.js';
 import { EXAMPLE_WORKFLOWS, ExampleWorkflow } from '../lib/example-workflows.js';
 import { CreateWorkflowDialog } from './CreateWorkflowDialog.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
@@ -47,8 +47,8 @@ export const WorkflowDashboard = () => {
 
   const fetchWorkflows = () => {
     setWorkflowsLoading(true);
-    withRefresh(() => client.api.workflow.$get({}, { headers: authHeaders }))
-      .then((r: Response) => r.json())
+    (withRefresh(() => client.api.workflow.$get()) as Promise<any>)
+      .then((r: any) => r.json())
       .then((data: any) => setUserWorkflows(data.workflows || []))
       .catch(() => {})
       .finally(() => setWorkflowsLoading(false));
@@ -72,12 +72,11 @@ export const WorkflowDashboard = () => {
 
   const handleDelete = async (wf: UserWorkflow) => {
     try {
-      const res = await withRefresh(() =>
-        client.api.workflow.detail[':workflowId'].$delete(
-          { param: { workflowId: wf.id } },
-          { headers: authHeaders },
-        ),
-      );
+      const res: any = await (withRefresh(() =>
+        client.api.workflow.detail[':workflowId'].$delete({
+          param: { workflowId: wf.id },
+        }),
+      ) as Promise<any>);
       if (res.ok) {
         setUserWorkflows((prev) => prev.filter((w) => w.id !== wf.id));
       }
@@ -183,7 +182,9 @@ export const WorkflowDashboard = () => {
                 onClick={() => setProfileOpen(!profileOpen)}
                 className="flex items-center gap-1.5 p-1 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
               >
-                <User className="w-4 h-4" />
+                {user.image && (
+                  <img src={user.image} alt="" className="w-5 h-5 rounded-full object-cover" />
+                )}
                 <span className="text-xs font-mono max-w-24 truncate hidden md:inline">
                   {user.email}
                 </span>

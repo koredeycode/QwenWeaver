@@ -4,11 +4,14 @@ import { auth as mockAuthModule } from '../auth.js';
 
 // ─── Auth helpers ──────────────────────────────────────────────────────────
 
-const { USER_ID, USER_EMAIL, USER_NAME } = vi.hoisted(() => ({
-  USER_ID: 'test-user-123',
-  USER_EMAIL: 'test@test.com',
-  USER_NAME: 'Test User',
-}));
+const { USER_ID, USER_EMAIL, USER_NAME } = vi.hoisted(() => {
+  process.env.METRICS_TOKEN = 'test-token';
+  return {
+    USER_ID: 'test-user-123',
+    USER_EMAIL: 'test@test.com',
+    USER_NAME: 'Test User',
+  };
+});
 
 // ─── Mock database ─────────────────────────────────────────────────────────
 
@@ -50,6 +53,7 @@ vi.mock('@qwenweaver/database', () => {
       .mockResolvedValue({ balance: 1000, lifetimeEarned: 1000, lifetimeSpent: 0 }),
     grantCredits: vi.fn(),
     deductCredits: vi.fn(),
+    reserveCredits: vi.fn().mockResolvedValue(true),
     listCreditTransactions: vi.fn().mockResolvedValue([]),
     listCredentials: vi.fn().mockResolvedValue([]),
     getCredential: vi.fn(),
@@ -59,6 +63,7 @@ vi.mock('@qwenweaver/database', () => {
     listTemplates: vi.fn().mockResolvedValue([]),
     countTemplates: vi.fn().mockResolvedValue(0),
     getTemplate: vi.fn(),
+    getTemplateById: vi.fn(),
     createTemplate: vi.fn(),
     deleteTemplate: vi.fn(),
     incrementTemplateDownloads: vi.fn(),
@@ -209,7 +214,7 @@ describe('route-level integration tests', () => {
   // ─── Metrics ────────────────────────────────────────────────────────────
   describe('GET /api/metrics', () => {
     it('returns prometheus metrics', async () => {
-      const res = await app.request('/api/metrics');
+      const res = await app.request('/api/metrics', { headers: authHeaders() });
       expect(res.status).toBe(200);
       const text = await res.text();
       expect(text).toContain('http_request_duration_ms');
@@ -620,7 +625,7 @@ describe('route-level integration tests', () => {
           name: 'Research Agent',
           description: null,
           workflowData: { nodes: [], edges: [] },
-          authorId: 'author-1',
+          authorId: USER_ID,
           downloads: 10,
           avgRating: 4,
           ratingCount: 2,
@@ -714,7 +719,7 @@ describe('route-level integration tests', () => {
         id: 'tpl-1',
         name: 'Test',
         workflowData: { nodes: [], edges: [] },
-        authorId: 'author-1',
+        authorId: USER_ID,
         downloads: 0,
         avgRating: 0,
         ratingCount: 0,

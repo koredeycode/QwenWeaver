@@ -33,7 +33,6 @@ export type Variables = {
     id: string;
     userId: string;
     expiresAt: Date;
-    token: string;
   } | null;
 };
 
@@ -53,6 +52,15 @@ app.use(
 );
 app.use('/public/*', serveStatic({ root: './' }));
 app.use('*', requestLogger());
+
+// Security headers
+app.use('*', async (c, next) => {
+  c.res.headers.set('X-Frame-Options', 'DENY');
+  c.res.headers.set('X-Content-Type-Options', 'nosniff');
+  c.res.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  c.res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  await next();
+});
 
 app.use(
   '/api/*',
@@ -124,7 +132,12 @@ app.use('/api/*', async (c, next) => {
   }
 
   try {
-    const sessionData = await auth.api.getSession({ headers: c.req.raw.headers });
+    const reqHeaders = new Headers(c.req.raw.headers);
+    const queryToken = c.req.query('token');
+    if (queryToken && !reqHeaders.has('authorization')) {
+      reqHeaders.set('authorization', `Bearer ${queryToken}`);
+    }
+    const sessionData = await auth.api.getSession({ headers: reqHeaders });
     if (sessionData?.user) {
       c.set('user', sessionData.user as Variables['user']);
       c.set('session', sessionData.session as Variables['session']);
@@ -174,35 +187,24 @@ app.use('/api/*', async (c, next) => {
 
 // ─── Mount route modules ──────────────────────────────────────────────────
 
-const routes = app
+app
   .route('/api/templates', templateRoutes)
   .route('/api/workflow', workflowRoutes)
   .route('/api/execution', executionRoutes)
   .route('/api/copilot', copilotRoutes)
-  .route('/api/mcp', mcpRoutes);
-
-// Also mount remaining routes on app for runtime
-app
+  .route('/api/mcp', mcpRoutes)
   .route('/api/mcp/registry', registryRoutes)
   .route('/api/analytics', analyticsRoutes)
   .route('/api/credits', creditsRoutes)
   .route('/api/credentials', credentialsRoutes);
 
-// Separate chain for type export — plain Hono preserves route types
-const altRoutes = new Hono<{ Variables: Variables }>()
-  .route('/api/mcp/registry', registryRoutes)
-  .route('/api/analytics', analyticsRoutes)
-  .route('/api/credits', creditsRoutes)
-  .route('/api/credentials', credentialsRoutes);
-
-export type AppType = typeof routes;
-export type AppType2 = typeof altRoutes;
+export type AppType = typeof app;
 
 // Expose metrics endpoint only in development/test environments, authenticated via METRICS_TOKEN
 if (process.env.NODE_ENV !== 'production') {
   app.get('/api/metrics', async (c) => {
     const token = c.req.query('token') || c.req.header('Authorization')?.replace('Bearer ', '');
-    if (METRICS_TOKEN && token !== METRICS_TOKEN) {
+    if (!METRICS_TOKEN || token !== METRICS_TOKEN) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
     c.header('content-type', register.contentType);
@@ -217,7 +219,7 @@ app.onError((err, c) => {
     return err.getResponse();
   }
   logger.error({ err }, 'Unhandled exception');
-  return c.json({ error: 'Internal Server Error', details: err.message }, 500);
+  return c.json({ error: 'Internal Server Error' }, 500);
 });
 
 // ─── Root routes ────────────────────────────────────────────────────────────

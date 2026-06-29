@@ -1,6 +1,6 @@
 import { StateCreator } from 'zustand';
 import { StoreState, TemplateSlice } from './types.js';
-import { client, authHeaders } from '../lib/api-client.js';
+import { client } from '../lib/api-client.js';
 import { toast } from 'sonner';
 
 export const createTemplateSlice: StateCreator<StoreState, [], [], TemplateSlice> = (set, get) => ({
@@ -21,10 +21,9 @@ export const createTemplateSlice: StateCreator<StoreState, [], [], TemplateSlice
       if (params?.search) qs.set('search', params.search);
       if (params?.limit) qs.set('limit', String(params.limit));
       if (params?.offset) qs.set('offset', String(params.offset));
-      const res = await client.api.templates.$get(
-        { query: Object.fromEntries(qs.entries()) as Record<string, string> },
-        { headers: authHeaders },
-      );
+      const res = await client.api.templates.$get({
+        query: Object.fromEntries(qs.entries()) as Record<string, string>,
+      });
       const data = await res.json();
       set({ templates: data.templates, templatesTotal: data.total, templatesLoading: false });
     } catch {
@@ -35,10 +34,9 @@ export const createTemplateSlice: StateCreator<StoreState, [], [], TemplateSlice
 
   fetchTemplate: async (id) => {
     try {
-      const res = await client.api.templates[':id'].$get(
-        { param: { id } },
-        { headers: authHeaders },
-      );
+      const res = await client.api.templates[':id'].$get({
+        param: { id },
+      });
       const data = (await res.json()) as any;
       set({ selectedTemplate: data.template });
     } catch {
@@ -48,10 +46,9 @@ export const createTemplateSlice: StateCreator<StoreState, [], [], TemplateSlice
 
   fetchReviews: async (id) => {
     try {
-      const res = await client.api.templates[':id'].reviews.$get(
-        { param: { id } },
-        { headers: authHeaders },
-      );
+      const res = await client.api.templates[':id'].reviews.$get({
+        param: { id },
+      });
       const data = (await res.json()) as any;
       set({ selectedTemplateReviews: data.reviews });
     } catch {
@@ -62,7 +59,7 @@ export const createTemplateSlice: StateCreator<StoreState, [], [], TemplateSlice
   fetchCategories: async () => {
     set({ categoriesLoading: true });
     try {
-      const res = await client.api.templates.categories.$get({}, { headers: authHeaders });
+      const res = await client.api.templates.categories.$get();
       const data = (await res.json()) as any;
       set({ categories: data.categories, categoriesLoading: false });
     } catch {
@@ -77,10 +74,9 @@ export const createTemplateSlice: StateCreator<StoreState, [], [], TemplateSlice
       return false;
     }
     try {
-      const res = await client.api.templates[':id'].$get(
-        { param: { id } },
-        { headers: authHeaders },
-      );
+      const res = await client.api.templates[':id'].$get({
+        param: { id },
+      });
       if (!res.ok) throw new Error('Failed to fetch template');
       const data = (await res.json()) as any;
       const template = data.template;

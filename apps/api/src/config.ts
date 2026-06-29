@@ -41,8 +41,23 @@ export const CORS_ORIGINS: string[] = process.env.CORS_ORIGINS
       ]
     : [];
 
+// ─── Public URL (used for generating absolute asset URLs) ────────────
+export const PUBLIC_URL = process.env.PUBLIC_URL || 'http://localhost:3001';
+
+// ─── Storage ─────────────────────────────────────────────────────────
+export const STORAGE_DRIVER = process.env.STORAGE_DRIVER || 'local';
+
+export const OSS_REGION = process.env.OSS_REGION || '';
+export const OSS_ACCESS_KEY_ID = process.env.OSS_ACCESS_KEY_ID || '';
+export const OSS_ACCESS_KEY_SECRET = process.env.OSS_ACCESS_KEY_SECRET || '';
+export const OSS_BUCKET = process.env.OSS_BUCKET || '';
+export const OSS_ENDPOINT = process.env.OSS_ENDPOINT || '';
+
 // ─── Metrics Token ────────────────────────────────────────────────────
 export const METRICS_TOKEN = process.env.METRICS_TOKEN;
+
+// ─── Redis ────────────────────────────────────────────────────────────
+export const REDIS_URL = process.env.REDIS_URL || '';
 
 // ─── Rate Limiting ────────────────────────────────────────────────────
 export const RATE_LIMIT = {

@@ -2,6 +2,7 @@ node_modules
 dist
 .env
 .env.local
+.env.prod
 *.db
 *.db-journal
 *.db-shm
@@ -14,4 +15,4 @@ deploy-plan.md
 deploy-checklist.md
 deploy-vps.sh
 apps/api/public/storage
-extensivemodel.md
+public/storage/

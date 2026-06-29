@@ -12,7 +12,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
-import { client, authHeaders } from '../lib/api-client.js';
+import { client } from '../lib/api-client.js';
 import { StarRating } from './StarRating.js';
 import type { TemplateDetail, TemplateReview } from '../lib/templates-client.js';
 
@@ -32,14 +32,12 @@ export const TemplateDetailPage = () => {
     if (!id) return;
     setLoading(true);
     Promise.all([
-      client.api.templates[':id']
-        .$get({ param: { id } }, { headers: authHeaders })
-        .then(async (r) => (await r.json()) as any)
-        .then((d) => d.template),
-      client.api.templates[':id'].reviews
-        .$get({ param: { id } }, { headers: authHeaders })
-        .then(async (r) => (await r.json()) as any)
-        .then((d) => d.reviews),
+      (client.api.templates[':id'].$get({ param: { id } }) as Promise<any>)
+        .then(async (r: any) => (await r.json()) as any)
+        .then((d: any) => d.template),
+      (client.api.templates[':id'].reviews.$get({ param: { id } }) as Promise<any>)
+        .then(async (r: any) => (await r.json()) as any)
+        .then((d: any) => d.reviews),
     ])
       .then(([tpl, revs]) => {
         setTemplate(tpl);

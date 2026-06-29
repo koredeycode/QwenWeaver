@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Upload, X, Loader2 } from 'lucide-react';
-import { client, authHeaders } from '../lib/api-client.js';
+import { client } from '../lib/api-client.js';
 
 interface PublishTemplateDialogProps {
   isOpen: boolean;
@@ -43,10 +43,9 @@ export const PublishTemplateDialog = ({
       setCategoryId('');
       setTagsStr('');
       setLoading(true);
-      client.api.templates.categories
-        .$get({}, { headers: authHeaders })
-        .then((r) => r.json())
-        .then((data) => setCategories((data as any).categories))
+      (client.api.templates.categories.$get() as Promise<any>)
+        .then((r: any) => r.json())
+        .then((data: any) => setCategories(data.categories))
         .catch(() => {})
         .finally(() => setLoading(false));
       setTimeout(() => inputRef.current?.focus(), 50);
