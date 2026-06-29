@@ -15,7 +15,7 @@ services:
       PORT: 3001
       HOST: 0.0.0.0
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
-      BETTER_AUTH_URL: https://api.qwenweaver.xyz
+      BETTER_AUTH_URL: https://api.qwenweaver.xyz/api
       PUBLIC_URL: ${PUBLIC_URL}
       DATABASE_URL: ${DATABASE_URL}
       API_SECRET: ${API_SECRET}
@@ -26,4 +26,7 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GH_CLIENT_ID: ${GH_CLIENT_ID}
       GH_CLIENT_SECRET: ${GH_CLIENT_SECRET}
+      BREVO_API_KEY: ${BREVO_API_KEY}
+      BREVO_SENDER_EMAIL: ${BREVO_SENDER_EMAIL}
+      BREVO_SENDER_NAME: ${BREVO_SENDER_NAME}
       LOG_LEVEL: info
