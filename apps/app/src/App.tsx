@@ -13,9 +13,9 @@ import { SpotlightOverlay } from './tour/SpotlightOverlay.js';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const user = useStore((s) => s.user);
-  if (!user) {
-    return <Navigate to="/signin" replace />;
-  }
+  const authLoading = useStore((s) => s.authLoading);
+  if (authLoading) return <div className="w-screen h-screen bg-white" />;
+  if (!user) return <Navigate to="/signin" replace />;
   return <>{children}</>;
 };
 

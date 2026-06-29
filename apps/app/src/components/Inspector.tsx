@@ -364,16 +364,14 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                         api_key: 'mcp_api_key',
                         basic: 'mcp_basic_auth',
                       };
-                      const res = await client2.api.credentials.$post(
-                        {
-                          json: {
-                            name: newCredName,
-                            type: (typeMap[authType || ''] || 'custom') as any,
-                            value: newCredValue,
-                            description: newCredDesc || undefined,
-                      },
-                    },
-                    );
+                      const res = await client2.api.credentials.$post({
+                        json: {
+                          name: newCredName,
+                          type: (typeMap[authType || ''] || 'custom') as any,
+                          value: newCredValue,
+                          description: newCredDesc || undefined,
+                        },
+                      });
                       const data: any = await res.json();
                       if (res.ok && data.credential) {
                         setCredentials((prev) => [...prev, data.credential]);

@@ -17,9 +17,7 @@ export async function createCredential(data: {
   value: string;
 }): Promise<any | null> {
   try {
-    const res = await withRefresh(() =>
-      client2.api.credentials.$post({ json: data as any }),
-    );
+    const res = await withRefresh(() => client2.api.credentials.$post({ json: data as any }));
     if (!res.ok) return null;
     return await res.json();
   } catch {

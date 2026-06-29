@@ -26,8 +26,11 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
       set({
         user: session.data.user,
         session: session.data.session,
+        authLoading: false,
       });
       fetchCredits();
+    } else {
+      set({ authLoading: false });
     }
   });
 
@@ -35,6 +38,7 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
     user: null,
     session: null,
     credits: null,
+    authLoading: true,
 
     login: async (email, password) => {
       try {

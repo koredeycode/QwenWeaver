@@ -625,7 +625,7 @@ describe('route-level integration tests', () => {
           name: 'Research Agent',
           description: null,
           workflowData: { nodes: [], edges: [] },
-        authorId: USER_ID,
+          authorId: USER_ID,
           downloads: 10,
           avgRating: 4,
           ratingCount: 2,
