@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, User, FolderOpen, Users, LogOut, ChevronDown, Loader2, Trash2 } from 'lucide-react';
 import { useStore } from '../store/index.js';
-import { client, authHeaders, withRefresh } from '../lib/api-client.js';
+import { client, withRefresh } from '../lib/api-client.js';
 import { EXAMPLE_WORKFLOWS, ExampleWorkflow } from '../lib/example-workflows.js';
 import { CreateWorkflowDialog } from './CreateWorkflowDialog.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
@@ -47,7 +47,7 @@ export const WorkflowDashboard = () => {
 
   const fetchWorkflows = () => {
     setWorkflowsLoading(true);
-    withRefresh(() => client.api.workflow.$get({}, { headers: authHeaders }))
+    withRefresh(() => client.api.workflow.$get())
       .then((r: Response) => r.json())
       .then((data: any) => setUserWorkflows(data.workflows || []))
       .catch(() => {})
@@ -73,10 +73,9 @@ export const WorkflowDashboard = () => {
   const handleDelete = async (wf: UserWorkflow) => {
     try {
       const res = await withRefresh(() =>
-        client.api.workflow.detail[':workflowId'].$delete(
-          { param: { workflowId: wf.id } },
-          { headers: authHeaders },
-        ),
+        client.api.workflow.detail[':workflowId'].$delete({
+          param: { workflowId: wf.id },
+        }),
       );
       if (res.ok) {
         setUserWorkflows((prev) => prev.filter((w) => w.id !== wf.id));

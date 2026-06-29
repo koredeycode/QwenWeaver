@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useStore } from '../store/index.js';
-import { client, authHeaders } from '../lib/api-client.js';
+import { client } from '../lib/api-client.js';
 import { EXAMPLE_WORKFLOWS } from '../lib/example-workflows.js';
 
 export function useWorkflowLoader(id: string | undefined): void {
@@ -44,11 +44,9 @@ export function useWorkflowLoader(id: string | undefined): void {
         // Try to load from API (saved workflow from the server)
         (async () => {
           try {
-            const headers = await authHeaders();
-            const res = await client.api.workflow.detail[':workflowId'].$get(
-              { param: { workflowId: id } },
-              { headers },
-            );
+            const res = await client.api.workflow.detail[':workflowId'].$get({
+              param: { workflowId: id },
+            });
             const wf = res.ok ? await res.json() : null;
             if (!wf || !wf.nodesEdges || !wf.nodesEdges.nodes) {
               clearGraph();

@@ -1,4 +1,4 @@
-import { client, client2, authHeaders, withRefresh } from '../lib/api-client.js';
+import { client, client2, withRefresh } from '../lib/api-client.js';
 
 const REGISTRY_URL = 'https://registry.modelcontextprotocol.io/v0/servers';
 
@@ -7,12 +7,9 @@ export async function discoverMCPTools(
   authConfig?: Record<string, unknown>,
 ): Promise<any[]> {
   try {
-    const res = await client.api.mcp.tools.discover.$post(
-      {
-        json: { mcpServerUrl, authConfig } as any,
-      },
-      { headers: await authHeaders() },
-    );
+    const res = await client.api.mcp.tools.discover.$post({
+      json: { mcpServerUrl, authConfig } as any,
+    });
     if (!res.ok) return [];
     const data = (await res.json()) as any;
     return data.tools || [];
@@ -23,7 +20,7 @@ export async function discoverMCPTools(
 
 export async function listUserServers(): Promise<any[]> {
   try {
-    const res = await client.api.mcp.servers.$get({}, { headers: await authHeaders() });
+    const res = await client.api.mcp.servers.$get();
     if (!res.ok) return [];
     const data = (await res.json()) as any;
     return data.servers || [];
@@ -35,10 +32,9 @@ export async function listUserServers(): Promise<any[]> {
 export async function toggleFavorite(serverId: string): Promise<boolean> {
   try {
     const res = (await withRefresh(async () =>
-      (client.api.mcp.servers[':id'] as any).favorite.$post(
-        { param: { id: serverId } },
-        { headers: await authHeaders() },
-      ),
+      (client.api.mcp.servers[':id'] as any).favorite.$post({
+        param: { id: serverId },
+      }),
     )) as any;
     return res.ok;
   } catch {
@@ -49,10 +45,7 @@ export async function toggleFavorite(serverId: string): Promise<boolean> {
 export async function adoptRegistryServer(registryId: string): Promise<boolean> {
   try {
     const res = (await withRefresh(async () =>
-      (client2.api.mcp.registry as any).adopt.$post(
-        { json: { registryId } },
-        { headers: await authHeaders() },
-      ),
+      (client2.api.mcp.registry as any).adopt.$post({ json: { registryId } }),
     )) as any;
     return res.ok;
   } catch {

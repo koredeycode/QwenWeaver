@@ -17,7 +17,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
-import { client, client2, authHeaders } from '../lib/api-client.js';
+import { client, client2 } from '../lib/api-client.js';
 import type { OutputFormat } from '@qwenweaver/types';
 
 export const Inspector = ({ onClose }: { onClose: () => void }) => {
@@ -56,10 +56,9 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
       if (authType && authType !== 'none') {
         body.auth = { type: authType, ...mcpSecrets };
       }
-      const res = await client.api.mcp.tools.discover.$post(
-        { json: body as any },
-        { headers: authHeaders },
-      );
+      const res = await client.api.mcp.tools.discover.$post({
+        json: body as any,
+      });
       const data: any = await res.json();
       if (!res.ok) {
         setMcpStatus('error');
@@ -72,13 +71,10 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
       const userServerId = (selectedNode?.data as any).mcpUserServerId;
       if (authType && authType !== 'none' && userServerId) {
         (client.api.mcp.servers[':id'] as any).auth
-          .$post(
-            {
-              param: { id: userServerId },
-              json: { authConfig: { type: authType, ...mcpSecrets } },
-            },
-            { headers: authHeaders },
-          )
+          .$post({
+            param: { id: userServerId },
+            json: { authConfig: { type: authType, ...mcpSecrets } },
+          })
           .catch(() => {});
       }
     } catch {
@@ -118,7 +114,7 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
       setLoadingCreds(true);
       (async () => {
         try {
-          const res = await client2.api.credentials.$get({}, { headers: await authHeaders() });
+          const res = await client2.api.credentials.$get();
           const data = (await res.json()) as any;
           setCredentials(data.credentials || []);
         } catch {
@@ -375,10 +371,9 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                             type: (typeMap[authType || ''] || 'custom') as any,
                             value: newCredValue,
                             description: newCredDesc || undefined,
-                          },
-                        },
-                        { headers: authHeaders },
-                      );
+                      },
+                    },
+                    );
                       const data: any = await res.json();
                       if (res.ok && data.credential) {
                         setCredentials((prev) => [...prev, data.credential]);

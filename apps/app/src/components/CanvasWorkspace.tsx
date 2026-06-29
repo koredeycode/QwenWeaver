@@ -5,7 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { toPng } from 'html-to-image';
 
 import type { NodeType } from '@qwenweaver/types';
-import { client, authHeaders, withRefresh } from '../lib/api-client.js';
+import { client, withRefresh } from '../lib/api-client.js';
 import { isAgent, isTrigger, doesNotSupportTools } from '../utils/connection-validation.js';
 import { useStore } from '../store/index.js';
 import { clearDraft } from '../store/auto-save.js';
@@ -1143,7 +1143,7 @@ export const CanvasWorkspace = () => {
                 })),
               };
               const res = (await withRefresh(() =>
-                client.api.workflow.$post({ json: payload as any }, { headers: authHeaders }),
+                client.api.workflow.$post({ json: payload as any }),
               )) as any;
               if (res.status === 403) {
                 const errBody: Record<string, unknown> = await res.json().catch(() => ({}));
@@ -1211,7 +1211,7 @@ export const CanvasWorkspace = () => {
                 },
               };
               const res = await withRefresh(() =>
-                client.api.templates.$post({ json: payload as any }, { headers: authHeaders }),
+                client.api.templates.$post({ json: payload as any }),
               );
               if (!res.ok) {
                 const err: Record<string, unknown> = await res.json().catch(() => ({}));

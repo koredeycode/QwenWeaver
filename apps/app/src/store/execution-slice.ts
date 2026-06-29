@@ -2,7 +2,7 @@ import { StateCreator } from 'zustand';
 import type { NodeTiming } from '@qwenweaver/types';
 import { StoreState, ExecutionSlice } from './types.js';
 import { toast } from 'sonner';
-import { getAccessToken, client, authHeaders } from '../lib/api-client.js';
+import { getAccessToken, client } from '../lib/api-client.js';
 
 export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSlice> = (
   set,
@@ -28,16 +28,13 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
     }
     set({ historyLoading: true });
     try {
-      const res = await client.api.execution.$get(
-        {
-          query: {
-            limit: String(limit),
-            offset: String(offset),
-            workflowId,
-          },
+      const res = await client.api.execution.$get({
+        query: {
+          limit: String(limit),
+          offset: String(offset),
+          workflowId,
         },
-        { headers: await authHeaders() },
-      );
+      });
       if (res.ok) {
         const data = (await res.json()) as any;
         set({ executionHistory: data.executions || [] });
@@ -96,12 +93,9 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
         })),
       };
 
-      const execRes = await client.api.workflow.execute.$post(
-        {
-          json: workflowPayload,
-        },
-        { headers: await authHeaders() },
-      );
+      const execRes = await client.api.workflow.execute.$post({
+        json: workflowPayload,
+      });
       if (!execRes.ok) {
         const errBody = (await execRes.json().catch(() => ({}))) as any;
         toast.error(errBody.error || 'Failed to execute workflow');

@@ -2,26 +2,22 @@ import { hc } from 'hono/client';
 import { createAuthClient } from 'better-auth/client';
 import type { AppType } from '@qwenweaver/api';
 
-export const API_URL = import.meta.env.VITE_API_URL || '';
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+const customFetch: typeof fetch = (input, init) => {
+  return fetch(input, { ...init, credentials: 'include' });
+};
 
 export const authClient = createAuthClient({
   baseURL: API_URL,
+  fetch: customFetch,
 });
 
-export const client = hc<AppType>(API_URL);
+export const client = hc<AppType>(API_URL, { fetch: customFetch });
 export const client2 = client;
 export type { AppType };
 
-/** Returns Authorization headers for the current user, or empty if not logged in */
-export async function authHeaders(): Promise<Record<string, string>> {
-  const session = await authClient.getSession();
-  if (session?.data?.session.token) {
-    return { Authorization: `Bearer ${session.data.session.token}` };
-  }
-  return {};
-}
-
-/** Returns the current access token or null */
+/** Returns the current access token or null (for EventSource streaming) */
 export async function getAccessToken(): Promise<string | null> {
   const session = await authClient.getSession();
   if (session?.data?.session.token) {

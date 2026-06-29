@@ -1,6 +1,6 @@
 import { StateCreator } from 'zustand';
 import { StoreState, CopilotSlice, CopilotMessage } from './types.js';
-import { client, authHeaders, getAccessToken } from '../lib/api-client.js';
+import { client, getAccessToken } from '../lib/api-client.js';
 import type { CopilotHistoryMessage } from '@qwenweaver/types';
 
 export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> = (set, get) => ({
@@ -41,16 +41,13 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
     const workflowId = get().workflowId;
     if (workflowId && msg.proposal.id) {
       try {
-        await client.api.copilot.proposal.$put(
-          {
-            json: {
-              workflowId,
-              proposalId: msg.proposal.id,
-              status,
-            },
+        await client.api.copilot.proposal.$put({
+          json: {
+            workflowId,
+            proposalId: msg.proposal.id,
+            status,
           },
-          { headers: await authHeaders() },
-        );
+        });
       } catch (err) {
         console.error('Failed to persist proposal status update:', err);
       }
@@ -98,23 +95,15 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
       const token = await getAccessToken();
       const workflowId = get().workflowId;
 
-      const response = await client.api.copilot.$post(
-        {
-          json: {
-            prompt: text,
-            canvasState,
-            mode: mode as any,
-            model: copilotModel,
-            workflowId: workflowId || undefined,
-          },
+      const response = await client.api.copilot.$post({
+        json: {
+          prompt: text,
+          canvasState,
+          mode: mode as any,
+          model: copilotModel,
+          workflowId: workflowId || undefined,
         },
-        {
-          headers: {
-            ...(await authHeaders()),
-            'Content-Type': 'application/json',
-          },
-        },
-      );
+      });
 
       if (!response.ok) {
         const errText = await response.text();

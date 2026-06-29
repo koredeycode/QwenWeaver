@@ -1,4 +1,4 @@
-import { client, authHeaders, withRefresh } from '../lib/api-client.js';
+import { client, withRefresh } from '../lib/api-client.js';
 
 export interface WorkflowPayload {
   name: string;
@@ -24,7 +24,7 @@ export async function createWorkflow(
 ): Promise<{ workflowId: string } | null> {
   try {
     const res = (await withRefresh(() =>
-      client.api.workflow.$post({ json: payload as any }, { headers: await authHeaders() }),
+      client.api.workflow.$post({ json: payload as any }),
     )) as any;
     if (!res.ok) {
       if (res.status === 403) {
@@ -46,10 +46,10 @@ export async function updateWorkflow(
 ): Promise<boolean> {
   try {
     const res = (await withRefresh(() =>
-      (client.api.workflow.detail[':workflowId'] as any).$put(
-        { param: { workflowId }, json: payload as any },
-        { headers: await authHeaders() },
-      ),
+      (client.api.workflow.detail[':workflowId'] as any).$put({
+        param: { workflowId },
+        json: payload as any,
+      }),
     )) as any;
     return res.ok;
   } catch (err) {
@@ -69,10 +69,9 @@ export async function loadWorkflowFromApi(workflowId: string): Promise<{
   copilotHistory?: any[] | null;
 } | null> {
   try {
-    const res = await client.api.workflow.detail[':workflowId'].$get(
-      { param: { workflowId } },
-      { headers: await authHeaders() },
-    );
+    const res = await client.api.workflow.detail[':workflowId'].$get({
+      param: { workflowId },
+    });
     if (!res.ok) return null;
     return await res.json();
   } catch {

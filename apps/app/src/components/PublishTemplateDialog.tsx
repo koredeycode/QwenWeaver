@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Upload, X, Loader2 } from 'lucide-react';
-import { client, authHeaders } from '../lib/api-client.js';
+import { client } from '../lib/api-client.js';
 
 interface PublishTemplateDialogProps {
   isOpen: boolean;
@@ -44,7 +44,7 @@ export const PublishTemplateDialog = ({
       setTagsStr('');
       setLoading(true);
       client.api.templates.categories
-        .$get({}, { headers: authHeaders })
+        .$get()
         .then((r) => r.json())
         .then((data) => setCategories((data as any).categories))
         .catch(() => {})
