@@ -55,8 +55,8 @@ export async function generateWanxImage(
   } catch (err) {
     if (baseUrl === 'https://dashscope.aliyuncs.com') {
       log.info('Network error on domestic endpoint, retrying on international endpoint...');
-      submitUrl =
-        'https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation';
+      baseUrl = 'https://dashscope-intl.aliyuncs.com';
+      submitUrl = `${baseUrl}/api/v1/services/aigc/multimodal-generation/generation`;
       response = await fetch(submitUrl, {
         method: 'POST',
         headers,
@@ -72,8 +72,8 @@ export async function generateWanxImage(
     const errorText = await response.text();
     if (errorText.includes('InvalidApiKey') && baseUrl === 'https://dashscope.aliyuncs.com') {
       log.info('Key rejected on domestic endpoint, retrying on international endpoint...');
-      submitUrl =
-        'https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation';
+      baseUrl = 'https://dashscope-intl.aliyuncs.com';
+      submitUrl = `${baseUrl}/api/v1/services/aigc/multimodal-generation/generation`;
       response = await fetch(submitUrl, {
         method: 'POST',
         headers,

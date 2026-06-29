@@ -251,11 +251,18 @@ export const handleStream = async (c: Context<{ Variables: Variables }>) => {
   }
 
   if (!execution) {
+    let resolveExecution: () => void;
+    const executionPromise = new Promise<void>((resolve) => {
+      resolveExecution = resolve;
+    });
     execution = {
       emitters: new Set(),
       status: dbExecution.status as any,
       createdAt: Date.now(),
       hasEverHadEmitter: false,
+      promise: executionPromise,
+      resolve: resolveExecution!,
+      userId,
     };
     activeExecutions.set(executionId, execution);
   }
