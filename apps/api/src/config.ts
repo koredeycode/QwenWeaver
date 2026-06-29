@@ -56,6 +56,9 @@ export const OSS_ENDPOINT = process.env.OSS_ENDPOINT || '';
 // ─── Metrics Token ────────────────────────────────────────────────────
 export const METRICS_TOKEN = process.env.METRICS_TOKEN;
 
+// ─── Redis ────────────────────────────────────────────────────────────
+export const REDIS_URL = process.env.REDIS_URL || '';
+
 // ─── Rate Limiting ────────────────────────────────────────────────────
 export const RATE_LIMIT = {
   copilot: {

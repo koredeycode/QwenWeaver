@@ -2,10 +2,25 @@ import React, { useState } from 'react';
 import { BarChart3, ChevronUp, ChevronDown, Gauge, Coins, Clock } from 'lucide-react';
 import { useStore } from '../store/index.js';
 
+const nodeMetaSelector = (s: any) => {
+  const map: Record<string, { type: string; label: string }> = {};
+  for (const n of s.nodes) {
+    map[n.id] = { type: n.type || '', label: n.data?.label || '' };
+  }
+  return map;
+};
+
+const nodeMetaComparator = (a: any, b: any) => {
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  if (keysA.length !== keysB.length) return false;
+  return keysA.every((k) => a[k].type === b[k].type && a[k].label === b[k].label);
+};
+
 export const GanttMetrics = () => {
   const status = useStore((s) => s.executionStatus);
   const metrics = useStore((s) => s.metrics);
-  const nodes = useStore((s) => s.nodes);
+  const nodeMeta = useStore(nodeMetaSelector, nodeMetaComparator);
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -123,8 +138,8 @@ export const GanttMetrics = () => {
 
             <div className="border border-slate-200 bg-white p-3 space-y-3.5 max-h-60 overflow-y-auto scrollbar">
               {timings.map((item, idx) => {
-                const nodeObj = nodes.find((n) => n.id === item.nodeId);
-                const nodeLabel = nodeObj?.data?.label || item.nodeId;
+                const nodeObj = nodeMeta[item.nodeId];
+                const nodeLabel = nodeObj?.label || item.nodeId;
                 const percentage = Math.min((item.durationMs / maxMs) * 100, 100);
 
                 return (
@@ -149,9 +164,9 @@ export const GanttMetrics = () => {
                       <div
                         style={{ width: `${percentage}%` }}
                         className={`h-full transition-all duration-1000 ${
-                          nodeObj?.type === 'supervisor'
+                          (nodeObj?.type) === 'supervisor'
                             ? 'bg-secondary'
-                            : nodeObj?.type === 'trigger'
+                            : (nodeObj?.type) === 'trigger'
                               ? 'bg-emerald-500'
                               : 'bg-[#f97316]'
                         }`}

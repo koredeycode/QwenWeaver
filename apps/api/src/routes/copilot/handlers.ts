@@ -340,9 +340,10 @@ export const handleCopilot = async (c: Context<{ Variables: Variables }>) => {
       if (workflowId && dbWorkflow) {
         try {
           const dbProvider = getQueryProvider();
+          const MAX_HISTORY = 50;
           const existingHistory = dbWorkflow.copilotHistory || [];
           const updatedHistory = [
-            ...existingHistory,
+            ...existingHistory.slice(-(MAX_HISTORY - 1)),
             { role: 'user', content: prompt },
             {
               role: 'assistant',

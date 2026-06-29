@@ -4,6 +4,19 @@
 version: "3.9"
 
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: qw-redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
   qwenweaver:
     image: ghcr.io/koredeycode/qwenweaver/qwenweaver:latest
     container_name: qw-app
@@ -37,3 +50,7 @@ services:
       OSS_BUCKET: ${OSS_BUCKET:-}
       OSS_ENDPOINT: ${OSS_ENDPOINT:-}
       PUBLIC_URL: ${PUBLIC_URL:-}
+      REDIS_URL: redis://redis:6379
+
+volumes:
+  redis-data:

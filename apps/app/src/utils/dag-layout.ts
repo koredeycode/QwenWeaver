@@ -42,11 +42,14 @@ export function computeDagLayout(nodes: Node<any>[], edges: Edge<any>[]): Node<a
     getLevel(node.id);
   }
 
-  // 3. Identify which tools belong to which parent agent/supervisor
+  // 3. Build node lookup map for O(1) access
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+
+  // 4. Identify which tools belong to which parent agent/supervisor
   const toolParentMap = new Map<string, string>();
   for (const edge of edges) {
-    const sourceNode = nodes.find((n) => n.id === edge.source);
-    const targetNode = nodes.find((n) => n.id === edge.target);
+    const sourceNode = nodeMap.get(edge.source);
+    const targetNode = nodeMap.get(edge.target);
     if (
       targetNode?.type === 'mcp_tool' &&
       (sourceNode?.type === 'agent' || sourceNode?.type === 'supervisor')
@@ -106,7 +109,7 @@ export function computeDagLayout(nodes: Node<any>[], edges: Edge<any>[]): Node<a
   for (const node of toolNodes) {
     const parentId = toolParentMap.get(node.id);
     if (parentId && positionMap.has(parentId)) {
-      const parentNode = nodes.find((n) => n.id === parentId);
+      const parentNode = nodeMap.get(parentId);
       const parentPos = positionMap.get(parentId)!;
       const siblingTools = toolNodes.filter((t) => toolParentMap.get(t.id) === parentId);
       const count = siblingTools.length;
