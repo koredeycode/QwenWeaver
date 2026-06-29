@@ -1,4 +1,4 @@
-import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import type { Client } from '@qwenweaver/mcp-client';
 import type { NodePayload } from '@qwenweaver/types';
 import { createMCPClient } from '@qwenweaver/mcp-client';
 import { createModuleLogger } from '../logger.js';

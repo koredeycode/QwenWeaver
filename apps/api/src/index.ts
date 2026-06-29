@@ -63,8 +63,28 @@ app.use(
   }),
 );
 
-// Better Auth handler — manages /api/auth/* endpoints (sign-in, sign-up, session, OAuth callbacks)
-app.use('/api/auth/**', (c, next) => auth.handler(c, next));
+// Better Auth handler — forwards to Better Auth's internal router.
+// Better Auth endpoints are registered at /get-session, /sign-in/email, etc.
+// With basePath=/api (from BETTER_AUTH_URL=http://localhost:3001/api), actual paths
+// are /api/get-session, /api/sign-in/email, /api/sign-up/email, /api/sign-out, etc.
+// If Better Auth returns 404 (unknown path), we fall through to app routes.
+app.use('/api/*', async (c, next) => {
+  const path = c.req.path;
+  if (
+    path.startsWith('/api/health') ||
+    path.startsWith('/api/docs') ||
+    path.startsWith('/api/openapi.json') ||
+    path.startsWith('/api/mcp/registry') ||
+    path.startsWith('/api/metrics')
+  ) {
+    return next();
+  }
+  const response = await auth.handler(c.req.raw);
+  if (response.status === 404) {
+    return next();
+  }
+  return response;
+});
 
 // Rate limiting on copilot endpoint (expensive LLM calls)
 app.use('/api/copilot/*', rateLimiter('copilot', RATE_LIMIT.copilot));
@@ -75,17 +95,31 @@ app.use('/api/*', rateLimiter('api', RATE_LIMIT.api));
 // Session middleware — resolves session for all /api/* routes
 app.use('/api/*', async (c, next) => {
   const path = c.req.path;
-  if (
-    path.startsWith('/api/health') ||
-    path.startsWith('/api/docs') ||
-    path.startsWith('/api/openapi.json') ||
-    path.startsWith('/api/auth') ||
-    path === '/api/mcp/registry/search' ||
-    path.startsWith('/api/metrics')
-  ) {
-    c.set('user', null);
-    c.set('session', null);
-    return next();
+  const skipPaths = [
+    '/api/health',
+    '/api/docs',
+    '/api/openapi.json',
+    '/api/mcp/registry',
+    '/api/metrics',
+    '/api/get-session',
+    '/api/sign-in',
+    '/api/sign-up',
+    '/api/sign-out',
+    '/api/callback',
+    '/api/error',
+    '/api/ok',
+    '/api/verify-email',
+    '/api/forget-password',
+    '/api/reset-password',
+    '/api/change-password',
+    '/api/update-user',
+  ];
+  for (const skip of skipPaths) {
+    if (path.startsWith(skip)) {
+      c.set('user', null);
+      c.set('session', null);
+      return next();
+    }
   }
 
   try {
@@ -107,15 +141,29 @@ app.use('/api/*', async (c, next) => {
 // Auth enforcement — returns 401 if no user for protected routes
 app.use('/api/*', async (c, next) => {
   const path = c.req.path;
-  if (
-    path.startsWith('/api/auth') ||
-    path.startsWith('/api/health') ||
-    path.startsWith('/api/docs') ||
-    path.startsWith('/api/openapi.json') ||
-    path === '/api/mcp/registry/search' ||
-    path.startsWith('/api/metrics')
-  ) {
-    return next();
+  const skipPaths = [
+    '/api/health',
+    '/api/docs',
+    '/api/openapi.json',
+    '/api/mcp/registry',
+    '/api/metrics',
+    '/api/get-session',
+    '/api/sign-in',
+    '/api/sign-up',
+    '/api/sign-out',
+    '/api/callback',
+    '/api/error',
+    '/api/ok',
+    '/api/verify-email',
+    '/api/forget-password',
+    '/api/reset-password',
+    '/api/change-password',
+    '/api/update-user',
+  ];
+  for (const skip of skipPaths) {
+    if (path.startsWith(skip)) {
+      return next();
+    }
   }
   if (!c.get('user')) {
     return c.json({ error: 'Unauthorized' }, 401);

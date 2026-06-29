@@ -47,9 +47,9 @@ export const WorkflowDashboard = () => {
 
   const fetchWorkflows = () => {
     setWorkflowsLoading(true);
-    withRefresh(() => client.api.workflow.$get({}, { headers: authHeaders() }))
-      .then((r) => r.json())
-      .then((data) => setUserWorkflows(data.workflows || []))
+    withRefresh(() => client.api.workflow.$get({}, { headers: authHeaders }))
+      .then((r: Response) => r.json())
+      .then((data: any) => setUserWorkflows(data.workflows || []))
       .catch(() => {})
       .finally(() => setWorkflowsLoading(false));
   };
@@ -75,7 +75,7 @@ export const WorkflowDashboard = () => {
       const res = await withRefresh(() =>
         client.api.workflow.detail[':workflowId'].$delete(
           { param: { workflowId: wf.id } },
-          { headers: authHeaders() },
+          { headers: authHeaders },
         ),
       );
       if (res.ok) {

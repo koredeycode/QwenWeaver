@@ -12,6 +12,8 @@ import {
 
 const { db, dialect } = getConnection();
 
+const adapterProvider = dialect === 'postgres' ? 'pg' : dialect;
+
 const getSchema = () => {
   if (dialect === 'sqlite') return sqliteSchema;
   if (dialect === 'mysql') return mysqlSchema;
@@ -22,7 +24,7 @@ export const auth = betterAuth({
   secret: BETTER_AUTH_SECRET,
   baseURL: BETTER_AUTH_URL,
   database: drizzleAdapter(db, {
-    provider: dialect === 'pg' ? 'pg' : dialect === 'mysql' ? 'mysql' : 'sqlite',
+    provider: adapterProvider,
     schema: getSchema(),
     usePlural: false,
     camelCase: true,

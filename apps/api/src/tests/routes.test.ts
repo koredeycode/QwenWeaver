@@ -94,7 +94,11 @@ vi.mock('ai', () => ({
 // ─── Mock Better Auth ──────────────────────────────────────────────────────
 vi.mock('../auth.js', () => ({
   auth: {
-    handler: vi.fn((c: any, next: any) => next()),
+    handler: vi.fn((req: Request) => {
+      // Return 404 for non-Better-Auth paths so the request falls through to
+      // app routes. The index.ts middleware checks for 404 and calls next().
+      return new Response(null, { status: 404 });
+    }),
     api: {
       getSession: vi.fn().mockResolvedValue({
         user: { id: USER_ID, email: USER_EMAIL, name: USER_NAME },
@@ -152,11 +156,11 @@ describe('route-level integration tests', () => {
   // ─── Protected routes without auth ──────────────────────────────────────
   describe('Protected routes without auth', () => {
     beforeEach(() => {
-      mockAuthModule.api.getSession.mockResolvedValue(null as any);
+      (mockAuthModule.api as any).getSession.mockResolvedValue(null as any);
     });
 
     afterEach(() => {
-      mockAuthModule.api.getSession.mockResolvedValue({
+      (mockAuthModule.api as any).getSession.mockResolvedValue({
         user: { id: USER_ID, email: USER_EMAIL, name: USER_NAME },
         session: {
           id: 'sess-1',

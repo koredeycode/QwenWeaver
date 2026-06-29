@@ -10,7 +10,7 @@ if (!process.env.BETTER_AUTH_SECRET && !isDev) {
 
 export const BETTER_AUTH_SECRET =
   process.env.BETTER_AUTH_SECRET || (isDev ? 'dev-only-insecure-secret' : '');
-export const BETTER_AUTH_URL = process.env.BETTER_AUTH_URL || 'http://localhost:3001';
+export const BETTER_AUTH_URL = process.env.BETTER_AUTH_URL || 'http://localhost:3001/api';
 
 export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 export const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;

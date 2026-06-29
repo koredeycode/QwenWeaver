@@ -1,6 +1,8 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { URL } from 'node:url';
 
+export type { Client };
+
 export const MCP_CLIENT_VERSION = '0.1.0';
 
 export interface MCPClientOptions {

@@ -11,7 +11,7 @@ export async function sendCopilotMessage(
         {
           json: { message, model, actions: graphActions } as any,
         },
-        { headers: authHeaders() },
+        { headers: authHeaders },
       ),
     );
     if (!res.ok) return null;

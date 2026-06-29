@@ -24,6 +24,24 @@ export async function authHeaders(): Promise<Record<string, string>> {
   return {};
 }
 
+/** Returns the current access token or null */
+export async function getAccessToken(): Promise<string | null> {
+  const session = await authClient.getSession();
+  if (session?.data?.session.token) {
+    return session.data.session.token;
+  }
+  return null;
+}
+
+/**
+ * Wraps an API call with refresh-on-401 logic.
+ * With Better Auth (cookie-based), auto-refresh is handled transparently,
+ * so this is now just an identity function.
+ */
+export async function withRefresh<T>(fn: () => Promise<T>): Promise<T> {
+  return fn();
+}
+
 export function getTemplateApiUrl(): string {
   return API_URL;
 }

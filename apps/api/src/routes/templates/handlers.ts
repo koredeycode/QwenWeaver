@@ -68,7 +68,7 @@ export async function handleCreateTemplate(c: C) {
     workflowData: body.workflowData as any,
     categoryId: body.categoryId ?? null,
     tags: body.tags ?? null,
-    authorId: user?.id,
+    authorId: user!.id,
     thumbnail: body.thumbnail ?? null,
   });
 
@@ -94,7 +94,7 @@ export async function handleForkTemplate(c: C) {
   if (!template) return c.json({ error: 'Template not found' }, 404);
 
   await provider.incrementTemplateDownloads(id);
-  const workflowId = await provider.saveWorkflow(user?.id, {
+  const workflowId = await provider.saveWorkflow(user!.id, {
     ...template.workflowData,
     name: template.name,
     description: template.description || undefined,
@@ -127,7 +127,7 @@ export async function handleRateTemplate(c: C) {
   await provider.upsertTemplateReview(
     reviewId,
     id,
-    user?.id,
+    user!.id,
     parsed.data.rating,
     parsed.data.review ?? null,
   );

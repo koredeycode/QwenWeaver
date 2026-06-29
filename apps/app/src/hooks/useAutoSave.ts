@@ -68,7 +68,7 @@ export function useAutoSave(id: string | undefined, navigate: NavigateFunction) 
               markClean();
               clearDraft();
             })
-            .catch((err) => {
+            .catch((err: unknown) => {
               setIsSaving(false);
               console.warn('Auto-save to backend failed:', err);
             });
@@ -86,7 +86,7 @@ export function useAutoSave(id: string | undefined, navigate: NavigateFunction) 
               setIsSaving(false);
               navigate(`/workflows/${data.workflowId}`, { replace: true });
             })
-            .catch((err) => {
+            .catch((err: unknown) => {
               setIsSaving(false);
               console.warn('Auto-create to backend failed:', err);
             });
