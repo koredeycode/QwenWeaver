@@ -32,14 +32,12 @@ export const TemplateDetailPage = () => {
     if (!id) return;
     setLoading(true);
     Promise.all([
-      client.api.templates[':id']
-        .$get({ param: { id } })
-        .then(async (r) => (await r.json()) as any)
-        .then((d) => d.template),
-      client.api.templates[':id'].reviews
-        .$get({ param: { id } })
-        .then(async (r) => (await r.json()) as any)
-        .then((d) => d.reviews),
+      (client.api.templates[':id'].$get({ param: { id } }) as Promise<any>)
+        .then(async (r: any) => (await r.json()) as any)
+        .then((d: any) => d.template),
+      (client.api.templates[':id'].reviews.$get({ param: { id } }) as Promise<any>)
+        .then(async (r: any) => (await r.json()) as any)
+        .then((d: any) => d.reviews),
     ])
       .then(([tpl, revs]) => {
         setTemplate(tpl);

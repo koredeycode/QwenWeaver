@@ -43,10 +43,9 @@ export const PublishTemplateDialog = ({
       setCategoryId('');
       setTagsStr('');
       setLoading(true);
-      client.api.templates.categories
-        .$get()
-        .then((r) => r.json())
-        .then((data) => setCategories((data as any).categories))
+      (client.api.templates.categories.$get() as Promise<any>)
+        .then((r: any) => r.json())
+        .then((data: any) => setCategories(data.categories))
         .catch(() => {})
         .finally(() => setLoading(false));
       setTimeout(() => inputRef.current?.focus(), 50);

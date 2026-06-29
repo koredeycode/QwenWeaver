@@ -433,6 +433,7 @@ async function runExecutionAsync(
 
   // Wrap in try/finally to guarantee cleanup even on crash
   try {
+    const provider = getQueryProvider();
     const broadcastEmitter: StreamEmitter = {
       emit: async <K extends z.infer<typeof SSEEventType>>(event: K, data: SSEPayloadMap[K]) => {
         // Clone set to avoid iteration issues if emitters are removed

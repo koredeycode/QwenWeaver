@@ -69,9 +69,8 @@ export function useAutoSave(id: string | undefined, navigate: NavigateFunction) 
               console.warn('Auto-save to backend failed:', err);
             });
         } else {
-          client.api.workflow
-            .$post({ json: payload as any })
-            .then(async (res) => {
+          (client.api.workflow.$post({ json: payload as any }) as Promise<any>)
+            .then(async (res: any) => {
               if (!res.ok) throw new Error('Failed to auto-create workflow');
               const data = await res.json();
               useStore.setState({

@@ -1208,9 +1208,9 @@ export const CanvasWorkspace = () => {
                   })),
                 },
               };
-              const res = await withRefresh(() =>
+              const res: any = await (withRefresh(() =>
                 client.api.templates.$post({ json: payload as any }),
-              );
+              ) as Promise<any>);
               if (!res.ok) {
                 const err: Record<string, unknown> = await res.json().catch(() => ({}));
                 throw new Error(String(err.error || 'Publish failed'));

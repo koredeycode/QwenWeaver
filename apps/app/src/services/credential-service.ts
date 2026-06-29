@@ -2,7 +2,7 @@ import { client2, withRefresh } from '../lib/api-client.js';
 
 export async function listCredentials(): Promise<any[]> {
   try {
-    const res = await client2.api.credentials.$get();
+    const res: any = await client2.api.credentials.$get();
     if (!res.ok) return [];
     const data = (await res.json()) as any;
     return data.credentials || [];
@@ -17,7 +17,7 @@ export async function createCredential(data: {
   value: string;
 }): Promise<any | null> {
   try {
-    const res = await withRefresh(() => client2.api.credentials.$post({ json: data as any }));
+    const res: any = await withRefresh(() => client2.api.credentials.$post({ json: data as any }));
     if (!res.ok) return null;
     return await res.json();
   } catch {

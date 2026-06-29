@@ -4,16 +4,17 @@ import type { AppType } from '@qwenweaver/api';
 
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-const customFetch: typeof fetch = (input, init) => {
-  return fetch(input, { ...init, credentials: 'include' });
-};
+const customFetch = (input: RequestInfo | URL, init?: RequestInit) =>
+  fetch(input, { ...init, credentials: 'include' });
 
 export const authClient = createAuthClient({
   baseURL: API_URL,
-  fetch: customFetch,
+  fetch: customFetch as typeof fetch,
 });
 
-export const client = hc<AppType>(API_URL, { fetch: customFetch });
+export const client = hc<AppType>(API_URL, {
+  fetch: customFetch as typeof fetch,
+}) as unknown as any;
 export const client2 = client;
 export type { AppType };
 

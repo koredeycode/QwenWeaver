@@ -59,7 +59,7 @@ export function rateLimiter(name: string, options: RateLimitOptions): Middleware
       ? keyExtractor(c)
       : ((c.get('user') as any)?.id ??
         c.req.header('x-forwarded-for')?.split(',').pop()?.trim() ??
-        c.req.raw.socket?.remoteAddress ??
+        (c.req.raw as any).socket?.remoteAddress ??
         'anonymous');
 
     let entry = entries.get(key);

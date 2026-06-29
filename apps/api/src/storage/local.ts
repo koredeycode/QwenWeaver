@@ -6,7 +6,7 @@ import type { StorageService } from './types.js';
 const BASE_DIR = path.resolve('public', 'storage', 'runs');
 
 function sanitize(input: string): string {
-  return input.replace(/[^a-zA-Z0-9_-]/g, '_');
+  return input.replace(/[^a-zA-Z0-9_.-]/g, '_');
 }
 
 export class LocalStorageDriver implements StorageService {

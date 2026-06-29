@@ -47,8 +47,8 @@ export const WorkflowDashboard = () => {
 
   const fetchWorkflows = () => {
     setWorkflowsLoading(true);
-    withRefresh(() => client.api.workflow.$get())
-      .then((r: Response) => r.json())
+    (withRefresh(() => client.api.workflow.$get()) as Promise<any>)
+      .then((r: any) => r.json())
       .then((data: any) => setUserWorkflows(data.workflows || []))
       .catch(() => {})
       .finally(() => setWorkflowsLoading(false));
@@ -72,11 +72,11 @@ export const WorkflowDashboard = () => {
 
   const handleDelete = async (wf: UserWorkflow) => {
     try {
-      const res = await withRefresh(() =>
+      const res: any = await (withRefresh(() =>
         client.api.workflow.detail[':workflowId'].$delete({
           param: { workflowId: wf.id },
         }),
-      );
+      ) as Promise<any>);
       if (res.ok) {
         setUserWorkflows((prev) => prev.filter((w) => w.id !== wf.id));
       }

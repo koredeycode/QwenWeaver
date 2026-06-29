@@ -15,4 +15,4 @@ deploy-plan.md
 deploy-checklist.md
 deploy-vps.sh
 apps/api/public/storage
-extensivemodel.md
+public/storage/
