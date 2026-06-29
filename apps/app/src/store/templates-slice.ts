@@ -71,8 +71,8 @@ export const createTemplateSlice: StateCreator<StoreState, [], [], TemplateSlice
   },
 
   forkTemplate: async (id) => {
-    const token = get().token;
-    if (!token) {
+    const user = get().user;
+    if (!user) {
       toast.error('You must be logged in to fork templates');
       return false;
     }

@@ -1,61 +1,54 @@
-/**
- * Centralized configuration with env validation.
- * Crashes on startup if required secrets are missing in production.
- */
-
 const NODE_ENV = process.env.NODE_ENV ?? 'development';
 const isDev = NODE_ENV === 'development' || NODE_ENV === 'test';
 
-// ─── JWT Secret (C-1) ──────────────────────────────────────────────────────
-if (!process.env.API_SECRET && !isDev) {
+if (!process.env.BETTER_AUTH_SECRET && !isDev) {
   throw new Error(
-    'FATAL: API_SECRET environment variable is required in production. ' +
+    'FATAL: BETTER_AUTH_SECRET environment variable is required in production. ' +
       'Set it to a strong random string (e.g. `openssl rand -hex 32`).',
   );
 }
 
-export const JWT_SECRET = process.env.API_SECRET || (isDev ? 'dev-only-insecure-secret' : '');
+export const BETTER_AUTH_SECRET =
+  process.env.BETTER_AUTH_SECRET || (isDev ? 'dev-only-insecure-secret' : '');
+export const BETTER_AUTH_URL = process.env.BETTER_AUTH_URL || 'http://localhost:3001';
 
-// ─── Credential Encryption (C-6) ──────────────────────────────────────────────
-if (!process.env.CREDENTIALS_ENCRYPTION_KEY && !isDev && !process.env.API_SECRET) {
+export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+export const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+export const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
+export const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
+
+// ─── Credential Encryption ──────────────────────────────────────────────
+if (!process.env.CREDENTIALS_ENCRYPTION_KEY && !isDev && !process.env.BETTER_AUTH_SECRET) {
   throw new Error(
-    'FATAL: CREDENTIALS_ENCRYPTION_KEY or API_SECRET environment variable is required in production. ' +
+    'FATAL: CREDENTIALS_ENCRYPTION_KEY or BETTER_AUTH_SECRET environment variable is required in production. ' +
       'Set it to a strong random string (e.g. `openssl rand -hex 32`).',
   );
 }
 export const CREDENTIALS_ENCRYPTION_KEY = process.env.CREDENTIALS_ENCRYPTION_KEY;
 
-// ─── CORS Origins (C-2) ─────────────────────────────────────────────────────
+// ─── CORS Origins ─────────────────────────────────────────────────────
 export const CORS_ORIGINS: string[] = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
   : isDev
     ? ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:3001']
     : [];
 
-// ─── Metrics Token (C-4) ────────────────────────────────────────────────────
+// ─── Metrics Token ────────────────────────────────────────────────────
 export const METRICS_TOKEN = process.env.METRICS_TOKEN;
 
-// ─── Rate Limiting (C-3) ────────────────────────────────────────────────────
+// ─── Rate Limiting ────────────────────────────────────────────────────
 export const RATE_LIMIT = {
-  auth: {
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    maxRequests: 20, // 20 auth attempts per window
-  },
   copilot: {
     windowMs: 60 * 1000, // 1 minute
-    maxRequests: 10, // 10 copilot requests per minute
+    maxRequests: 10,
   },
   api: {
     windowMs: 60 * 1000, // 1 minute
-    maxRequests: 120, // 120 general API requests per minute
+    maxRequests: 120,
   },
 };
 
-// ─── JWT Token Expiry (L-6) ─────────────────────────────────────────────────
-export const ACCESS_TOKEN_EXPIRY_SECONDS = 60 * 60; // 1 hour
-export const REFRESH_TOKEN_EXPIRY_SECONDS = 60 * 60 * 24 * 7; // 7 days
-
-// ─── Credits & Limits ──────────────────────────────────────────────────────────
+// ─── Credits & Limits ─────────────────────────────────────────────────
 export const SIGNUP_CREDITS = 1000;
 export const MAX_FREE_WORKFLOWS = 2;
 export const LOW_CREDIT_WARNING = 100;

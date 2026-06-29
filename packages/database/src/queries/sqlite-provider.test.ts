@@ -14,15 +14,51 @@ let executionId: string;
 function createTables() {
   const { db: rawDb } = getConnection();
   const db = rawDb as BetterSQLite3Database<any>;
-  db.run(`CREATE TABLE IF NOT EXISTS users (
+  db.run(`CREATE TABLE IF NOT EXISTS "user" (
     id TEXT PRIMARY KEY,
     email TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
-    created_at INTEGER NOT NULL
+    emailVerified INTEGER NOT NULL DEFAULT 0,
+    name TEXT NOT NULL,
+    image TEXT,
+    createdAt INTEGER NOT NULL,
+    updatedAt INTEGER NOT NULL
+  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS "session" (
+    id TEXT PRIMARY KEY,
+    userId TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+    expiresAt INTEGER NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    ipAddress TEXT,
+    userAgent TEXT,
+    createdAt INTEGER NOT NULL,
+    updatedAt INTEGER NOT NULL
+  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS "account" (
+    id TEXT PRIMARY KEY,
+    accountId TEXT NOT NULL,
+    providerId TEXT NOT NULL,
+    userId TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+    accessToken TEXT,
+    refreshToken TEXT,
+    idToken TEXT,
+    accessTokenExpiresAt INTEGER,
+    refreshTokenExpiresAt INTEGER,
+    scope TEXT,
+    password TEXT,
+    createdAt INTEGER NOT NULL,
+    updatedAt INTEGER NOT NULL
+  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS verification (
+    id TEXT PRIMARY KEY,
+    identifier TEXT NOT NULL,
+    value TEXT NOT NULL,
+    expiresAt INTEGER NOT NULL,
+    createdAt INTEGER NOT NULL,
+    updatedAt INTEGER NOT NULL
   )`);
   db.run(`CREATE TABLE IF NOT EXISTS workflows (
     id TEXT PRIMARY KEY,
-    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+    user_id TEXT REFERENCES "user"(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     description TEXT,
     is_active INTEGER DEFAULT 1 NOT NULL,
@@ -33,7 +69,7 @@ function createTables() {
   db.run(`CREATE TABLE IF NOT EXISTS executions (
     id TEXT PRIMARY KEY,
     workflow_id TEXT REFERENCES workflows(id) ON DELETE CASCADE,
-    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+    user_id TEXT REFERENCES "user"(id) ON DELETE CASCADE,
     status TEXT NOT NULL,
     metrics TEXT,
     started_at INTEGER NOT NULL,
@@ -53,7 +89,7 @@ function createTables() {
   )`);
   db.run(`CREATE TABLE IF NOT EXISTS mcp_servers (
     id TEXT PRIMARY KEY,
-    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+    user_id TEXT REFERENCES "user"(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     description TEXT,
     transport TEXT DEFAULT 'http' NOT NULL,
@@ -82,7 +118,7 @@ function createTables() {
     workflow_data TEXT NOT NULL,
     category_id TEXT REFERENCES template_categories(id),
     tags TEXT,
-    author_id TEXT NOT NULL REFERENCES users(id),
+    author_id TEXT NOT NULL REFERENCES "user"(id),
     thumbnail TEXT,
     downloads INTEGER DEFAULT 0 NOT NULL,
     avg_rating INTEGER DEFAULT 0 NOT NULL,
@@ -94,13 +130,13 @@ function createTables() {
   db.run(`CREATE TABLE IF NOT EXISTS template_reviews (
     id TEXT PRIMARY KEY,
     template_id TEXT NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
-    user_id TEXT NOT NULL REFERENCES users(id),
+    user_id TEXT NOT NULL REFERENCES "user"(id),
     rating INTEGER NOT NULL,
     review TEXT,
     created_at INTEGER NOT NULL
   )`);
   db.run(`CREATE TABLE IF NOT EXISTS user_credits (
-    user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    user_id TEXT PRIMARY KEY REFERENCES "user"(id) ON DELETE CASCADE,
     balance INTEGER DEFAULT 0 NOT NULL,
     lifetime_earned INTEGER DEFAULT 0 NOT NULL,
     lifetime_spent INTEGER DEFAULT 0 NOT NULL,
@@ -108,7 +144,7 @@ function createTables() {
   )`);
   db.run(`CREATE TABLE IF NOT EXISTS credentials (
     id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     type TEXT NOT NULL,
     encrypted_data TEXT NOT NULL,
@@ -118,7 +154,7 @@ function createTables() {
   )`);
   db.run(`CREATE TABLE IF NOT EXISTS credit_transactions (
     id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
     amount INTEGER NOT NULL,
     type TEXT NOT NULL,
     description TEXT,
@@ -185,11 +221,11 @@ describe('sqlite-provider', () => {
     sqliteDb.delete(s.sqliteTemplateReviews).run();
     sqliteDb.delete(s.sqliteTemplates).run();
     sqliteDb.delete(s.sqliteTemplateCategories).run();
-    sqliteDb.delete(s.sqliteUsers).run();
+    sqliteDb.delete(s.user).run();
 
     // Create a test user
     userId = crypto.randomUUID();
-    await sqliteProvider.createUser(userId, 'test@test.com', 'hashed-password');
+    await sqliteProvider.createUser(userId, 'test@test.com', 'Test User');
   });
 
   // ─── User / Auth ──────────────────────────────────────────────────────────

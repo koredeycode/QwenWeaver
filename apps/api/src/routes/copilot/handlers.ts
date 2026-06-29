@@ -183,7 +183,7 @@ export const handleCopilot = async (c: Context<{ Variables: Variables }>) => {
   return streamSSE(c, async (stream) => {
     try {
       const provider = getProvider();
-      const userId = c.get('jwtPayload').sub;
+      const userId = c.get('user')?.id;
 
       let systemPrompt: string;
       let userMessage = prompt;
@@ -374,8 +374,8 @@ export const handleCopilot = async (c: Context<{ Variables: Variables }>) => {
 };
 
 export const handleUpdateProposal = async (c: Context<{ Variables: Variables }>) => {
-  const jwtPayload = c.get('jwtPayload');
-  const userId = jwtPayload.sub;
+  const user = c.get('user');
+  const userId = user?.id;
   const raw = await c.req.json();
 
   const { workflowId, proposalId, status } = raw as {

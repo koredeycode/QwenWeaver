@@ -36,14 +36,17 @@ const log = {
 };
 
 export const sqliteProvider: QueryProvider = {
-  async createUser(id: string, email: string, passwordHash: string): Promise<void> {
+  async createUser(id: string, email: string, name: string): Promise<void> {
     const { db } = getConnection();
     const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
-    await sqliteDb.insert(sqliteSchema.sqliteUsers).values({
+    const now = Date.now();
+    await sqliteDb.insert(sqliteSchema.user).values({
       id,
       email,
-      passwordHash,
-      createdAt: Date.now(),
+      name,
+      emailVerified: false,
+      createdAt: new Date(now),
+      updatedAt: new Date(now),
     });
   },
 
@@ -52,10 +55,16 @@ export const sqliteProvider: QueryProvider = {
     const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
     const rows = await sqliteDb
       .select()
-      .from(sqliteSchema.sqliteUsers)
-      .where(eq(sqliteSchema.sqliteUsers.email, email))
+      .from(sqliteSchema.user)
+      .where(eq(sqliteSchema.user.email, email))
       .limit(1);
-    return rows[0] || null;
+    if (!rows[0]) return null;
+    return {
+      id: rows[0].id,
+      email: rows[0].email,
+      name: rows[0].name,
+      createdAt: rows[0].createdAt,
+    };
   },
 
   async getUserById(id: string) {
@@ -63,11 +72,16 @@ export const sqliteProvider: QueryProvider = {
     const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
     const rows = await sqliteDb
       .select()
-      .from(sqliteSchema.sqliteUsers)
-      .where(eq(sqliteSchema.sqliteUsers.id, id))
+      .from(sqliteSchema.user)
+      .where(eq(sqliteSchema.user.id, id))
       .limit(1);
     if (!rows[0]) return null;
-    return { id: rows[0].id, email: rows[0].email, createdAt: rows[0].createdAt };
+    return {
+      id: rows[0].id,
+      email: rows[0].email,
+      name: rows[0].name,
+      createdAt: rows[0].createdAt,
+    };
   },
 
   async saveMcpServer(

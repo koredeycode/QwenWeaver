@@ -59,7 +59,7 @@ export async function handleCreateTemplate(c: C) {
     return c.json({ error: 'Invalid body', details: parsed.error.format() }, 400);
 
   const body = parsed.data;
-  const jwtPayload = c.get('jwtPayload');
+  const user = c.get('user');
   const id = randomUUID();
 
   await provider.createTemplate(id, {
@@ -68,7 +68,7 @@ export async function handleCreateTemplate(c: C) {
     workflowData: body.workflowData as any,
     categoryId: body.categoryId ?? null,
     tags: body.tags ?? null,
-    authorId: jwtPayload.sub,
+    authorId: user?.id,
     thumbnail: body.thumbnail ?? null,
   });
 
@@ -88,13 +88,13 @@ export async function handleDeleteTemplate(c: C) {
 export async function handleForkTemplate(c: C) {
   const provider = getQueryProvider();
   const id = paramId(c);
-  const jwtPayload = c.get('jwtPayload');
+  const user = c.get('user');
 
   const template = await provider.getTemplate(id);
   if (!template) return c.json({ error: 'Template not found' }, 404);
 
   await provider.incrementTemplateDownloads(id);
-  const workflowId = await provider.saveWorkflow(jwtPayload.sub, {
+  const workflowId = await provider.saveWorkflow(user?.id, {
     ...template.workflowData,
     name: template.name,
     description: template.description || undefined,
@@ -119,7 +119,7 @@ export async function handleRateTemplate(c: C) {
   if (!parsed.success)
     return c.json({ error: 'Invalid body', details: parsed.error.format() }, 400);
 
-  const jwtPayload = c.get('jwtPayload');
+  const user = c.get('user');
   const template = await provider.getTemplate(id);
   if (!template) return c.json({ error: 'Template not found' }, 404);
 
@@ -127,7 +127,7 @@ export async function handleRateTemplate(c: C) {
   await provider.upsertTemplateReview(
     reviewId,
     id,
-    jwtPayload.sub,
+    user?.id,
     parsed.data.rating,
     parsed.data.review ?? null,
   );

@@ -3,7 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { ReactFlowProvider } from '@xyflow/react';
 import { useStore } from './store/index.js';
-import { AuthScreen } from './components/AuthScreen.js';
+import { SignInScreen } from './components/SignInScreen.js';
+import { SignUpScreen } from './components/SignUpScreen.js';
 import { WorkflowDashboard } from './components/WorkflowDashboard.js';
 import { CanvasWorkspace } from './components/CanvasWorkspace.js';
 import { TemplateGallery } from './components/TemplateGallery.js';
@@ -11,9 +12,9 @@ import { TemplateDetailPage } from './components/TemplateDetail.js';
 import { SpotlightOverlay } from './tour/SpotlightOverlay.js';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const token = useStore((s) => s.token);
-  if (!token) {
-    return <Navigate to="/login" replace />;
+  const user = useStore((s) => s.user);
+  if (!user) {
+    return <Navigate to="/signin" replace />;
   }
   return <>{children}</>;
 };
@@ -25,8 +26,11 @@ function App() {
       <SpotlightOverlay />
       <BrowserRouter>
         <Routes>
-          <Route path="/login" element={<AuthScreen />} />
-          <Route path="/register" element={<AuthScreen />} />
+          <Route path="/signin" element={<SignInScreen />} />
+          <Route path="/signup" element={<SignUpScreen />} />
+          {/* Legacy redirects */}
+          <Route path="/login" element={<Navigate to="/signin" replace />} />
+          <Route path="/register" element={<Navigate to="/signup" replace />} />
           <Route
             path="/"
             element={

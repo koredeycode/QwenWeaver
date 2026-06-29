@@ -858,20 +858,41 @@ async function seed() {
   sqliteDb.delete(s.sqliteAgentLogs).run();
   sqliteDb.delete(s.sqliteExecutions).run();
   sqliteDb.delete(s.sqliteCredentials).run();
+  sqliteDb.delete(s.sqliteCreditTransactions).run();
+  sqliteDb.delete(s.sqliteUserCredits).run();
   sqliteDb.delete(s.sqliteWorkflows).run();
   sqliteDb.delete(s.sqliteMcpServers).run();
-  sqliteDb.delete(s.sqliteUsers).run();
+  sqliteDb.delete(s.session).run();
+  sqliteDb.delete(s.account).run();
+  sqliteDb.delete(s.verification).run();
+  sqliteDb.delete(s.user).run();
 
   // Create demo user
   const userId = id('user');
   console.log('  Creating demo user: demo@qwenweaver.dev / password123');
   sqliteDb
-    .insert(s.sqliteUsers)
+    .insert(s.user)
     .values({
       id: userId,
       email: 'demo@qwenweaver.dev',
-      passwordHash: PASSWORD_HASH,
-      createdAt: NOW,
+      name: 'Demo User',
+      emailVerified: true,
+      createdAt: new Date(NOW),
+      updatedAt: new Date(NOW),
+    })
+    .run();
+
+  // Create email/password account for demo user
+  sqliteDb
+    .insert(s.account)
+    .values({
+      id: id('acct'),
+      accountId: 'demo@qwenweaver.dev',
+      providerId: 'email',
+      userId: userId,
+      password: PASSWORD_HASH,
+      createdAt: new Date(NOW),
+      updatedAt: new Date(NOW),
     })
     .run();
 

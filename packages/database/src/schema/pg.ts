@@ -7,6 +7,7 @@ import {
   jsonb,
   index,
   varchar,
+  boolean,
 } from 'drizzle-orm/pg-core';
 import type {
   ExecutionMetrics,
@@ -17,18 +18,64 @@ import type {
 } from '@qwenweaver/types';
 import type { MCPAuthConfig } from '@qwenweaver/types';
 
-export const pgUsers = pgTable('users', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  email: varchar('email', { length: 255 }).notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
+// ─── Better Auth tables ──────────────────────────────────────────────────────
+export const user = pgTable('user', {
+  id: text('id').primaryKey(),
+  email: text('email').notNull().unique(),
+  emailVerified: boolean('emailVerified').notNull().default(false),
+  name: text('name').notNull(),
+  image: text('image'),
+  createdAt: timestamp('createdAt').notNull(),
+  updatedAt: timestamp('updatedAt').notNull(),
 });
+
+export const session = pgTable('session', {
+  id: text('id').primaryKey(),
+  userId: text('userId')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  expiresAt: timestamp('expiresAt').notNull(),
+  token: text('token').notNull().unique(),
+  ipAddress: text('ipAddress'),
+  userAgent: text('userAgent'),
+  createdAt: timestamp('createdAt').notNull(),
+  updatedAt: timestamp('updatedAt').notNull(),
+});
+
+export const account = pgTable('account', {
+  id: text('id').primaryKey(),
+  accountId: text('accountId').notNull(),
+  providerId: text('providerId').notNull(),
+  userId: text('userId')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  accessToken: text('accessToken'),
+  refreshToken: text('refreshToken'),
+  idToken: text('idToken'),
+  accessTokenExpiresAt: timestamp('accessTokenExpiresAt'),
+  refreshTokenExpiresAt: timestamp('refreshTokenExpiresAt'),
+  scope: text('scope'),
+  password: text('password'),
+  createdAt: timestamp('createdAt').notNull(),
+  updatedAt: timestamp('updatedAt').notNull(),
+});
+
+export const verification = pgTable('verification', {
+  id: text('id').primaryKey(),
+  identifier: text('identifier').notNull(),
+  value: text('value').notNull(),
+  expiresAt: timestamp('expiresAt').notNull(),
+  createdAt: timestamp('createdAt').notNull(),
+  updatedAt: timestamp('updatedAt').notNull(),
+});
+
+// ─── Application tables ──────────────────────────────────────────────────────
 
 export const pgWorkflows = pgTable(
   'workflows',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id').references(() => pgUsers.id, { onDelete: 'cascade' }),
+    userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     description: text('description'),
     isActive: integer('is_active').default(1).notNull(),
@@ -44,7 +91,7 @@ export const pgExecutions = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     workflowId: uuid('workflow_id').references(() => pgWorkflows.id, { onDelete: 'cascade' }),
-    userId: uuid('user_id').references(() => pgUsers.id, { onDelete: 'cascade' }),
+    userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }),
     status: text('status').notNull(),
     metrics: jsonb('metrics').$type<ExecutionMetrics>(),
     startedAt: timestamp('started_at').defaultNow().notNull(),
@@ -82,7 +129,7 @@ export const pgMcpServers = pgTable(
   'mcp_servers',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id').references(() => pgUsers.id, { onDelete: 'cascade' }),
+    userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     description: text('description'),
     transport: text('transport').notNull().default('http'),
@@ -119,9 +166,9 @@ export const pgTemplates = pgTable(
       .$type<import('@qwenweaver/types').WorkflowPayload>(),
     categoryId: uuid('category_id').references(() => pgTemplateCategories.id),
     tags: jsonb('tags').$type<string[]>(),
-    authorId: uuid('author_id')
+    authorId: text('author_id')
       .notNull()
-      .references(() => pgUsers.id),
+      .references(() => user.id),
     thumbnail: text('thumbnail'),
     downloads: integer('downloads').default(0).notNull(),
     avgRating: integer('avg_rating').default(0).notNull(),
@@ -143,9 +190,9 @@ export const pgTemplateReviews = pgTable(
     templateId: uuid('template_id')
       .notNull()
       .references(() => pgTemplates.id, { onDelete: 'cascade' }),
-    userId: uuid('user_id')
+    userId: text('user_id')
       .notNull()
-      .references(() => pgUsers.id),
+      .references(() => user.id),
     rating: integer('rating').notNull(),
     review: text('review'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -157,9 +204,9 @@ export const pgTemplateReviews = pgTable(
 );
 
 export const pgUserCredits = pgTable('user_credits', {
-  userId: uuid('user_id')
+  userId: text('user_id')
     .primaryKey()
-    .references(() => pgUsers.id, { onDelete: 'cascade' }),
+    .references(() => user.id, { onDelete: 'cascade' }),
   balance: integer('balance').notNull().default(0),
   lifetimeEarned: integer('lifetime_earned').notNull().default(0),
   lifetimeSpent: integer('lifetime_spent').notNull().default(0),
@@ -170,9 +217,9 @@ export const pgCredentials = pgTable(
   'credentials',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id')
+    userId: text('user_id')
       .notNull()
-      .references(() => pgUsers.id, { onDelete: 'cascade' }),
+      .references(() => user.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     type: text('type').notNull(),
     encryptedData: text('encrypted_data').notNull(),
@@ -187,9 +234,9 @@ export const pgCreditTransactions = pgTable(
   'credit_transactions',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id')
+    userId: text('user_id')
       .notNull()
-      .references(() => pgUsers.id, { onDelete: 'cascade' }),
+      .references(() => user.id, { onDelete: 'cascade' }),
     amount: integer('amount').notNull(),
     type: text('type').notNull(),
     description: text('description'),

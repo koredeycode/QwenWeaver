@@ -36,14 +36,17 @@ const log = {
 };
 
 export const mysqlProvider: QueryProvider = {
-  async createUser(id: string, email: string, passwordHash: string): Promise<void> {
+  async createUser(id: string, email: string, name: string): Promise<void> {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
-    await mysqlDb.insert(mysqlSchema.mysqlUsers).values({
+    const now = new Date();
+    await mysqlDb.insert(mysqlSchema.user).values({
       id,
       email,
-      passwordHash,
-      createdAt: new Date(),
+      name,
+      emailVerified: false,
+      createdAt: now,
+      updatedAt: now,
     });
   },
 
@@ -52,10 +55,16 @@ export const mysqlProvider: QueryProvider = {
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
     const rows = await mysqlDb
       .select()
-      .from(mysqlSchema.mysqlUsers)
-      .where(eq(mysqlSchema.mysqlUsers.email, email))
+      .from(mysqlSchema.user)
+      .where(eq(mysqlSchema.user.email, email))
       .limit(1);
-    return rows[0] || null;
+    if (!rows[0]) return null;
+    return {
+      id: rows[0].id,
+      email: rows[0].email,
+      name: rows[0].name,
+      createdAt: rows[0].createdAt,
+    };
   },
 
   async getUserById(id: string) {
@@ -63,11 +72,16 @@ export const mysqlProvider: QueryProvider = {
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
     const rows = await mysqlDb
       .select()
-      .from(mysqlSchema.mysqlUsers)
-      .where(eq(mysqlSchema.mysqlUsers.id, id))
+      .from(mysqlSchema.user)
+      .where(eq(mysqlSchema.user.id, id))
       .limit(1);
     if (!rows[0]) return null;
-    return { id: rows[0].id, email: rows[0].email, createdAt: rows[0].createdAt };
+    return {
+      id: rows[0].id,
+      email: rows[0].email,
+      name: rows[0].name,
+      createdAt: rows[0].createdAt,
+    };
   },
 
   async saveMcpServer(

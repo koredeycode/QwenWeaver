@@ -37,14 +37,17 @@ const log = {
 };
 
 export const pgProvider: QueryProvider = {
-  async createUser(id: string, email: string, passwordHash: string): Promise<void> {
+  async createUser(id: string, email: string, name: string): Promise<void> {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
-    await pgDb.insert(pgSchema.pgUsers).values({
+    const now = new Date();
+    await pgDb.insert(pgSchema.user).values({
       id,
       email,
-      passwordHash,
-      createdAt: new Date(),
+      name,
+      emailVerified: false,
+      createdAt: now,
+      updatedAt: now,
     });
   },
 
@@ -53,22 +56,29 @@ export const pgProvider: QueryProvider = {
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
     const rows = await pgDb
       .select()
-      .from(pgSchema.pgUsers)
-      .where(eq(pgSchema.pgUsers.email, email))
+      .from(pgSchema.user)
+      .where(eq(pgSchema.user.email, email))
       .limit(1);
-    return rows[0] || null;
+    if (!rows[0]) return null;
+    return {
+      id: rows[0].id,
+      email: rows[0].email,
+      name: rows[0].name,
+      createdAt: rows[0].createdAt,
+    };
   },
 
   async getUserById(id: string) {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
-    const rows = await pgDb
-      .select()
-      .from(pgSchema.pgUsers)
-      .where(eq(pgSchema.pgUsers.id, id))
-      .limit(1);
+    const rows = await pgDb.select().from(pgSchema.user).where(eq(pgSchema.user.id, id)).limit(1);
     if (!rows[0]) return null;
-    return { id: rows[0].id, email: rows[0].email, createdAt: rows[0].createdAt };
+    return {
+      id: rows[0].id,
+      email: rows[0].email,
+      name: rows[0].name,
+      createdAt: rows[0].createdAt,
+    };
   },
 
   async saveMcpServer(

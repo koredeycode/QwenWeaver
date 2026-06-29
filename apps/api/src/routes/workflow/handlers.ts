@@ -69,20 +69,20 @@ class SSEQueue {
 // ─── Route Handlers ─────────────────────────────────────────────────────────
 
 export const handleListWorkflows = async (c: Context<{ Variables: Variables }>) => {
-  const jwtPayload = c.get('jwtPayload');
+  const user = c.get('user');
   const provider = getQueryProvider();
-  const workflows = await provider.listUserWorkflows(jwtPayload.sub);
+  const workflows = await provider.listUserWorkflows(user?.id);
   return c.json({ workflows }, 200);
 };
 
 export const handleGetWorkflow = async (c: Context<{ Variables: Variables }>) => {
-  const jwtPayload = c.get('jwtPayload');
+  const user = c.get('user');
   const workflowId = c.req.param('workflowId');
   if (!workflowId) {
     return c.json({ error: 'Missing workflowId parameter' }, 400);
   }
   const provider = getQueryProvider();
-  const workflow = await provider.getWorkflow(workflowId, jwtPayload.sub);
+  const workflow = await provider.getWorkflow(workflowId, user?.id);
   if (!workflow) {
     return c.json({ error: 'Workflow not found' }, 404);
   }
@@ -90,13 +90,13 @@ export const handleGetWorkflow = async (c: Context<{ Variables: Variables }>) =>
 };
 
 export const handleDeleteWorkflow = async (c: Context<{ Variables: Variables }>) => {
-  const jwtPayload = c.get('jwtPayload');
+  const user = c.get('user');
   const workflowId = c.req.param('workflowId');
   if (!workflowId) {
     return c.json({ error: 'Missing workflowId parameter' }, 400);
   }
   const provider = getQueryProvider();
-  const deleted = await provider.deleteWorkflow(workflowId, jwtPayload.sub);
+  const deleted = await provider.deleteWorkflow(workflowId, user?.id);
   if (!deleted) {
     return c.json({ error: 'Workflow not found' }, 404);
   }
@@ -104,7 +104,7 @@ export const handleDeleteWorkflow = async (c: Context<{ Variables: Variables }>)
 };
 
 export const handleUpdateWorkflow = async (c: Context<{ Variables: Variables }>) => {
-  const jwtPayload = c.get('jwtPayload');
+  const user = c.get('user');
   const workflowId = c.req.param('workflowId');
   if (!workflowId) {
     return c.json({ error: 'Missing workflowId parameter' }, 400);
@@ -115,23 +115,23 @@ export const handleUpdateWorkflow = async (c: Context<{ Variables: Variables }>)
     return c.json({ error: 'Invalid workflow', details: parsed.error.format() }, 400);
   }
   const provider = getQueryProvider();
-  const existing = await provider.getWorkflow(workflowId, jwtPayload.sub);
+  const existing = await provider.getWorkflow(workflowId, user?.id);
   if (!existing) {
     return c.json({ error: 'Workflow not found' }, 404);
   }
-  await provider.updateWorkflow(workflowId, jwtPayload.sub, parsed.data);
+  await provider.updateWorkflow(workflowId, user?.id, parsed.data);
   return c.json({ workflowId }, 200);
 };
 
 export const handleSaveWorkflow = async (c: Context<{ Variables: Variables }>) => {
-  const jwtPayload = c.get('jwtPayload');
+  const user = c.get('user');
   const raw = await c.req.json();
   const parsed = WorkflowPayload.safeParse(raw);
   if (!parsed.success) {
     return c.json({ error: 'Invalid workflow', details: parsed.error.format() }, 400);
   }
   const provider = getQueryProvider();
-  const workflowId = await provider.saveWorkflow(jwtPayload.sub, parsed.data);
+  const workflowId = await provider.saveWorkflow(user?.id, parsed.data);
   return c.json({ workflowId }, 201);
 };
 
@@ -148,7 +148,7 @@ export const handleExecute = async (c: Context<{ Variables: Variables }>) => {
 
   const body = parsed.data;
   const executionId = crypto.randomUUID();
-  const userId = c.get('jwtPayload').sub;
+  const userId = c.get('user')?.id;
 
   const workflow: z.infer<typeof WorkflowPayload> = {
     id: body.id,
@@ -240,7 +240,7 @@ export const handleStream = async (c: Context<{ Variables: Variables }>) => {
   if (!executionId) {
     return c.json({ error: 'Missing executionId parameter' }, 400);
   }
-  const userId = c.get('jwtPayload').sub;
+  const userId = c.get('user')?.id;
   const provider = getQueryProvider();
 
   let execution = activeExecutions.get(executionId);
@@ -358,7 +358,7 @@ export const handleGetStatus = async (c: Context<{ Variables: Variables }>) => {
   if (!executionId) {
     return c.json({ error: 'Missing executionId parameter' }, 400);
   }
-  const userId = c.get('jwtPayload').sub;
+  const userId = c.get('user')?.id;
   const provider = getQueryProvider();
 
   const dbExecution = await provider.getExecution(executionId);

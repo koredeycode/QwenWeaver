@@ -6,7 +6,7 @@ import type { Context } from 'hono';
 const log = createModuleLogger('routes/analytics.handlers');
 
 export const handleGetAnalyticsSummary = async (c: Context<{ Variables: Variables }>) => {
-  const userId = c.get('jwtPayload').sub;
+  const userId = c.get('user')?.id;
   const provider = getQueryProvider();
 
   // Support pagination via recentLimit query param (default 10, max 100)

@@ -6,7 +6,7 @@ import type { Context } from 'hono';
 const log = createModuleLogger('routes/execution.handlers');
 
 export const handleListExecutions = async (c: Context<{ Variables: Variables }>) => {
-  const userId = c.get('jwtPayload').sub;
+  const userId = c.get('user')?.id;
   const limit = Math.min(Number(c.req.query('limit')) || 20, 100);
   const offset = Number(c.req.query('offset')) || 0;
   const workflowId = c.req.query('workflowId');
@@ -27,7 +27,7 @@ export const handleGetExecution = async (c: Context<{ Variables: Variables }>) =
 
   const provider = getQueryProvider();
   const execution = await provider.getExecution(executionId);
-  const userId = c.get('jwtPayload').sub;
+  const userId = c.get('user')?.id;
 
   if (!execution || execution.userId !== userId) {
     return c.json({ error: 'Execution not found or unauthorized' }, 404);
@@ -43,7 +43,7 @@ export const handleGetExecutionLogs = async (c: Context<{ Variables: Variables }
 
   const provider = getQueryProvider();
   const execution = await provider.getExecution(executionId);
-  const userId = c.get('jwtPayload').sub;
+  const userId = c.get('user')?.id;
 
   if (!execution || execution.userId !== userId) {
     return c.json({ error: 'Execution not found or unauthorized' }, 404);
