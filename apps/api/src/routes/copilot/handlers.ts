@@ -373,23 +373,23 @@ export const handleCopilot = async (c: Context<{ Variables: Variables }>) => {
   });
 };
 
+const UpdateProposalBody = z.object({
+  workflowId: z.string().min(1),
+  proposalId: z.string().min(1),
+  status: z.enum(['approved', 'rejected', 'pending']),
+});
+
 export const handleUpdateProposal = async (c: Context<{ Variables: Variables }>) => {
   const user = c.get('user');
   const userId = user!.id;
   const raw = await c.req.json();
 
-  const { workflowId, proposalId, status } = raw as {
-    workflowId: string;
-    proposalId: string;
-    status: 'approved' | 'rejected' | 'pending';
-  };
-
-  if (!workflowId || !proposalId || !status) {
-    return c.json(
-      { error: 'Missing parameters: workflowId, proposalId, and status are required' },
-      400,
-    );
+  const parsed = UpdateProposalBody.safeParse(raw);
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid body', details: parsed.error.format() }, 400);
   }
+
+  const { workflowId, proposalId, status } = parsed.data;
 
   const provider = getQueryProvider();
   try {
@@ -423,9 +423,6 @@ export const handleUpdateProposal = async (c: Context<{ Variables: Variables }>)
     return c.json({ success: true }, 200);
   } catch (err) {
     log.error({ error: (err as Error).message }, 'Failed to update proposal status');
-    return c.json(
-      { error: 'Failed to update proposal status', details: (err as Error).message },
-      500,
-    );
+    return c.json({ error: 'Failed to update proposal status' }, 500);
   }
 };

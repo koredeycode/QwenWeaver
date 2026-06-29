@@ -207,7 +207,7 @@ export type AppType2 = typeof altRoutes;
 if (process.env.NODE_ENV !== 'production') {
   app.get('/api/metrics', async (c) => {
     const token = c.req.query('token') || c.req.header('Authorization')?.replace('Bearer ', '');
-    if (METRICS_TOKEN && token !== METRICS_TOKEN) {
+    if (!METRICS_TOKEN || token !== METRICS_TOKEN) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
     c.header('content-type', register.contentType);
@@ -222,7 +222,7 @@ app.onError((err, c) => {
     return err.getResponse();
   }
   logger.error({ err }, 'Unhandled exception');
-  return c.json({ error: 'Internal Server Error', details: err.message }, 500);
+  return c.json({ error: 'Internal Server Error' }, 500);
 });
 
 // ─── Root routes ────────────────────────────────────────────────────────────
