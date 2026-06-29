@@ -19,6 +19,7 @@
     "@qwenweaver/mcp-client": "workspace:*",
     "@qwenweaver/types": "workspace:*",
     "ai": "^6.0.0",
+    "ali-oss": "^6.23.0",
     "bcryptjs": "^3.0.3",
     "better-auth": "^1.6.22",
     "dotenv": "^16.6.1",

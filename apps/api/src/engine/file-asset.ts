@@ -1,5 +1,12 @@
-import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
+import { getStorage } from '../storage/index.js';
+
+function sanitizeNodeId(nodeId: string): string {
+  return nodeId.replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+function sanitizeExtension(ext: string): string {
+  return ext.replace(/[^a-zA-Z0-9]/g, '');
+}
 
 export async function writeBinaryAsset(
   executionId: string,
@@ -7,16 +14,35 @@ export async function writeBinaryAsset(
   extension: string,
   dataBuffer: Buffer,
 ): Promise<string> {
-  const relativeDir = path.join('public', 'storage', 'runs', executionId);
-  const absoluteDir = path.resolve(relativeDir);
+  const safeNodeId = sanitizeNodeId(nodeId);
+  const safeExt = sanitizeExtension(extension);
+  const key = `${executionId}/${safeNodeId}_output.${safeExt}`;
+  const contentType = contentTypeForExt(safeExt);
+  return getStorage().write(key, dataBuffer, contentType);
+}
 
-  await fs.mkdir(absoluteDir, { recursive: true });
-
-  const filename = `${nodeId}_output.${extension}`;
-  const absolutePath = path.join(absoluteDir, filename);
-  await fs.writeFile(absolutePath, dataBuffer);
-
-  return `/public/storage/runs/${executionId}/${filename}`;
+function contentTypeForExt(ext: string): string {
+  const map: Record<string, string> = {
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    gif: 'image/gif',
+    webp: 'image/webp',
+    mp3: 'audio/mpeg',
+    wav: 'audio/wav',
+    ogg: 'audio/ogg',
+    mp4: 'video/mp4',
+    webm: 'video/webm',
+    txt: 'text/plain',
+    md: 'text/markdown',
+    html: 'text/html',
+    json: 'application/json',
+    csv: 'text/csv',
+    xml: 'application/xml',
+    yaml: 'text/yaml',
+    yml: 'text/yaml',
+  };
+  return map[ext] || 'application/octet-stream';
 }
 
 export async function pollWithBackoff(
