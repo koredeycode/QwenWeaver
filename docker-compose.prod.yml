@@ -49,7 +49,6 @@ services:
       OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET:-}
       OSS_BUCKET: ${OSS_BUCKET:-}
       OSS_ENDPOINT: ${OSS_ENDPOINT:-}
-      PUBLIC_URL: ${PUBLIC_URL:-}
       REDIS_URL: redis://redis:6379
 
 volumes:
