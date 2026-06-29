@@ -124,7 +124,12 @@ app.use('/api/*', async (c, next) => {
   }
 
   try {
-    const sessionData = await auth.api.getSession({ headers: c.req.raw.headers });
+    const reqHeaders = new Headers(c.req.raw.headers);
+    const queryToken = c.req.query('token');
+    if (queryToken && !reqHeaders.has('authorization')) {
+      reqHeaders.set('authorization', `Bearer ${queryToken}`);
+    }
+    const sessionData = await auth.api.getSession({ headers: reqHeaders });
     if (sessionData?.user) {
       c.set('user', sessionData.user as Variables['user']);
       c.set('session', sessionData.session as Variables['session']);

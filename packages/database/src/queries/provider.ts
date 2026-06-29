@@ -212,6 +212,7 @@ export interface QueryProvider {
     description?: string,
     executionId?: string,
   ): Promise<void>;
+  reserveCredits(userId: string, amount: number): Promise<boolean>;
   listCreditTransactions(userId: string, limit?: number): Promise<CreditTransaction[]>;
 
   // Workflow limits

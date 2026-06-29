@@ -9,7 +9,7 @@ import { isAgent, isTrigger, autoDetectHandles } from '../utils/connection-valid
 import { computeDagLayout } from '../utils/dag-layout.js';
 import { executeGraphActions } from '../utils/graph-actions.js';
 
-let _updateNodeDataTimer: ReturnType<typeof setTimeout> | undefined;
+const _updateNodeDataTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (set, get) => ({
   nodes: [],
@@ -215,11 +215,16 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
   },
 
   updateNodeData: (id, data) => {
-    if (!_updateNodeDataTimer) get().pushHistory();
-    clearTimeout(_updateNodeDataTimer);
-    _updateNodeDataTimer = setTimeout(() => {
-      _updateNodeDataTimer = undefined;
+    const activeTimer = _updateNodeDataTimers.get(id);
+    if (!activeTimer) {
+      get().pushHistory();
+    } else {
+      clearTimeout(activeTimer);
+    }
+    const newTimer = setTimeout(() => {
+      _updateNodeDataTimers.delete(id);
     }, 800);
+    _updateNodeDataTimers.set(id, newTimer);
     set((state) => ({
       nodes: state.nodes.map((node) => {
         if (node.id === id) {

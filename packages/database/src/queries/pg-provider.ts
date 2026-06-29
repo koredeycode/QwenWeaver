@@ -921,6 +921,19 @@ export const pgProvider: QueryProvider = {
     });
   },
 
+  async reserveCredits(userId: string, amount: number): Promise<boolean> {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const result = await pgDb.execute(
+      sql`UPDATE ${pgSchema.pgUserCredits}
+          SET balance = balance - ${amount},
+              lifetime_spent = lifetime_spent + ${amount},
+              updated_at = NOW()
+          WHERE user_id = ${userId} AND balance >= ${amount}`,
+    );
+    return (result as any).rowCount > 0;
+  },
+
   async deductCredits(userId: string, amount: number, description?: string, executionId?: string) {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;

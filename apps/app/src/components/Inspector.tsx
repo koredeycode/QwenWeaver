@@ -545,8 +545,8 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                   )}
                 </div>
 
-                {/* Supervisor Node Thinking Settings */}
-                {selectedNode.type === 'supervisor' && (
+                {/* Thinking Settings (Agent & Supervisor) */}
+                {(selectedNode.type === 'supervisor' || selectedNode.type === 'agent') && (
                   <div className="space-y-3 bg-slate-50 border border-slate-200 p-3">
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] font-mono font-bold text-slate-700">
