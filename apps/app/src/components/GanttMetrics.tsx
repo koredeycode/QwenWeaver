@@ -1,26 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { BarChart3, ChevronUp, ChevronDown, Gauge, Coins, Clock } from 'lucide-react';
 import { useStore } from '../store/index.js';
-
-const nodeMetaSelector = (s: any) => {
-  const map: Record<string, { type: string; label: string }> = {};
-  for (const n of s.nodes) {
-    map[n.id] = { type: n.type || '', label: n.data?.label || '' };
-  }
-  return map;
-};
-
-const nodeMetaComparator = (a: any, b: any) => {
-  const keysA = Object.keys(a);
-  const keysB = Object.keys(b);
-  if (keysA.length !== keysB.length) return false;
-  return keysA.every((k) => a[k].type === b[k].type && a[k].label === b[k].label);
-};
 
 export const GanttMetrics = () => {
   const status = useStore((s) => s.executionStatus);
   const metrics = useStore((s) => s.metrics);
-  const nodeMeta = useStore(nodeMetaSelector, nodeMetaComparator);
+  const nodes = useStore((s) => s.nodes);
+  const nodeMeta = useMemo(() => {
+    const map: Record<string, { type: string; label: string }> = {};
+    for (const n of nodes) {
+      map[n.id] = { type: n.type || '', label: n.data?.label || '' };
+    }
+    return map;
+  }, [nodes]);
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -164,9 +156,9 @@ export const GanttMetrics = () => {
                       <div
                         style={{ width: `${percentage}%` }}
                         className={`h-full transition-all duration-1000 ${
-                          (nodeObj?.type) === 'supervisor'
+                          nodeObj?.type === 'supervisor'
                             ? 'bg-secondary'
-                            : (nodeObj?.type) === 'trigger'
+                            : nodeObj?.type === 'trigger'
                               ? 'bg-emerald-500'
                               : 'bg-[#f97316]'
                         }`}

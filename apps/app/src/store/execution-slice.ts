@@ -36,7 +36,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
             workflowId,
           },
         },
-        { headers: authHeaders },
+        { headers: await authHeaders() },
       );
       if (res.ok) {
         const data = (await res.json()) as any;
@@ -100,7 +100,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
         {
           json: workflowPayload,
         },
-        { headers: authHeaders },
+        { headers: await authHeaders() },
       );
       if (!execRes.ok) {
         const errBody = (await execRes.json().catch(() => ({}))) as any;

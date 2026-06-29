@@ -116,14 +116,17 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
   useEffect(() => {
     if (selectedNode?.type === 'mcp_tool') {
       setLoadingCreds(true);
-      client2.api.credentials
-        .$get({}, { headers: authHeaders })
-        .then((res) => res.json())
-        .then((data: any) => {
+      (async () => {
+        try {
+          const res = await client2.api.credentials.$get({}, { headers: await authHeaders() });
+          const data = (await res.json()) as any;
           setCredentials(data.credentials || []);
-        })
-        .catch(() => {})
-        .finally(() => setLoadingCreds(false));
+        } catch {
+          // ignore
+        } finally {
+          setLoadingCreds(false);
+        }
+      })();
     }
   }, [selectedNodeId]);
 

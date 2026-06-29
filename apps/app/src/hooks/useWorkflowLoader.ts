@@ -42,10 +42,14 @@ export function useWorkflowLoader(id: string | undefined): void {
         }
 
         // Try to load from API (saved workflow from the server)
-        client.api.workflow.detail[':workflowId']
-          .$get({ param: { workflowId: id } }, { headers: authHeaders })
-          .then((r: Response) => (r.ok ? r.json() : null))
-          .then((wf: any) => {
+        (async () => {
+          try {
+            const headers = await authHeaders();
+            const res = await client.api.workflow.detail[':workflowId'].$get(
+              { param: { workflowId: id } },
+              { headers },
+            );
+            const wf = res.ok ? await res.json() : null;
             if (!wf || !wf.nodesEdges || !wf.nodesEdges.nodes) {
               clearGraph();
               const pendingRaw = sessionStorage.getItem(`pending_wf_${id}`);
@@ -81,8 +85,7 @@ export function useWorkflowLoader(id: string | undefined): void {
               workflowDescription: wf.description ?? '',
             });
             useStore.getState().loadCopilotHistory(wf.copilotHistory || []);
-          })
-          .catch(() => {
+          } catch {
             clearGraph();
             const pendingRaw = sessionStorage.getItem(`pending_wf_${id}`);
             if (pendingRaw) {
@@ -93,7 +96,8 @@ export function useWorkflowLoader(id: string | undefined): void {
                 /* ignore invalid JSON */
               }
             }
-          });
+          }
+        })();
       }
     }
   }, [id, loadWorkflow, clearGraph, setWorkflowMeta, rearrangeGraph]);

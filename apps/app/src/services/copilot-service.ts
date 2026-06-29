@@ -6,12 +6,12 @@ export async function sendCopilotMessage(
   graphActions: any[],
 ): Promise<any> {
   try {
-    const res = await withRefresh(() =>
+    const res = await withRefresh(async () =>
       client.api.copilot.$post(
         {
           json: { message, model, actions: graphActions } as any,
         },
-        { headers: authHeaders },
+        { headers: await authHeaders() },
       ),
     );
     if (!res.ok) return null;

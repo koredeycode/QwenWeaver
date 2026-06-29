@@ -1,6 +1,6 @@
 import { StateCreator } from 'zustand';
 import { StoreState, CopilotSlice, CopilotMessage } from './types.js';
-import { client, authHeaders } from '../lib/api-client.js';
+import { client, authHeaders, getAccessToken } from '../lib/api-client.js';
 import type { CopilotHistoryMessage } from '@qwenweaver/types';
 
 export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> = (set, get) => ({
@@ -49,7 +49,7 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
               status,
             },
           },
-          { headers: authHeaders },
+          { headers: await authHeaders() },
         );
       } catch (err) {
         console.error('Failed to persist proposal status update:', err);

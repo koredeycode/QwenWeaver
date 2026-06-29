@@ -202,10 +202,7 @@ export const handleExecute = async (c: Context<{ Variables: Variables }>) => {
     log.warn({ userId, balance, estimatedCost }, 'Insufficient credits for execution');
     return c.json({ error: 'Insufficient credits', balance, required: estimatedCost }, 402);
   }
-  log.info(
-    { executionId, userId, estimatedCost },
-    'Credits reserved for execution',
-  );
+  log.info({ executionId, userId, estimatedCost }, 'Credits reserved for execution');
 
   let resolveExecution: () => void;
   const promise = new Promise<void>((resolve) => {
@@ -483,7 +480,10 @@ async function runExecutionAsync(
             `Additional cost for execution ${executionId}`,
             executionId,
           );
-          log.info({ executionId, additionalCost: Math.abs(refund) }, 'Additional credits deducted');
+          log.info(
+            { executionId, additionalCost: Math.abs(refund) },
+            'Additional credits deducted',
+          );
         }
       } else {
         // Failed execution — full refund

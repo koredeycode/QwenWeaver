@@ -57,7 +57,10 @@ export function rateLimiter(name: string, options: RateLimitOptions): Middleware
     // Extract key: prefer JWT sub, fall back to last trusted proxy IP
     const key = keyExtractor
       ? keyExtractor(c)
-      : ((c.get('user') as any)?.id ?? c.req.header('x-forwarded-for')?.split(',').pop()?.trim() ?? c.req.raw.socket?.remoteAddress ?? 'anonymous');
+      : ((c.get('user') as any)?.id ??
+        c.req.header('x-forwarded-for')?.split(',').pop()?.trim() ??
+        c.req.raw.socket?.remoteAddress ??
+        'anonymous');
 
     let entry = entries.get(key);
 

@@ -702,7 +702,11 @@ export const CanvasWorkspace = () => {
                     onClick={() => setProfileOpen(!profileOpen)}
                     className="flex items-center gap-1.5 p-1 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
                   >
-                    <User className="w-4 h-4" />
+                    {user.image ? (
+                      <img src={user.image} alt="" className="w-5 h-5 rounded-full object-cover" />
+                    ) : (
+                      <User className="w-4 h-4" />
+                    )}
                     <span className="text-xs font-mono max-w-24 truncate hidden md:inline">
                       {user.email}
                     </span>

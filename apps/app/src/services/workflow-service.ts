@@ -24,7 +24,7 @@ export async function createWorkflow(
 ): Promise<{ workflowId: string } | null> {
   try {
     const res = (await withRefresh(() =>
-      client.api.workflow.$post({ json: payload as any }, { headers: authHeaders }),
+      client.api.workflow.$post({ json: payload as any }, { headers: await authHeaders() }),
     )) as any;
     if (!res.ok) {
       if (res.status === 403) {
@@ -48,7 +48,7 @@ export async function updateWorkflow(
     const res = (await withRefresh(() =>
       (client.api.workflow.detail[':workflowId'] as any).$put(
         { param: { workflowId }, json: payload as any },
-        { headers: authHeaders },
+        { headers: await authHeaders() },
       ),
     )) as any;
     return res.ok;
@@ -71,7 +71,7 @@ export async function loadWorkflowFromApi(workflowId: string): Promise<{
   try {
     const res = await client.api.workflow.detail[':workflowId'].$get(
       { param: { workflowId } },
-      { headers: authHeaders },
+      { headers: await authHeaders() },
     );
     if (!res.ok) return null;
     return await res.json();

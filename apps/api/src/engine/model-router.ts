@@ -61,8 +61,7 @@ export function getModelForNode(node: NodePayload): ModelConfig {
   const modelId = node.data.model ?? MODEL_DEFAULTS[node.type] ?? 'qwen-plus';
   const model = provider(modelId);
 
-  const enableThinking =
-    node.data.enableThinking ?? THINKING_ENABLED_TYPES.has(node.type);
+  const enableThinking = node.data.enableThinking ?? THINKING_ENABLED_TYPES.has(node.type);
 
   const thinkingBudget = enableThinking
     ? (node.data.thinkingBudget ?? DEFAULT_THINKING_BUDGET)
