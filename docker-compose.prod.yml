@@ -15,7 +15,7 @@ services:
       PORT: 3001
       HOST: 0.0.0.0
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
-      BETTER_AUTH_URL: https://api.qwenweaver.xyz
+      BETTER_AUTH_URL: https://api.qwenweaver.xyz/api
       PUBLIC_URL: ${PUBLIC_URL}
       DATABASE_URL: ${DATABASE_URL}
       API_SECRET: ${API_SECRET}
