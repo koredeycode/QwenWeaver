@@ -5,10 +5,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { toPng } from 'html-to-image';
 
 import type { NodeType } from '@qwenweaver/types';
-import { EXAMPLE_WORKFLOWS } from '../lib/example-workflows.js';
 import { client, authHeaders, withRefresh } from '../lib/api-client.js';
+import { isAgent, isTrigger, doesNotSupportTools } from '../utils/connection-validation.js';
 import { useStore } from '../store/index.js';
-import { saveDraft, loadDraft, clearDraft, hasDraft } from '../store/auto-save.js';
+import { clearDraft } from '../store/auto-save.js';
+import { useCanvasShortcuts } from '../hooks/useCanvasShortcuts.js';
+import { useAutoSave } from '../hooks/useAutoSave.js';
+import { useWorkflowLoader } from '../hooks/useWorkflowLoader.js';
 import { toast } from 'sonner';
 import { edgeTypes } from './AnimatedEdge.js';
 import { CopilotPanel } from './CopilotOverlay.js';
@@ -52,6 +55,7 @@ import { ImportWorkflowModal } from './ImportWorkflowModal.js';
 import { MaximizedNodeOverlay } from './MaximizedNodeOverlay.js';
 import { SaveWorkflowDialog } from './SaveWorkflowDialog.js';
 import { PublishTemplateDialog } from './PublishTemplateDialog.js';
+import { ClearCanvasDialog } from './ClearCanvasDialog.js';
 
 export const CanvasWorkspace = () => {
   const nodes = useStore((s) => s.nodes);
@@ -64,7 +68,6 @@ export const CanvasWorkspace = () => {
   const duplicateNode = useStore((s) => s.duplicateNode);
   const rearrangeGraph = useStore((s) => s.rearrangeGraph);
   const clearGraph = useStore((s) => s.clearGraph);
-  const loadWorkflow = useStore((s) => s.loadWorkflow);
 
   const workflowName = useStore((s) => s.workflowName);
   const workflowDescription = useStore((s) => s.workflowDescription);
@@ -93,6 +96,8 @@ export const CanvasWorkspace = () => {
   const reactFlowInstance = useReactFlow();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+
+  useWorkflowLoader(id);
 
   const [dockedPanelMode, setDockedPanelMode] = useState<'triggers' | 'agents' | 'mcp' | null>(
     null,
@@ -154,95 +159,7 @@ export const CanvasWorkspace = () => {
     if (user) fetchCredits();
   }, [user]);
 
-  useEffect(() => {
-    if (id) {
-      if (id === 'unsaved') return;
-
-      const isMock = EXAMPLE_WORKFLOWS.some((w) => w.id === id);
-      if (isMock) {
-        loadWorkflow(id);
-      } else {
-        // Check for forked workflow data in localStorage
-        const forkedRaw = localStorage.getItem(`forked_wf_${id}`);
-        if (forkedRaw) {
-          try {
-            const { workflowData, name } = JSON.parse(forkedRaw);
-            if (workflowData?.nodes && workflowData?.edges) {
-              const store = useStore.getState();
-              store.clearGraph();
-              store.setWorkflowMeta(name || '', '');
-              // Directly set nodes/edges like loadWorkflow does, bypassing importWorkflow validation
-              useStore.setState({
-                nodes: workflowData.nodes as any,
-                edges: workflowData.edges as any,
-                selectedNodeId: null,
-                maximizedNodeId: null,
-              });
-              store.rearrangeGraph();
-              localStorage.removeItem(`forked_wf_${id}`);
-              return;
-            }
-          } catch {
-            /* ignore invalid JSON */
-          }
-        }
-
-        // Try to load from API (saved workflow from the server)
-        client.api.workflow.detail[':workflowId']
-          .$get({ param: { workflowId: id } }, { headers: authHeaders() })
-          .then((r: Response) => (r.ok ? r.json() : null))
-          .then((wf: any) => {
-            if (!wf || !wf.nodesEdges || !wf.nodesEdges.nodes) {
-              clearGraph();
-              const pendingRaw = sessionStorage.getItem(`pending_wf_${id}`);
-              if (pendingRaw) {
-                try {
-                  const { name, description } = JSON.parse(pendingRaw);
-                  setWorkflowMeta(name, description || '');
-                } catch {
-                  /* ignore invalid JSON */
-                }
-              }
-              return;
-            }
-            useStore.setState({
-              nodes: wf.nodesEdges.nodes.map((n: any) => ({
-                id: n.id,
-                type: n.type,
-                position: n.position,
-                data: n.data,
-              })),
-              edges: wf.nodesEdges.edges.map((e: any) => ({
-                id: e.id,
-                source: e.source,
-                target: e.target,
-                sourceHandle: e.sourceHandle ?? undefined,
-                targetHandle: e.targetHandle ?? undefined,
-                type: 'animated',
-              })),
-              selectedNodeId: null,
-              maximizedNodeId: null,
-              workflowId: wf.id,
-              workflowName: wf.name,
-              workflowDescription: wf.description ?? '',
-            });
-            useStore.getState().loadCopilotHistory(wf.copilotHistory || []);
-          })
-          .catch(() => {
-            clearGraph();
-            const pendingRaw = sessionStorage.getItem(`pending_wf_${id}`);
-            if (pendingRaw) {
-              try {
-                const { name, description } = JSON.parse(pendingRaw);
-                setWorkflowMeta(name, description || '');
-              } catch {
-                /* ignore invalid JSON */
-              }
-            }
-          });
-      }
-    }
-  }, [id, loadWorkflow, clearGraph, setWorkflowMeta, rearrangeGraph]);
+  // removed: useWorkflowLoader(id) handles this
 
   const initialFitDone = useRef(false);
 
@@ -268,7 +185,6 @@ export const CanvasWorkspace = () => {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [editTitleValue, setEditTitleValue] = useState('');
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -277,244 +193,21 @@ export const CanvasWorkspace = () => {
     return saved !== 'false';
   });
 
-  // Keyboard Shortcuts Bindings Listener
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement;
-      const isInput =
-        target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
-      if (isInput) return;
-
-      // 1. Run Workflow: Ctrl + Enter or Cmd + Enter
-      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-        event.preventDefault();
-        if (status !== 'running' && nodes.length > 0) {
-          runWorkflow();
-        }
-      }
-
-      // 2. Rearrange Layout or Toggle Lock: Ctrl + L (without shift) or Ctrl + Shift + L
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'l') {
-        event.preventDefault();
-        if (event.shiftKey) {
-          setIsLocked((prev) => !prev);
-        } else {
-          rearrangeGraph();
-          setTimeout(() => reactFlowInstance.fitView({ duration: 200 }), 50);
-        }
-      }
-
-      // 3. Zoom In: Ctrl + = or Ctrl + +
-      if ((event.ctrlKey || event.metaKey) && (event.key === '=' || event.key === '+')) {
-        event.preventDefault();
-        reactFlowInstance.zoomIn();
-      }
-
-      // 4. Zoom Out: Ctrl + -
-      if ((event.ctrlKey || event.metaKey) && event.key === '-') {
-        event.preventDefault();
-        reactFlowInstance.zoomOut();
-      }
-
-      // 5. Clear Canvas: Ctrl + Alt + C
-      if ((event.ctrlKey || event.metaKey) && event.altKey && event.key.toLowerCase() === 'c') {
-        event.preventDefault();
-        setIsClearConfirmOpen(true);
-      }
-
-      // 6. Close Maximized Node or Deselect Node: Escape
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        if (maximizedNodeId) {
-          setMaximizedNodeId(null);
-        } else {
-          selectNode(null);
-        }
-      }
-
-      // 7. Duplicate selected node: Ctrl + D or Cmd + D
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') {
-        event.preventDefault();
-        const selectedId = useStore.getState().selectedNodeId;
-        if (selectedId) {
-          duplicateNode(selectedId);
-        }
-      }
-
-      // 8. Undo: Ctrl + Z (not when input is focused — handled by isInput check above)
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && !event.shiftKey) {
-        event.preventDefault();
-        useStore.getState().undo();
-      }
-
-      // 9. Redo: Ctrl + Shift + Z or Ctrl + Y
-      if (
-        (event.ctrlKey || event.metaKey) &&
-        (event.key.toLowerCase() === 'y' || (event.key.toLowerCase() === 'z' && event.shiftKey))
-      ) {
-        event.preventDefault();
-        useStore.getState().redo();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [
+  useCanvasShortcuts({
     status,
-    nodes.length,
+    nodesLength: nodes.length,
     runWorkflow,
     rearrangeGraph,
-    clearGraph,
     selectNode,
     duplicateNode,
-    reactFlowInstance,
     maximizedNodeId,
     setMaximizedNodeId,
-  ]);
+    setIsLocked,
+    setIsClearConfirmOpen,
+    reactFlowInstance,
+  });
 
-  // Auto-save: debounced 5s after any graph change
-  useEffect(() => {
-    if (status === 'running') return;
-    const timer = setTimeout(() => {
-      const state = useStore.getState();
-      saveDraft({
-        nodes: state.nodes,
-        edges: state.edges,
-        workflowName: state.workflowName,
-        workflowDescription: state.workflowDescription,
-        timestamp: Date.now(),
-        workflowId: state.workflowId,
-      });
-
-      // Also persist to backend if user is authenticated and has nodes
-      if (state.token && state.nodes.length > 0) {
-        setIsSaving(true);
-        if (state.workflowId) {
-          const payload = {
-            id: state.workflowId,
-            name: state.workflowName || 'Untitled Workflow',
-            description: state.workflowDescription || '',
-            nodes: state.nodes.map((n: any) => ({
-              id: n.id,
-              type: n.type,
-              position: n.position,
-              data: n.data,
-            })),
-            edges: state.edges.map((e: any) => ({
-              id: e.id,
-              source: e.source,
-              target: e.target,
-              sourceHandle: e.sourceHandle ?? undefined,
-              targetHandle: e.targetHandle ?? undefined,
-              type: e.type,
-            })),
-          };
-          withRefresh(() =>
-            (client.api.workflow.detail[':workflowId'] as any).$put(
-              {
-                param: { workflowId: state.workflowId! },
-                json: payload as any,
-              },
-              { headers: authHeaders() },
-            ),
-          )
-            .then(() => {
-              setIsSaving(false);
-              markClean();
-              clearDraft();
-            })
-            .catch((err) => {
-              setIsSaving(false);
-              console.warn('Auto-save to backend failed:', err);
-            });
-        } else {
-          // Create the workflow immediately on the backend to obtain a workflowId
-          const payload = {
-            name: state.workflowName || 'Untitled Workflow',
-            description: state.workflowDescription || '',
-            nodes: state.nodes.map((n: any) => ({
-              id: n.id,
-              type: n.type,
-              position: n.position,
-              data: n.data,
-            })),
-            edges: state.edges.map((e: any) => ({
-              id: e.id,
-              source: e.source,
-              target: e.target,
-              sourceHandle: e.sourceHandle ?? undefined,
-              targetHandle: e.targetHandle ?? undefined,
-              type: e.type,
-            })),
-          };
-          withRefresh(() =>
-            client.api.workflow.$post({ json: payload as any }, { headers: authHeaders() }),
-          )
-            .then(async (res) => {
-              if (!res.ok) throw new Error('Failed to auto-create workflow');
-              const data = await res.json();
-              useStore.setState({
-                workflowId: data.workflowId,
-                isDirty: false,
-              });
-              clearDraft();
-              setIsSaving(false);
-              navigate(`/workflows/${data.workflowId}`, { replace: true });
-            })
-            .catch((err) => {
-              setIsSaving(false);
-              console.warn('Auto-create to backend failed:', err);
-            });
-        }
-      }
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [nodes, edges, workflowName, workflowDescription, status]);
-
-  // Restore draft on mount
-  useEffect(() => {
-    const draft = loadDraft();
-    const currentId = id === 'unsaved' ? null : id || null;
-    if (draft && (draft.workflowId || null) === currentId) {
-      const timer = setTimeout(() => {
-        toast('Unsaved draft found. Restore?', {
-          duration: Infinity,
-          action: {
-            label: 'Restore',
-            onClick: () => {
-              useStore
-                .getState()
-                .loadUnsavedWorkflow(
-                  draft.nodes,
-                  draft.edges,
-                  draft.workflowName,
-                  draft.workflowDescription,
-                );
-              toast.success('Draft restored.');
-            },
-          },
-          cancel: {
-            label: 'Dismiss',
-            onClick: () => clearDraft(),
-          },
-        });
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, []);
-
-  // Warn before closing with unsaved changes
-  useEffect(() => {
-    if (!isDirty) return;
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = '';
-    };
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
-  }, [isDirty]);
+  const { isSaving } = useAutoSave(id, navigate);
 
   // Handle Drag-and-drop drop trigger
   const connectionStartRef = useRef<{ source: string; sourceHandle: string | null } | null>(null);
@@ -1112,21 +805,6 @@ export const CanvasWorkspace = () => {
                         const sn = nodes.find((n) => n.id === connection.source);
                         const tn = nodes.find((n) => n.id === connection.target);
                         if (!sn || !tn) return false;
-                        const isAgent = (t?: string) => t === 'agent' || t === 'supervisor';
-                        const isTrigger = (t?: string) => t === 'trigger' || t === 'input_trigger';
-
-                        const doesNotSupportTools = (n: any) => {
-                          const model = n.data?.model || '';
-                          const workerType = n.data?.workerType || '';
-                          const mediaModels = [
-                            'wan2.7-image-pro',
-                            'wan2.7-t2v',
-                            'cosyvoice-v3-plus',
-                            'qwen3-tts-flash',
-                          ];
-                          const mediaTypes = ['image', 'video', 'audio'];
-                          return mediaModels.includes(model) || mediaTypes.includes(workerType);
-                        };
 
                         if (sn.type === 'mcp_tool' && tn.type === 'mcp_tool') return false;
                         if (sn.type === 'mcp_tool' && !isAgent(tn.type)) return false;
@@ -1429,52 +1107,10 @@ export const CanvasWorkspace = () => {
           workflowId={id}
         />
 
-        {/* Clear Canvas Confirmation Dialog */}
-        {isClearConfirmOpen && (
-          <div
-            className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[999] flex items-center justify-center p-6 select-text pointer-events-auto"
-            onClick={() => setIsClearConfirmOpen(false)}
-          >
-            <div
-              className="bg-white border-2 border-slate-900 shadow-2xl rounded-none w-full max-w-md flex flex-col relative overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="bg-white text-slate-800 px-6 py-4 flex items-center justify-between border-b border-slate-200">
-                <h2 className="text-sm font-bold font-mono text-slate-800 tracking-tight">
-                  CLEAR CANVAS
-                </h2>
-                <button
-                  onClick={() => setIsClearConfirmOpen(false)}
-                  className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
-                >
-                  <X className="w-5 h-5 text-slate-500" />
-                </button>
-              </div>
-              <div className="p-6">
-                <p className="text-sm text-slate-600 font-sans">
-                  Are you sure you want to clear the canvas? This will remove all nodes and edges.
-                </p>
-              </div>
-              <div className="bg-slate-50 px-6 py-3 flex items-center justify-between border-t border-slate-200">
-                <button
-                  onClick={() => setIsClearConfirmOpen(false)}
-                  className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-mono font-bold transition-all rounded-none cursor-pointer"
-                >
-                  CANCEL
-                </button>
-                <button
-                  onClick={() => {
-                    clearGraph();
-                    setIsClearConfirmOpen(false);
-                  }}
-                  className="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-mono font-bold transition-all rounded-none cursor-pointer"
-                >
-                  CLEAR CANVAS
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <ClearCanvasDialog
+          isOpen={isClearConfirmOpen}
+          onClose={() => setIsClearConfirmOpen(false)}
+        />
 
         <SaveWorkflowDialog
           isOpen={saveDialogOpen}

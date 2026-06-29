@@ -24,7 +24,8 @@ Built for the Qwen Cloud Hackathon Track 3 ("Agent Society").
 ```
 qwenweaver/
 ├── apps/
-│   ├── web/          React 19 + Vite + React Flow v12 + Zustand + Tailwind
+│   ├── app/          React 19 + Vite + React Flow v12 + Zustand + Tailwind
+│   ├── site/         Marketing site — Vite + React + Tailwind v4
 │   └── api/          Hono.js backend — SSE streaming, DAG execution, MCP tools
 ├── packages/
 │   ├── types/        Shared Zod schemas & TypeScript interfaces
@@ -43,10 +44,11 @@ qwenweaver/
 # Install dependencies
 pnpm install
 
-# Start development servers (web + api concurrently)
+# Start development servers (app + site + api concurrently)
 pnpm dev
 
-# Web:  http://localhost:5173
+# App:  http://localhost:5173
+# Site: http://localhost:5174
 # API:  http://localhost:3001
 # Docs: http://localhost:3001/api/docs
 ```
