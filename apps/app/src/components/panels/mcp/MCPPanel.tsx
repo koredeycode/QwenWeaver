@@ -34,6 +34,8 @@ export function MCPPanel() {
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [saving, setSaving] = useState<string | null>(null);
+  const registryServersRef = useRef(registryServers);
+  registryServersRef.current = registryServers;
 
   const fetchUserServers = useCallback(async () => {
     try {
@@ -125,7 +127,7 @@ export function MCPPanel() {
     async (q: string, transport: string, c: string | null, append = false) => {
       try {
         if (!append) setRegistryLoading(true);
-        const result = await searchRegistry(q, transport, c, append, registryServers);
+        const result = await searchRegistry(q, transport, c, append, registryServersRef.current);
         setRegistryServers(result.servers);
         setCursor(result.nextCursor);
         setHasMore(result.hasMore);
@@ -135,7 +137,7 @@ export function MCPPanel() {
         setRegistryLoading(false);
       }
     },
-    [registryServers],
+    [],
   );
 
   useEffect(() => {
