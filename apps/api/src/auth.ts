@@ -33,12 +33,18 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: !!BREVO_API_KEY,
+    requireEmailVerification: true,
   },
   emailVerification: {
-    sendOnSignUp: !!BREVO_API_KEY,
+    sendOnSignUp: true,
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) => {
+      if (!BREVO_API_KEY) {
+        console.warn(
+          `[auth] BREVO_API_KEY not set — cannot send verification email to ${user.email}. Would have sent: ${url}`,
+        );
+        return;
+      }
       await sendVerificationEmail(user.email, url);
     },
   },
@@ -62,5 +68,8 @@ export const auth = betterAuth({
   },
   session: {
     expiresIn: 60 * 60 * 24 * 7, // 7 days
+    cookie: {
+      sameSite: 'strict',
+    },
   },
 });

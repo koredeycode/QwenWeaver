@@ -33,7 +33,6 @@ export type Variables = {
     id: string;
     userId: string;
     expiresAt: Date;
-    token: string;
   } | null;
 };
 
@@ -53,6 +52,15 @@ app.use(
 );
 app.use('/public/*', serveStatic({ root: './' }));
 app.use('*', requestLogger());
+
+// Security headers
+app.use('*', async (c, next) => {
+  c.res.headers.set('X-Frame-Options', 'DENY');
+  c.res.headers.set('X-Content-Type-Options', 'nosniff');
+  c.res.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  c.res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  await next();
+});
 
 app.use(
   '/api/*',
@@ -179,29 +187,18 @@ app.use('/api/*', async (c, next) => {
 
 // ─── Mount route modules ──────────────────────────────────────────────────
 
-const routes = app
+app
   .route('/api/templates', templateRoutes)
   .route('/api/workflow', workflowRoutes)
   .route('/api/execution', executionRoutes)
   .route('/api/copilot', copilotRoutes)
-  .route('/api/mcp', mcpRoutes);
-
-// Also mount remaining routes on app for runtime
-app
+  .route('/api/mcp', mcpRoutes)
   .route('/api/mcp/registry', registryRoutes)
   .route('/api/analytics', analyticsRoutes)
   .route('/api/credits', creditsRoutes)
   .route('/api/credentials', credentialsRoutes);
 
-// Separate chain for type export — plain Hono preserves route types
-const altRoutes = new Hono<{ Variables: Variables }>()
-  .route('/api/mcp/registry', registryRoutes)
-  .route('/api/analytics', analyticsRoutes)
-  .route('/api/credits', creditsRoutes)
-  .route('/api/credentials', credentialsRoutes);
-
-export type AppType = typeof routes;
-export type AppType2 = typeof altRoutes;
+export type AppType = typeof app;
 
 // Expose metrics endpoint only in development/test environments, authenticated via METRICS_TOKEN
 if (process.env.NODE_ENV !== 'production') {

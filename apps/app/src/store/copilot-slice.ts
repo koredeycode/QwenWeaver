@@ -1,6 +1,6 @@
 import { StateCreator } from 'zustand';
 import { StoreState, CopilotSlice, CopilotMessage } from './types.js';
-import { getAccessToken, API_URL, client, authHeaders } from '../lib/api-client.js';
+import { client, authHeaders } from '../lib/api-client.js';
 import type { CopilotHistoryMessage } from '@qwenweaver/types';
 
 export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> = (set, get) => ({
@@ -96,26 +96,25 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
           : 'generate';
 
       const token = await getAccessToken();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
       const workflowId = get().workflowId;
 
-      const response = await fetch(`${API_URL}/api/copilot`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          prompt: text,
-          canvasState,
-          mode,
-          model: copilotModel,
-          workflowId: workflowId || undefined,
-        }),
-      });
+      const response = await client.api.copilot.$post(
+        {
+          json: {
+            prompt: text,
+            canvasState,
+            mode: mode as any,
+            model: copilotModel,
+            workflowId: workflowId || undefined,
+          },
+        },
+        {
+          headers: {
+            ...(await authHeaders()),
+            'Content-Type': 'application/json',
+          },
+        },
+      );
 
       if (!response.ok) {
         const errText = await response.text();

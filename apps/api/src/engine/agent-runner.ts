@@ -237,7 +237,7 @@ export async function runAgent(
       system: systemPrompt,
       prompt: userMessage,
       tools: Object.keys(tools).length > 0 ? tools : undefined,
-      maxSteps: 5,
+      maxSteps: Math.min(Math.max(Number(process.env.MAX_STEPS) || 5, 1), 25),
       providerOptions: providerOptions as Record<string, Record<string, any>> | undefined,
       abortSignal: abortController.signal,
     };

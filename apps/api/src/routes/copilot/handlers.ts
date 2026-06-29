@@ -247,7 +247,7 @@ export const handleCopilot = async (c: Context<{ Variables: Variables }>) => {
         model: provider(modelId),
         system: systemPrompt,
         messages: messages,
-        maxSteps: 5,
+        maxSteps: Math.min(Math.max(Number(process.env.MAX_STEPS) || 5, 1), 25),
         providerOptions: {
           alibaba: {
             enableThinking: true,
