@@ -23,7 +23,6 @@ COPY packages/types/package.json packages/types/
 COPY packages/database/package.json packages/database/
 COPY packages/encryption/package.json packages/encryption/
 COPY packages/mcp-client/package.json packages/mcp-client/
-COPY packages/cli/package.json packages/cli/
 
 RUN pnpm install --frozen-lockfile
 
@@ -34,8 +33,6 @@ COPY packages/types/ packages/types/
 COPY packages/database/ packages/database/
 COPY packages/encryption/ packages/encryption/
 COPY packages/mcp-client/ packages/mcp-client/
-COPY packages/cli/ packages/cli/
-
 # Build everything
 RUN pnpm build
 
@@ -60,7 +57,6 @@ COPY packages/types/package.json packages/types/
 COPY packages/database/package.json packages/database/
 COPY packages/encryption/package.json packages/encryption/
 COPY packages/mcp-client/package.json packages/mcp-client/
-COPY packages/cli/package.json packages/cli/
 
 # Copy the pnpm store from builder to speed up install
 COPY --from=builder /build/node_modules/.pnpm /app/node_modules/.pnpm
@@ -79,9 +75,6 @@ RUN mkdir -p /app/public/storage/runs
 
 # Copy static assets for the API
 COPY --from=builder /build/apps/api/src/public/ /app/public/
-
-# Copy CLI binary
-COPY --from=builder /build/packages/cli/dist ./packages/cli/dist
 
 # Expose default port
 EXPOSE 3001

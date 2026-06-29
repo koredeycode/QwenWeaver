@@ -254,7 +254,10 @@ export async function executeWorkflow(
         currentRound < maxNegotiationRounds
       ) {
         rejectionDetected = true;
-        supervisorFeedback = textVal.replace(/\[REJECT\]/gi, '').trim();
+        const feedback = textVal.replace(/\[REJECT\]/gi, '').trim();
+        supervisorFeedback += supervisorFeedback
+          ? `\n\n[ADDITIONAL SUPERVISOR FEEDBACK]: ${feedback}`
+          : feedback;
 
         const upstreamWorkerIds = workflow.edges
           .filter((edge) => edge.target === result.nodeId)
@@ -290,6 +293,11 @@ export async function executeWorkflow(
 
       for (let i = minBatchIdx; i <= batchIdx; i++) {
         for (const node of dagResult.batches[i]) {
+          const previous = allOutputs.get(node.id);
+          if (previous) {
+            totalTokens -= previous.tokensUsed;
+            sequentialTime -= previous.durationMs;
+          }
           allOutputs.delete(node.id);
           await emitter.emit('status_update', {
             nodeId: node.id,
