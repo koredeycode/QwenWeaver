@@ -9,13 +9,14 @@ if (!process.env.BETTER_AUTH_SECRET && !isDev) {
 }
 
 export const BETTER_AUTH_SECRET =
-  process.env.BETTER_AUTH_SECRET || (isDev ? 'dev-only-insecure-secret' : '');
-export const BETTER_AUTH_URL = process.env.BETTER_AUTH_URL || 'http://localhost:3001/api';
+  process.env.BETTER_AUTH_SECRET || (isDev ? 'dev-only-insecure-secret-for-development-only' : '');
+export const BETTER_AUTH_URL = process.env.BETTER_AUTH_URL || 'http://localhost:3001';
 
 export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 export const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-export const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
-export const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
+export const GITHUB_CLIENT_ID = process.env.GH_CLIENT_ID || process.env.GITHUB_CLIENT_ID;
+export const GITHUB_CLIENT_SECRET =
+  process.env.GH_CLIENT_SECRET || process.env.GITHUB_CLIENT_SECRET;
 
 // ─── Credential Encryption ──────────────────────────────────────────────
 if (!process.env.CREDENTIALS_ENCRYPTION_KEY && !isDev && !process.env.BETTER_AUTH_SECRET) {
@@ -30,7 +31,14 @@ export const CREDENTIALS_ENCRYPTION_KEY = process.env.CREDENTIALS_ENCRYPTION_KEY
 export const CORS_ORIGINS: string[] = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
   : isDev
-    ? ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:3001']
+    ? [
+        'http://localhost:5173',
+        'http://localhost:5174',
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'https://app.qwenweaver.xyz',
+        'https://api.qwenweaver.xyz',
+      ]
     : [];
 
 // ─── Metrics Token ────────────────────────────────────────────────────

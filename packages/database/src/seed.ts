@@ -2,7 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { createConnection, getConnection, sqliteSchema } from './index.js';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 
-const PASSWORD_HASH = '$2b$10$hCBF5cyRFv3jyo4bXoniJeEaN3SWUocwFchsBWbhFUrxeiucmWdO.';
+// scrypt hash for "password123" (compatible with better-auth's credential provider)
+const PASSWORD_HASH =
+  '9f7a6b3f9e4023628ffff4f93a43bfc6:efe90c4707b2810181301913b73021191e53cae7e51a004fa4c2a3780b281673edc90f007053d60ee3f6dc5f9258787ab4874bb1470936e7ebb3f675cbdd8289';
 const NOW = Date.now();
 
 function id(prefix: string): string {
@@ -888,7 +890,7 @@ async function seed() {
     .values({
       id: id('acct'),
       accountId: 'demo@qwenweaver.dev',
-      providerId: 'email',
+      providerId: 'credential',
       userId: userId,
       password: PASSWORD_HASH,
       createdAt: new Date(NOW),

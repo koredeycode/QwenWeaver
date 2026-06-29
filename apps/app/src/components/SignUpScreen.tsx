@@ -186,7 +186,12 @@ export const SignUpScreen = () => {
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => authClient.signIn.social({ provider: 'google' })}
+                  onClick={() =>
+                    authClient.signIn.social({
+                      provider: 'google',
+                      callbackURL: window.location.origin,
+                    })
+                  }
                   className="flex-1 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm"
                 >
                   <svg className="h-4 w-4" viewBox="0 0 24 24">
@@ -211,7 +216,12 @@ export const SignUpScreen = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => authClient.signIn.social({ provider: 'github' })}
+                  onClick={() =>
+                    authClient.signIn.social({
+                      provider: 'github',
+                      callbackURL: window.location.origin,
+                    })
+                  }
                   className="flex-1 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm"
                 >
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">

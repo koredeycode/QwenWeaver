@@ -4,6 +4,7 @@ import { getConnection, sqliteSchema, pgSchema, mysqlSchema } from '@qwenweaver/
 import {
   BETTER_AUTH_SECRET,
   BETTER_AUTH_URL,
+  CORS_ORIGINS,
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
   GITHUB_CLIENT_ID,
@@ -14,20 +15,19 @@ const { db, dialect } = getConnection();
 
 const adapterProvider = dialect === 'postgres' ? 'pg' : dialect;
 
-const getSchema = () => {
-  if (dialect === 'sqlite') return sqliteSchema;
-  if (dialect === 'mysql') return mysqlSchema;
-  return pgSchema;
+const getTables = () => {
+  const s = dialect === 'sqlite' ? sqliteSchema : dialect === 'mysql' ? mysqlSchema : pgSchema;
+  return { user: s.user, session: s.session, account: s.account, verification: s.verification };
 };
 
 export const auth = betterAuth({
   secret: BETTER_AUTH_SECRET,
   baseURL: BETTER_AUTH_URL,
+  trustedOrigins: CORS_ORIGINS,
   database: drizzleAdapter(db, {
     provider: adapterProvider,
-    schema: getSchema(),
+    schema: getTables(),
     usePlural: false,
-    camelCase: true,
   }),
   emailAndPassword: {
     enabled: true,
