@@ -2,7 +2,7 @@ import { hc } from 'hono/client';
 import { createAuthClient } from 'better-auth/client';
 import type { AppType } from '@qwenweaver/api';
 
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+export const API_URL = import.meta.env.VITE_API_URL || window.location.origin;
 
 const customFetch = (input: RequestInfo | URL, init?: RequestInit) =>
   fetch(input, { ...init, credentials: 'include' });

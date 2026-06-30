@@ -7,10 +7,23 @@ if (!process.env.BETTER_AUTH_SECRET && !isDev) {
       'Set it to a strong random string (e.g. `openssl rand -hex 32`).',
   );
 }
+if (!process.env.BETTER_AUTH_URL && !isDev) {
+  throw new Error(
+    'FATAL: BETTER_AUTH_URL environment variable is required in production. ' +
+      'Set it to the public base URL of the API server (e.g. https://api.qwenweaver.xyz/api).',
+  );
+}
+if (!process.env.PUBLIC_URL && !isDev) {
+  throw new Error(
+    'FATAL: PUBLIC_URL environment variable is required in production. ' +
+      'Set it to the public base URL (e.g. https://api.qwenweaver.xyz).',
+  );
+}
 
 export const BETTER_AUTH_SECRET =
   process.env.BETTER_AUTH_SECRET || (isDev ? 'dev-only-insecure-secret-for-development-only' : '');
-export const BETTER_AUTH_URL = process.env.BETTER_AUTH_URL || 'http://localhost:3001';
+export const BETTER_AUTH_URL =
+  process.env.BETTER_AUTH_URL || (isDev ? 'http://localhost:3001' : '');
 
 export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 export const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -42,7 +55,7 @@ export const CORS_ORIGINS: string[] = process.env.CORS_ORIGINS
     : [];
 
 // ─── Public URL (used for generating absolute asset URLs) ────────────
-export const PUBLIC_URL = process.env.PUBLIC_URL || 'http://localhost:3001';
+export const PUBLIC_URL = process.env.PUBLIC_URL || (isDev ? 'http://localhost:3001' : '');
 
 // ─── Storage ─────────────────────────────────────────────────────────
 export const STORAGE_DRIVER = process.env.STORAGE_DRIVER || 'local';
