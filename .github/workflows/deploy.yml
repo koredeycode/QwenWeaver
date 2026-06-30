@@ -42,6 +42,8 @@ jobs:
         with:
           context: .
           push: true
+          build-args: |
+            VITE_API_URL=${{ secrets.VITE_API_URL }}
           tags: |
             ghcr.io/${{ github.repository_owner }}/qwenweaver/qwenweaver:latest
             ghcr.io/${{ github.repository_owner }}/qwenweaver/qwenweaver:${{ github.sha }}
@@ -55,6 +57,8 @@ jobs:
         with: { node-version: 20, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
       - name: Push database schema
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}

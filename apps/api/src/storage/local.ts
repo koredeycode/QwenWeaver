@@ -27,7 +27,7 @@ export class LocalStorageDriver implements StorageService {
   }
 
   getUrl(key: string): string {
-    const base = PUBLIC_URL || 'http://localhost:3001';
+    const base = PUBLIC_URL;
     return `${base}/public/storage/runs/${key}`;
   }
 }

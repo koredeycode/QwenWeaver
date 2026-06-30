@@ -33,6 +33,8 @@ COPY packages/types/ packages/types/
 COPY packages/database/ packages/database/
 COPY packages/encryption/ packages/encryption/
 COPY packages/mcp-client/ packages/mcp-client/
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
 # Build everything
 RUN pnpm build
 
