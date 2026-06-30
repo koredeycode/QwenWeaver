@@ -17,10 +17,8 @@ export const DiscoverToolsBody = z.object({
 export const SaveServerBody = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
-  transport: z.enum(['http', 'stdio', 'sse']),
+  transport: z.enum(['http']).default('http'),
   url: z.string().optional(),
-  command: z.string().optional(),
-  args: z.array(z.string()).optional(),
 });
 
 export const AdoptRegistryBody = z.object({

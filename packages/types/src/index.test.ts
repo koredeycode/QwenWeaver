@@ -91,17 +91,24 @@ describe('mcp schemas', () => {
     expect(result.success).toBe(true);
   });
 
-  it('validates stdio connection config', () => {
+  it('validates http connection config', () => {
     const result = MCPConnectionConfig.safeParse({
-      transport: 'stdio',
-      command: 'node',
-      args: ['server.js'],
+      transport: 'http',
+      url: 'https://mcp.example.com/sse',
     });
     expect(result.success).toBe(true);
   });
 
-  it('rejects empty object', () => {
-    const result = MCPConnectionConfig.safeParse({});
+  it('rejects stdio transport', () => {
+    const result = MCPConnectionConfig.safeParse({
+      transport: 'stdio',
+    });
     expect(result.success).toBe(false);
+  });
+
+  it('accepts empty object (transport defaults to http)', () => {
+    const result = MCPConnectionConfig.safeParse({});
+    expect(result.success).toBe(true);
+    expect(result.data?.transport).toBe('http');
   });
 });

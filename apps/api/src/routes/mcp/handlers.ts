@@ -40,15 +40,34 @@ function normalizeRegistryEntry(entry: any): {
   const remotes = server.remotes || [];
   const packages = server.packages || [];
   const transports = [
-    ...remotes.map((r: any) => (r.type === 'streamable-http' ? 'http' : r.type)),
+    ...remotes.map((r: any) => {
+      if (r.type === 'streamable-http' || r.type === 'sse') return 'http';
+      return r.type;
+    }),
     ...packages.map((p: any) => (p.transport?.type === 'stdio' ? 'stdio' : p.transport?.type)),
   ].filter(Boolean);
-  const firstRemote = remotes[0] || {};
+
+  // Filter out servers whose only transport option is stdio
+  const httpTransports = transports.filter((t) => t !== 'stdio');
+  if (httpTransports.length === 0) {
+    return {
+      registryId: server.name || '',
+      name: server.title || server.name || '',
+      description: server.description || '',
+      transport: 'http', // placeholder — will be filtered by caller
+      url: null,
+      iconUrl: null,
+      registryMetadata: entry,
+    };
+  }
+
+  const firstRemote =
+    remotes.find((r: any) => r.type === 'streamable-http' || r.type === 'sse') || remotes[0] || {};
   return {
     registryId: server.name || '',
     name: server.title || server.name || '',
     description: server.description || '',
-    transport: transports[0] || 'http',
+    transport: httpTransports[0] || 'http',
     url: firstRemote.url || null,
     iconUrl: server.icons?.[0]?.src || null,
     registryMetadata: entry,
@@ -124,10 +143,8 @@ export const handleSaveServer = async (c: Context<{ Variables: Variables }>) => 
   const server = await provider.saveMcpServer(id, userId, {
     name: body.name,
     description: body.description,
-    transport: body.transport,
+    transport: 'http',
     url: body.url,
-    command: body.command,
-    args: body.args,
   });
 
   log.info({ id, name: body.name, transport: body.transport }, 'MCP server saved');
@@ -195,10 +212,8 @@ export const handleRegistryAdopt = async (c: Context<{ Variables: Variables }>) 
   const server = await provider.saveMcpServer(id, userId, {
     name: norm.name,
     description: norm.description,
-    transport: norm.transport as 'http' | 'stdio' | 'sse',
+    transport: 'http',
     url: norm.url || undefined,
-    command: undefined,
-    args: undefined,
     iconUrl: norm.iconUrl || undefined,
     authConfig: authConfig as any,
     registryOrigin: 'manual',
@@ -305,6 +320,71 @@ function deriveAuthTypes(metadata: unknown): string[] {
   return Array.from(types);
 }
 
+// ---------------------------------------------------------------------------
+// Defensive registry probing — verify auth claims with a real MCP initialize
+// ---------------------------------------------------------------------------
+
+interface ProbeResult {
+  authRequired: boolean;
+  statusCode: number | null;
+  error: string | null;
+  probedAt: number;
+}
+
+const probeCache = new Map<string, ProbeResult>();
+const PROBE_TTL = 5 * 60 * 1000; // 5 minutes
+
+const MCP_INITIALIZE_BODY = JSON.stringify({
+  jsonrpc: '2.0',
+  id: '1',
+  method: 'initialize',
+  params: {
+    protocolVersion: '2024-11-05',
+    capabilities: {},
+    clientInfo: { name: 'qwenweaver-probe', version: '0.1.0' },
+  },
+});
+
+async function probeServerAuth(url: string): Promise<ProbeResult> {
+  const cached = probeCache.get(url);
+  if (cached && Date.now() - cached.probedAt < PROBE_TTL) {
+    return cached;
+  }
+
+  const result: ProbeResult = {
+    authRequired: false,
+    statusCode: null,
+    error: null,
+    probedAt: Date.now(),
+  };
+
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: MCP_INITIALIZE_BODY,
+      signal: AbortSignal.timeout(5000),
+    });
+
+    result.statusCode = resp.status;
+
+    if (resp.status === 401 || resp.status === 403) {
+      result.authRequired = true;
+      result.error = `HTTP ${resp.status}`;
+    }
+  } catch (err: any) {
+    result.error = err?.name === 'TimeoutError' ? 'timeout' : err?.message || 'unknown';
+    // On timeout/network error, be optimistic — mark authRequired false
+    // so the user can still try. The error field indicates unreachability.
+  }
+
+  probeCache.set(url, result);
+  return result;
+}
+
 export const handleRegistrySearch = async (c: Context<{ Variables: Variables }>) => {
   const q = (c.req.query('q') || '').toLowerCase();
   const transport = c.req.query('transport');
@@ -335,11 +415,12 @@ export const handleRegistrySearch = async (c: Context<{ Variables: Variables }>)
         if (!haystack.includes(q)) continue;
       }
 
-      // Apply transport filter
-      if (transport) {
-        const norm = normalizeRegistryEntry(entry);
-        if (norm.transport !== transport) continue;
-      }
+      // Normalize and skip stdio-only servers (no URL = not HTTP-accessible)
+      const norm = normalizeRegistryEntry(entry);
+      if (!norm.url) continue;
+
+      // Apply transport filter (only `http` is valid, but keep for forward compat)
+      if (transport && norm.transport !== transport) continue;
 
       matches.push(entry);
       if (matches.length >= limit) break;
@@ -349,14 +430,31 @@ export const handleRegistrySearch = async (c: Context<{ Variables: Variables }>)
     if (!regCursor) break;
   }
 
+  // Fire background probes for all matched servers (don't block response)
+  const probePromises = matches.map((entry: any) => {
+    const n = normalizeRegistryEntry(entry);
+    if (n.url) probeServerAuth(n.url).catch(() => {});
+  });
+  // Kick off probes, but don't await
+  Promise.allSettled(probePromises).catch(() => {});
+
   const servers = matches.map((entry: any) => {
     const n = normalizeRegistryEntry(entry);
     const supportedAuthTypes = deriveAuthTypes(n.registryMetadata);
+    const cacheResult = n.url ? probeCache.get(n.url) : undefined;
     return {
       ...n,
       id: n.registryId,
       supportedAuthTypes,
       authRequired: supportedAuthTypes.length > 0,
+      // Override auth claims if probe found different reality
+      probeVerified: cacheResult
+        ? {
+            authRequired: cacheResult.authRequired,
+            statusCode: cacheResult.statusCode,
+            error: cacheResult.error,
+          }
+        : null,
     };
   });
 

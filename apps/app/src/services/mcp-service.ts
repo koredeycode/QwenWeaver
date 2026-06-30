@@ -111,21 +111,30 @@ export async function searchRegistry(
         const remotes = server.remotes || [];
         const packages = server.packages || [];
         const transports = [
-          ...remotes.map((r: any) => (r.type === 'streamable-http' ? 'http' : r.type)),
+          ...remotes.map((r: any) => {
+            if (r.type === 'streamable-http' || r.type === 'sse') return 'http';
+            return r.type;
+          }),
           ...packages.map((p: any) =>
             p.transport?.type === 'stdio' ? 'stdio' : p.transport?.type,
           ),
         ].filter(Boolean);
-        const firstRemote = remotes[0] || {};
+        const httpTransports = transports.filter((t: string) => t !== 'stdio');
+        const firstRemote =
+          remotes.find((r: any) => r.type === 'streamable-http' || r.type === 'sse') ||
+          remotes[0] ||
+          {};
         return {
           registryId: server.name || '',
           name: server.title || server.name || '',
           description: server.description || '',
-          transport: transports[0] || 'http',
+          transport: httpTransports[0] || 'http',
           url: firstRemote.url || null,
           iconUrl: server.icons?.[0]?.src || null,
         };
       })();
+      // Skip stdio-only servers (no HTTP URL available)
+      if (!normEntry.url) continue;
       if (transport && normEntry.transport !== transport) continue;
       const supportedAuthTypes = (() => {
         const types = new Set<string>();

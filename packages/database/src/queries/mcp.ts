@@ -5,10 +5,8 @@ import type { MCPAuthConfig } from '@qwenweaver/types';
 export interface SavedMCPServerInput {
   name: string;
   description?: string | null;
-  transport: 'http' | 'stdio' | 'sse';
+  transport: 'http';
   url?: string | null;
-  command?: string | null;
-  args?: string[] | null;
   iconUrl?: string | null;
   authConfig?: MCPAuthConfig | null;
   registryOrigin?: string | null;
