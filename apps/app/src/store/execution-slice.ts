@@ -1,5 +1,5 @@
 import { StateCreator } from 'zustand';
-import type { NodeTiming } from '@qwenweaver/types';
+import type { NodeTiming, OutputPart } from '@qwenweaver/types';
 import { StoreState, ExecutionSlice } from './types.js';
 import { toast } from 'sonner';
 import { getAccessToken, client } from '../lib/api-client.js';
@@ -14,6 +14,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
   nodeOutputs: {},
   nodeThinking: {},
   nodeOutputUrls: {},
+  nodeOutputParts: {},
   activeEdges: new Set(),
   metrics: null,
   abortController: null,
@@ -52,6 +53,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
       nodeStatuses: {},
       nodeOutputs: {},
       nodeThinking: {},
+      nodeOutputParts: {},
       activeEdges: new Set(),
       metrics: null,
       activeExecutionId: null,
@@ -177,10 +179,11 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
             }
 
             case 'status_update': {
-              const { nodeId, status, outputUrl } = payload as {
+              const { nodeId, status, outputUrl, outputParts } = payload as {
                 nodeId: string;
                 status: string;
                 outputUrl?: string;
+                outputParts?: OutputPart[];
               };
               set((s) => ({
                 nodeStatuses: {
@@ -192,6 +195,14 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
                       nodeOutputUrls: {
                         ...s.nodeOutputUrls,
                         [nodeId]: outputUrl,
+                      },
+                    }
+                  : {}),
+                ...(outputParts
+                  ? {
+                      nodeOutputParts: {
+                        ...s.nodeOutputParts,
+                        [nodeId]: outputParts,
                       },
                     }
                   : {}),

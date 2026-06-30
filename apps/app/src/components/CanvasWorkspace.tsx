@@ -59,6 +59,7 @@ import { ExportWorkflowModal } from './ExportWorkflowModal.js';
 import { ImportWorkflowModal } from './ImportWorkflowModal.js';
 import { MaximizedNodeOverlay } from './MaximizedNodeOverlay.js';
 import { MCPConfigDialog } from './MCPConfigDialog.js';
+import { CompletionSummaryDialog } from './CompletionSummaryDialog.js';
 import { SaveWorkflowDialog } from './SaveWorkflowDialog.js';
 import { PublishTemplateDialog } from './PublishTemplateDialog.js';
 import { ClearCanvasDialog } from './ClearCanvasDialog.js';
@@ -1099,6 +1100,9 @@ export const CanvasWorkspace = () => {
 
         {/* MCP Configuration Dialog */}
         <MCPConfigDialog />
+
+        {/* Post-Execution Summary Dialog */}
+        <CompletionSummaryDialog />
 
         {/* Import Workflow Configuration Modal */}
         <ImportWorkflowModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />

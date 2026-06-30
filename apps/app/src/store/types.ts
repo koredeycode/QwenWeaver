@@ -3,6 +3,7 @@ import type {
   NodeType,
   NodeData,
   ExecutionMetrics,
+  OutputPart,
   GraphAction,
   CopilotHistoryMessage,
 } from '@qwenweaver/types';
@@ -123,6 +124,7 @@ export interface ExecutionSlice {
   nodeOutputs: Record<string, string>;
   nodeThinking: Record<string, string>;
   nodeOutputUrls: Record<string, string>;
+  nodeOutputParts: Record<string, OutputPart[]>;
   activeEdges: Set<string>;
   metrics: ExecutionMetrics | null;
   abortController: AbortController | null;

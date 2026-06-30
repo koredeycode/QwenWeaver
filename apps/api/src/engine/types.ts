@@ -24,7 +24,13 @@ export type UpstreamOutputs = Map<string, AgentResult>;
 export interface SSEPayloadMap {
   token: { nodeId: string; chunk: string };
   thinking: { nodeId: string; chunk: string };
-  status_update: { nodeId: string; status: string; timestamp: number; outputUrl?: string };
+  status_update: {
+    nodeId: string;
+    status: string;
+    timestamp: number;
+    outputUrl?: string;
+    outputParts?: OutputPart[];
+  };
   edge_active: { sourceId: string; targetId: string; timestamp: number };
   complete: { executionId: string; metrics: ExecutionMetrics; timestamp: number };
   error: { message: string; nodeId?: string; timestamp: number };
