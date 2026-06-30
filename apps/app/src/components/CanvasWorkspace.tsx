@@ -147,6 +147,7 @@ export const CanvasWorkspace = () => {
   const toolsRef = useRef<HTMLDivElement>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const [draftThumbnail, setDraftThumbnail] = useState<string | undefined>();
   const canvasRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -648,9 +649,26 @@ export const CanvasWorkspace = () => {
                     </button>
                     {workflowId && nodes.length > 0 && (
                       <button
-                        onClick={() => {
-                          setPublishDialogOpen(true);
+                        onClick={async () => {
                           setToolsOpen(false);
+                          setDraftThumbnail(undefined);
+                          // eagerly capture canvas thumbnail
+                          try {
+                            if (canvasRef.current) {
+                              reactFlowInstance.fitView({ duration: 0 });
+                              await new Promise((r) =>
+                                requestAnimationFrame(() => requestAnimationFrame(r)),
+                              );
+                              const dataUrl = await toPng(canvasRef.current, {
+                                quality: 0.7,
+                                pixelRatio: 2,
+                              });
+                              setDraftThumbnail(dataUrl);
+                            }
+                          } catch {
+                            // non-blocking
+                          }
+                          setPublishDialogOpen(true);
                         }}
                         className="flex items-center gap-3 px-3 py-2 text-xs text-purple-700 hover:bg-purple-50 transition-colors cursor-pointer border-b border-slate-100"
                         title="Publish as template"
@@ -1181,23 +1199,34 @@ export const CanvasWorkspace = () => {
           isOpen={publishDialogOpen}
           initialName={workflowName}
           initialDescription={workflowDescription}
-          onClose={() => setPublishDialogOpen(false)}
-          onConfirm={async ({ name, description, categoryId, tags }) => {
+          thumbnailDataUrl={draftThumbnail}
+          onRecapture={async () => {
             try {
-              let thumbnail: string | undefined;
-              try {
-                if (canvasRef.current) {
-                  thumbnail = await toPng(canvasRef.current, { quality: 0.7, pixelRatio: 2 });
-                }
-              } catch {
-                // non-blocking — thumbnail is optional
-              }
+              if (!canvasRef.current) return;
+              reactFlowInstance.fitView({ duration: 0 });
+              await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+              const dataUrl = await toPng(canvasRef.current, {
+                quality: 0.7,
+                pixelRatio: 2,
+              });
+              setDraftThumbnail(dataUrl);
+              return dataUrl;
+            } catch {
+              return;
+            }
+          }}
+          onClose={() => {
+            setPublishDialogOpen(false);
+            setDraftThumbnail(undefined);
+          }}
+          onConfirm={async ({ name, description, categoryId, tags, thumbnail }) => {
+            try {
               const payload = {
                 name,
                 description,
                 categoryId,
                 tags,
-                thumbnail,
+                thumbnail: thumbnail || null,
                 workflowData: {
                   nodes: nodes.map((n) => ({
                     id: n.id,
@@ -1223,6 +1252,7 @@ export const CanvasWorkspace = () => {
                 throw new Error(String(err.error || 'Publish failed'));
               }
               setPublishDialogOpen(false);
+              setDraftThumbnail(undefined);
               toast.success('Template published!');
             } catch (e) {
               toast.error(e instanceof Error ? e.message : 'Failed to publish template');
