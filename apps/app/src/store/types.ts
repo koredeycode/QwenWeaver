@@ -87,6 +87,8 @@ export interface GraphSlice {
   setWorkflowMeta: (name: string, description: string) => void;
   maximizedNodeId: string | null;
   setMaximizedNodeId: (id: string | null) => void;
+  mcpConfigDialogNodeId: string | null;
+  setMcpConfigDialogNodeId: (id: string | null) => void;
   clearGraph: () => void;
   loadTemplate: (templateName: string) => void;
   loadWorkflow: (workflowId: string) => void;

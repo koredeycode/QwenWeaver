@@ -37,7 +37,7 @@ export function autoDetectHandles(sourceNodeType?: string, targetNodeType?: stri
     return { sourceHandle: 'source', targetHandle: 'target-left' };
   }
   if (toolToAgent) {
-    return { sourceHandle: 'source-bottom', targetHandle: 'target-bottom' };
+    return { sourceHandle: 'source-bottom', targetHandle: 'target-top' };
   }
   if (isAgent(targetNodeType)) {
     return { targetHandle: 'target-left' };

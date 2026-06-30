@@ -201,6 +201,14 @@ export const AgentNode = memo(({ id, data }: NodeProps<any>) => {
         title="Connect to MCP Tool"
       />
 
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="target-top"
+        className="w-4 h-4 !bg-purple-500 !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
+        title="Receives from MCP Tool"
+      />
+
       <div className="flex items-center justify-between border-b border-outline-variant pb-2 mb-2">
         <div className="flex items-center gap-2">
           <Bot className="w-4 h-4 text-[#f97316]" />
@@ -241,13 +249,6 @@ export const AgentNode = memo(({ id, data }: NodeProps<any>) => {
         id="source-right"
         className="w-4 h-4 !bg-[#f97316] !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
       />
-      <Handle
-        type="target"
-        position={Position.Bottom}
-        id="target-bottom"
-        className="w-4 h-4 !bg-purple-500 !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
-        title="Receives from MCP Tool"
-      />
     </div>
   );
 });
@@ -277,6 +278,14 @@ export const SupervisorNode = memo(({ id, data }: NodeProps<any>) => {
         id="source-bottom"
         className="w-4 h-4 !bg-purple-500 !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
         title="Connect to MCP Tool"
+      />
+
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="target-top"
+        className="w-4 h-4 !bg-purple-500 !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
+        title="Receives from MCP Tool"
       />
 
       <div className="flex items-center justify-between border-b border-outline pb-2 mb-2">
@@ -319,13 +328,6 @@ export const SupervisorNode = memo(({ id, data }: NodeProps<any>) => {
         id="source-right"
         className="w-4 h-4 !bg-[#2563eb] !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
       />
-      <Handle
-        type="target"
-        position={Position.Bottom}
-        id="target-bottom"
-        className="w-4 h-4 !bg-purple-500 !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
-        title="Receives from MCP Tool"
-      />
     </div>
   );
 });
@@ -336,6 +338,7 @@ export const MCPToolNode = memo(({ id, data }: NodeProps<any>) => {
   const status = useStore((s) => s.nodeStatuses[id] || 'pending');
   const isSelected = useStore((s) => s.selectedNodeId === id);
   const setMaximizedNodeId = useStore((s) => s.setMaximizedNodeId);
+  const setMcpConfigDialogNodeId = useStore((s) => s.setMcpConfigDialogNodeId);
   const [imgError, setImgError] = useState(false);
 
   const isUnconfigured = !data.mcpServerUrl;
@@ -389,6 +392,16 @@ export const MCPToolNode = memo(({ id, data }: NodeProps<any>) => {
             title="Inspect MCP Tool"
           >
             <Maximize2 className="w-2 h-2" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setMcpConfigDialogNodeId(id);
+            }}
+            className="p-0.5 hover:bg-purple-100 text-purple-600 hover:text-purple-800 transition-colors nodrag cursor-pointer text-[6px] font-mono font-bold border border-purple-200 px-1"
+            title="Configure MCP Server"
+          >
+            CONFIG
           </button>
         </div>
       </div>

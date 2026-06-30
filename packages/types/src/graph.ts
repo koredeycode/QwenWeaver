@@ -42,6 +42,8 @@ export const NodeData = z.object({
   thinkingBudget: z.number().optional(),
   mcpServerUrl: z.string().optional(),
   mcpServerId: z.string().optional(),
+  mcpUserServerId: z.string().optional(),
+  mcpSupportedAuthTypes: z.array(z.string()).optional(),
   iconUrl: z.string().optional(),
   mcpAuthConfig: z
     .object({

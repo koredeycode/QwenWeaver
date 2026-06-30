@@ -6,7 +6,12 @@ import { toPng } from 'html-to-image';
 
 import type { NodeType } from '@qwenweaver/types';
 import { client, withRefresh } from '../lib/api-client.js';
-import { isAgent, isTrigger, doesNotSupportTools } from '../utils/connection-validation.js';
+import {
+  isAgent,
+  isTrigger,
+  doesNotSupportTools,
+  autoDetectHandles,
+} from '../utils/connection-validation.js';
 import { useStore } from '../store/index.js';
 import { clearDraft } from '../store/auto-save.js';
 import { useCanvasShortcuts } from '../hooks/useCanvasShortcuts.js';
@@ -53,6 +58,7 @@ import { CustomZoomControls } from './CustomZoomControls.js';
 import { ExportWorkflowModal } from './ExportWorkflowModal.js';
 import { ImportWorkflowModal } from './ImportWorkflowModal.js';
 import { MaximizedNodeOverlay } from './MaximizedNodeOverlay.js';
+import { MCPConfigDialog } from './MCPConfigDialog.js';
 import { SaveWorkflowDialog } from './SaveWorkflowDialog.js';
 import { PublishTemplateDialog } from './PublishTemplateDialog.js';
 import { ClearCanvasDialog } from './ClearCanvasDialog.js';
@@ -220,6 +226,62 @@ export const CanvasWorkspace = () => {
     pushHistory();
   }, [pushHistory]);
 
+  const isValidConnection = useCallback(
+    (connection: any) => {
+      if (!connection.source || !connection.target) return false;
+      const sn = nodes.find((n: any) => n.id === connection.source);
+      const tn = nodes.find((n: any) => n.id === connection.target);
+      if (!sn || !tn) return false;
+
+      if (sn.type === 'mcp_tool' && tn.type === 'mcp_tool') return false;
+      if (sn.type === 'mcp_tool' && !isAgent(tn.type)) return false;
+      if (isTrigger(sn.type) && !isAgent(tn.type)) return false;
+
+      // Block MCP tools from connecting to media nodes that don't support tool calling
+      if (sn.type === 'mcp_tool' && isAgent(tn.type) && doesNotSupportTools(tn)) return false;
+      if (isAgent(sn.type) && doesNotSupportTools(sn) && tn.type === 'mcp_tool') return false;
+
+      // Each MCP tool can have at most one incoming connection
+      if (tn.type === 'mcp_tool') {
+        const alreadyConnected = edges.some((e: any) => e.target === connection.target);
+        if (alreadyConnected) return false;
+      }
+
+      // Prevent connecting two MCP tools from the same server to the same agent (tool→agent)
+      if (sn.type === 'mcp_tool' && isAgent(tn.type)) {
+        const sameServerExists = edges.some((e: any) => {
+          if (e.target !== connection.target) return false;
+          if (e.source === connection.source) return false;
+          const src = nodes.find((n: any) => n.id === e.source);
+          return (
+            src?.type === 'mcp_tool' &&
+            src?.data?.mcpServerId != null &&
+            src?.data?.mcpServerId === sn.data?.mcpServerId
+          );
+        });
+        if (sameServerExists) return false;
+      }
+      // Prevent connecting two MCP tools from the same server to the same agent (agent→tool)
+      if (isAgent(sn.type) && tn.type === 'mcp_tool') {
+        const sameServerExists = edges.some((e: any) => {
+          if (e.source !== connection.source) return false;
+          const target = nodes.find((n: any) => n.id === e.target);
+          return (
+            target?.type === 'mcp_tool' &&
+            target?.data?.mcpServerId != null &&
+            target?.data?.mcpServerId === tn.data?.mcpServerId
+          );
+        });
+        if (sameServerExists) return false;
+      }
+      // Block reverse connections (prevents cycles: A→B blocks B→A)
+      if (edges.some((e: any) => e.source === connection.target && e.target === connection.source))
+        return false;
+      return true;
+    },
+    [nodes, edges],
+  );
+
   const onConnectEnd = useCallback(
     (event: MouseEvent | TouchEvent) => {
       if (!connectionStartRef.current) return;
@@ -274,39 +336,21 @@ export const CanvasWorkspace = () => {
       const sourceNode = nodes.find((n) => n.id === connectionStartRef.current!.source);
       if (!sourceNode) return;
 
-      let sourceHandle = connectionStartRef.current.sourceHandle;
+      const detected = autoDetectHandles(sourceNode.type, targetNode.type);
+      const sourceHandle = connectionStartRef.current.sourceHandle || detected.sourceHandle;
+      const targetHandle = detected.targetHandle;
 
-      const isAgent = (t?: string) => t === 'agent' || t === 'supervisor';
-      const isTrigger = (t?: string) => t === 'trigger' || t === 'input_trigger';
-
-      if (sourceNode.type === 'mcp_tool' && isAgent(targetNode.type)) {
-        sourceHandle = 'source-bottom';
-      }
-
-      const targetHandle =
-        sourceNode.type === 'mcp_tool' && isAgent(targetNode.type)
-          ? 'target-bottom'
-          : isAgent(targetNode.type)
-            ? 'target-left'
-            : targetNode.type === 'mcp_tool'
-              ? 'target'
-              : undefined;
-
-      if (!targetHandle) return;
-
-      if (isAgent(sourceNode.type) && isAgent(targetNode.type)) {
-        sourceHandle = 'source-right';
-      } else if (isAgent(sourceNode.type) && targetNode.type === 'mcp_tool') {
-        sourceHandle = 'source-bottom';
-      } else if (isTrigger(sourceNode.type) && isAgent(targetNode.type)) {
-        sourceHandle = 'source';
+      if (!targetHandle) {
+        toast.error('Cannot create a connection between these node types.');
+        connectionStartRef.current = null;
+        return;
       }
 
       onConnect({
         source: connectionStartRef.current.source,
         target: targetNodeId,
-        sourceHandle,
-        targetHandle,
+        sourceHandle: sourceHandle || null,
+        targetHandle: targetHandle || null,
       });
 
       connectionStartRef.current = null;
@@ -333,7 +377,14 @@ export const CanvasWorkspace = () => {
 
       // Check for pre-configured node data (from docked panel drags)
       const nodeDataStr = event.dataTransfer.getData('application/qwenweaver-node-data');
-      const nodeData = nodeDataStr ? JSON.parse(nodeDataStr) : undefined;
+      let nodeData: Record<string, unknown> | undefined;
+      if (nodeDataStr) {
+        try {
+          nodeData = JSON.parse(nodeDataStr);
+        } catch {
+          nodeData = undefined;
+        }
+      }
 
       if ((type === 'agent' || type === 'supervisor') && !nodeData) {
         setDockedPanelMode('agents');
@@ -802,58 +853,7 @@ export const CanvasWorkspace = () => {
                         isLocked || status === 'running' ? null : ['Backspace', 'Delete']
                       }
                       proOptions={{ hideAttribution: true }}
-                      isValidConnection={(connection) => {
-                        if (!connection.source || !connection.target) return false;
-                        const sn = nodes.find((n) => n.id === connection.source);
-                        const tn = nodes.find((n) => n.id === connection.target);
-                        if (!sn || !tn) return false;
-
-                        if (sn.type === 'mcp_tool' && tn.type === 'mcp_tool') return false;
-                        if (sn.type === 'mcp_tool' && !isAgent(tn.type)) return false;
-                        if (isTrigger(sn.type) && !isAgent(tn.type)) return false;
-
-                        // Block MCP tools from connecting to media nodes that don't support tool calling
-                        if (sn.type === 'mcp_tool' && isAgent(tn.type) && doesNotSupportTools(tn))
-                          return false;
-                        if (isAgent(sn.type) && doesNotSupportTools(sn) && tn.type === 'mcp_tool')
-                          return false;
-
-                        // Prevent connecting two MCP tools from the same server to the same agent (tool→agent)
-                        if (sn.type === 'mcp_tool' && isAgent(tn.type)) {
-                          const sameServerExists = edges.some((e) => {
-                            if (e.target !== connection.target) return false;
-                            if (e.source === connection.source) return false;
-                            const src = nodes.find((n) => n.id === e.source);
-                            return (
-                              src?.type === 'mcp_tool' &&
-                              src?.data?.mcpServerId != null &&
-                              src?.data?.mcpServerId === sn.data?.mcpServerId
-                            );
-                          });
-                          if (sameServerExists) return false;
-                        }
-                        // Prevent connecting two MCP tools from the same server to the same agent (agent→tool)
-                        if (isAgent(sn.type) && tn.type === 'mcp_tool') {
-                          const sameServerExists = edges.some((e) => {
-                            if (e.source !== connection.source) return false;
-                            const target = nodes.find((n) => n.id === e.target);
-                            return (
-                              target?.type === 'mcp_tool' &&
-                              target?.data?.mcpServerId != null &&
-                              target?.data?.mcpServerId === tn.data?.mcpServerId
-                            );
-                          });
-                          if (sameServerExists) return false;
-                        }
-                        // Block reverse connections (prevents cycles: A→B blocks B→A)
-                        if (
-                          edges.some(
-                            (e) => e.source === connection.target && e.target === connection.source,
-                          )
-                        )
-                          return false;
-                        return true;
-                      }}
+                      isValidConnection={isValidConnection}
                     >
                       <Background color="#94a3b8" gap={16} size={2} className="opacity-80" />
                       {nodes.length === 0 && (
@@ -1096,6 +1096,9 @@ export const CanvasWorkspace = () => {
 
         {/* Maximized Node Terminal Dialog Overlay */}
         <MaximizedNodeOverlay />
+
+        {/* MCP Configuration Dialog */}
+        <MCPConfigDialog />
 
         {/* Import Workflow Configuration Modal */}
         <ImportWorkflowModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />

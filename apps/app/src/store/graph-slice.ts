@@ -5,7 +5,12 @@ import { toast } from 'sonner';
 import { EXAMPLE_WORKFLOWS } from '../lib/example-workflows.js';
 import { WorkflowPayload, NodeData, GraphAction } from '@qwenweaver/types';
 import { RESEARCH_WORKFLOW_TEMPLATE } from '../data/workflow-templates.js';
-import { isAgent, isTrigger, autoDetectHandles } from '../utils/connection-validation.js';
+import {
+  isAgent,
+  isTrigger,
+  doesNotSupportTools,
+  autoDetectHandles,
+} from '../utils/connection-validation.js';
 import { computeDagLayout } from '../utils/dag-layout.js';
 import { executeGraphActions } from '../utils/graph-actions.js';
 
@@ -22,6 +27,8 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
   markClean: () => set({ isDirty: false }),
   maximizedNodeId: null,
   setMaximizedNodeId: (id) => set({ maximizedNodeId: id }),
+  mcpConfigDialogNodeId: null,
+  setMcpConfigDialogNodeId: (id) => set({ mcpConfigDialogNodeId: id }),
 
   onNodesChange: (changes) => {
     const hasRemove = changes.some((c: any) => c.type === 'remove');
@@ -84,6 +91,24 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
         }
       }
 
+      // Block MCP connections to/from media agents that don't support tool calling
+      if (
+        sourceNode.type === 'mcp_tool' &&
+        isAgent(targetNode.type) &&
+        doesNotSupportTools(targetNode)
+      ) {
+        toast.error('Media agents do not support MCP tools.');
+        return {};
+      }
+      if (
+        isAgent(sourceNode.type) &&
+        doesNotSupportTools(sourceNode) &&
+        targetNode.type === 'mcp_tool'
+      ) {
+        toast.error('Media agents do not support MCP tools.');
+        return {};
+      }
+
       // Prevent connecting two MCP tools from the same server to the same agent (tool→agent)
       if (sourceNode.type === 'mcp_tool' && isAgent(targetNode.type)) {
         const sameServerExists = state.edges.some((e) => {
@@ -123,26 +148,32 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
         }
       }
 
-      // Block duplicate or reverse connections between the same two nodes
-      const hasEdge = state.edges.some(
+      // Block exact duplicate connections (same source, target, and handles)
+      const srcHandle = connection.sourceHandle;
+      const tgtHandle = connection.targetHandle;
+      const hasDuplicate = state.edges.some(
         (e) =>
-          (e.source === connection.source && e.target === connection.target) ||
-          (e.source === connection.target && e.target === connection.source),
+          e.source === connection.source &&
+          e.target === connection.target &&
+          (e.sourceHandle === srcHandle || (!e.sourceHandle && !srcHandle)) &&
+          (e.targetHandle === tgtHandle || (!e.targetHandle && !tgtHandle)),
       );
-      if (hasEdge) {
-        toast.error('A connection already exists between these nodes.');
+      if (hasDuplicate) {
+        toast.error('This exact connection already exists.');
         return {};
       }
 
       const detected = autoDetectHandles(sourceNode.type as string, targetNode.type as string);
+      const finalSourceHandle = connection.sourceHandle || detected.sourceHandle;
+      const finalTargetHandle = connection.targetHandle || detected.targetHandle;
 
       return {
         edges: addEdge(
           {
             ...connection,
-            sourceHandle: connection.sourceHandle || detected.sourceHandle,
-            targetHandle: connection.targetHandle || detected.targetHandle,
-            id: `e-${connection.source}-${connection.target}`,
+            sourceHandle: finalSourceHandle,
+            targetHandle: finalTargetHandle,
+            id: `e-${connection.source}-${connection.target}-${finalSourceHandle || 'd'}-${finalTargetHandle || 'd'}`,
             type: 'animated',
           },
           state.edges,
@@ -154,7 +185,7 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
 
   addNode: (type, position, additionalData) => {
     get().pushHistory();
-    const id = `node-${type}-${Date.now().toString().slice(-4)}`;
+    const id = `node-${type}-${crypto.randomUUID().slice(0, 8)}`;
     const label =
       type === 'input_trigger' ? 'Initial workflow instruction' : `${type.toUpperCase()} Node`;
     const newNode: Node<any> = {
@@ -193,7 +224,7 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
       const original = state.nodes.find((n) => n.id === id);
       if (!original) return {};
 
-      const newId = `node-${original.type}-${Date.now().toString().slice(-4)}-${Math.random().toString(36).slice(-4)}`;
+      const newId = `node-${original.type}-${crypto.randomUUID().slice(0, 8)}`;
 
       const duplicatedNode: Node<any> = {
         ...original,

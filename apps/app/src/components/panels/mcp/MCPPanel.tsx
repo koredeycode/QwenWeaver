@@ -106,7 +106,7 @@ export function MCPPanel() {
       : null;
     addNode(
       'mcp_tool',
-      { x: 200, y: 200 },
+      { x: 200 + Math.random() * 150, y: 200 + Math.random() * 150 },
       {
         label: server.name,
         mcpServerUrl: server.url || '',
@@ -120,7 +120,11 @@ export function MCPPanel() {
   };
 
   const handleAddCustomMcp = () => {
-    addNode('mcp_tool', { x: 200, y: 200 }, { label: 'Custom MCP', mcpServerUrl: '' });
+    addNode(
+      'mcp_tool',
+      { x: 200 + Math.random() * 150, y: 200 + Math.random() * 150 },
+      { label: 'Custom MCP', mcpServerUrl: '' },
+    );
   };
 
   const loadRegistry = useCallback(
@@ -301,24 +305,30 @@ function MyServersContent({
         {servers.map((server) => (
           <div
             key={server.id}
-            onDragStart={(e) =>
+            onDragStart={(e) => {
+              const initialType =
+                server.supportedAuthTypes?.length > 0 ? server.supportedAuthTypes[0] : 'none';
               handleDragStart(e, 'mcp_tool', {
                 label: server.name,
                 mcpServerUrl: server.url || '',
                 mcpServerId: server.id || '',
                 iconUrl: server.iconUrl,
-                mcpAuthConfig: { type: 'none' },
-              })
-            }
-            onTouchStart={() =>
+                mcpAuthConfig: { type: initialType },
+                mcpSupportedAuthTypes: server.supportedAuthTypes || [],
+              });
+            }}
+            onTouchStart={() => {
+              const initialType =
+                server.supportedAuthTypes?.length > 0 ? server.supportedAuthTypes[0] : 'none';
               setPendingTouchDrag('mcp_tool', {
                 label: server.name,
                 mcpServerUrl: server.url || '',
                 mcpServerId: server.id || '',
                 iconUrl: server.iconUrl,
-                mcpAuthConfig: { type: 'none' },
-              })
-            }
+                mcpAuthConfig: { type: initialType },
+                mcpSupportedAuthTypes: server.supportedAuthTypes || [],
+              });
+            }}
             draggable
             className="border border-slate-200 p-2.5 hover:border-purple-300 hover:shadow-sm transition-all group relative cursor-grab active:cursor-grabbing"
           >
@@ -419,24 +429,30 @@ function RegistryContent({
           return (
             <div
               key={server.registryId}
-              onDragStart={(e) =>
+              onDragStart={(e) => {
+                const initialType =
+                  server.supportedAuthTypes?.length > 0 ? server.supportedAuthTypes[0] : 'none';
                 handleDragStart(e, 'mcp_tool', {
                   label: server.name,
                   mcpServerUrl: server.url || '',
                   mcpServerId: server.registryId || '',
                   iconUrl: server.iconUrl,
-                  mcpAuthConfig: { type: 'none' },
-                })
-              }
-              onTouchStart={() =>
+                  mcpAuthConfig: { type: initialType },
+                  mcpSupportedAuthTypes: server.supportedAuthTypes || [],
+                });
+              }}
+              onTouchStart={() => {
+                const initialType =
+                  server.supportedAuthTypes?.length > 0 ? server.supportedAuthTypes[0] : 'none';
                 setPendingTouchDrag('mcp_tool', {
                   label: server.name,
                   mcpServerUrl: server.url || '',
                   mcpServerId: server.registryId || '',
                   iconUrl: server.iconUrl,
-                  mcpAuthConfig: { type: 'none' },
-                })
-              }
+                  mcpAuthConfig: { type: initialType },
+                  mcpSupportedAuthTypes: server.supportedAuthTypes || [],
+                });
+              }}
               draggable
               className="border border-slate-200 p-2.5 hover:border-purple-300 hover:shadow-sm transition-all group cursor-grab active:cursor-grabbing"
             >
