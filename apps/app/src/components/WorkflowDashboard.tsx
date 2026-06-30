@@ -1,9 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, User, FolderOpen, Users, LogOut, ChevronDown, Loader2, Trash2 } from 'lucide-react';
+import {
+  Plus,
+  User,
+  FolderOpen,
+  Users,
+  LogOut,
+  ChevronDown,
+  Loader2,
+  Trash2,
+  Image,
+  Video,
+  Music,
+  FileText,
+} from 'lucide-react';
 import { useStore } from '../store/index.js';
 import { client, withRefresh } from '../lib/api-client.js';
-import { EXAMPLE_WORKFLOWS, ExampleWorkflow } from '../lib/example-workflows.js';
+import { EXAMPLE_WORKFLOWS, ExampleWorkflow, ExampleNode } from '../lib/example-workflows.js';
 import { CreateWorkflowDialog } from './CreateWorkflowDialog.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 
@@ -13,6 +26,69 @@ interface UserWorkflow {
   description: string | null;
   createdAt: string | number;
   nodeCounts?: Record<string, number>;
+}
+
+function getMediaIcon(outputFormat?: string) {
+  switch (outputFormat) {
+    case 'image':
+      return <Image className="w-3 h-3" />;
+    case 'video':
+      return <Video className="w-3 h-3" />;
+    case 'audio':
+      return <Music className="w-3 h-3" />;
+    default:
+      return <FileText className="w-3 h-3" />;
+  }
+}
+
+function getMediaColor(outputFormat?: string) {
+  switch (outputFormat) {
+    case 'image':
+      return 'text-pink-600 bg-pink-50 border-pink-200';
+    case 'video':
+      return 'text-indigo-600 bg-indigo-50 border-indigo-200';
+    case 'audio':
+      return 'text-emerald-600 bg-emerald-50 border-emerald-200';
+    default:
+      return 'text-slate-500 bg-slate-50 border-slate-200';
+  }
+}
+
+function getMediaLabel(outputFormat?: string) {
+  switch (outputFormat) {
+    case 'image':
+      return 'IMG';
+    case 'video':
+      return 'VID';
+    case 'audio':
+      return 'AUD';
+    default:
+      return 'TXT';
+  }
+}
+
+function getWorkflowMediaBadges(nodes: ExampleNode[]) {
+  const seen = new Set<string>();
+  return nodes
+    .map((n) => {
+      const fmt = n.data.outputFormat;
+      if (!fmt || seen.has(fmt)) return null;
+      seen.add(fmt);
+      if (fmt === 'image' || fmt === 'video' || fmt === 'audio') {
+        return (
+          <span
+            key={fmt}
+            className={`flex items-center gap-0.5 text-[9px] font-mono border px-1 py-0.5 ${getMediaColor(fmt)}`}
+            title={`${fmt.toUpperCase()} output`}
+          >
+            {getMediaIcon(fmt)}
+            {getMediaLabel(fmt)}
+          </span>
+        );
+      }
+      return null;
+    })
+    .filter(Boolean);
 }
 
 export const WorkflowDashboard = () => {
@@ -104,7 +180,7 @@ export const WorkflowDashboard = () => {
     const supervisors = counts['supervisor'] ?? 0;
     const tools = counts['mcp_tool'] ?? 0;
     return (
-      <div className="flex gap-1.5">
+      <div className="flex gap-1.5 flex-wrap">
         {triggers > 0 && (
           <span
             className="flex items-center gap-0.5 text-[9px] font-mono bg-emerald-50 border border-emerald-200 text-emerald-700 px-1 py-0.5"
@@ -145,7 +221,6 @@ export const WorkflowDashboard = () => {
     <div className="h-screen w-screen flex flex-col bg-[#f8fafc] text-slate-800 select-none overflow-hidden font-sans">
       {/* Top Header */}
       <header className="h-14 bg-white border-b border-[#cbd5e1] flex items-center justify-between px-6 z-20 flex-shrink-0">
-        {/* Left: Tab Selectors */}
         <div className="flex items-center gap-6 h-full">
           <Link
             to="/"
@@ -162,7 +237,6 @@ export const WorkflowDashboard = () => {
           </Link>
         </div>
 
-        {/* Right Actions */}
         <div className="flex items-center gap-4">
           <button
             onClick={handleCreateNew}
@@ -172,10 +246,8 @@ export const WorkflowDashboard = () => {
             New Workflow
           </button>
 
-          {/* Vertical Divider */}
           <div className="h-6 w-[1px] bg-slate-200" />
 
-          {/* User profile / Logout */}
           {user ? (
             <div className="relative" ref={profileRef}>
               <button
@@ -271,10 +343,34 @@ export const WorkflowDashboard = () => {
               </p>
             </button>
 
-            {/* User's saved workflows */}
+            {/* ── USER WORKFLOWS SECTION ── */}
+            <div className="col-span-full">
+              <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider font-mono flex items-center gap-2">
+                <FolderOpen className="w-3.5 h-3.5" />
+                My Workflows
+              </h2>
+            </div>
+
             {workflowsLoading ? (
-              <div className="col-span-full flex items-center justify-center py-12">
+              <div className="col-span-full flex items-center justify-center py-8">
                 <Loader2 className="w-5 h-5 text-slate-400 animate-spin" />
+              </div>
+            ) : userWorkflows.length === 0 ? (
+              /* Empty state */
+              <div className="col-span-full border-2 border-dashed border-slate-200 bg-slate-50/50 p-10 flex flex-col items-center justify-center text-center">
+                <FolderOpen className="w-10 h-10 text-slate-300 mb-3" />
+                <h3 className="text-sm font-bold text-slate-500 mb-1">No workflows yet</h3>
+                <p className="text-[11px] text-slate-400 max-w-xs leading-relaxed mb-4">
+                  Create your first workflow from scratch or open one of the examples below to get
+                  started.
+                </p>
+                <button
+                  onClick={handleCreateNew}
+                  className="px-4 py-2 bg-[#ea580c] hover:bg-[#a73a00] text-white text-xs font-bold font-mono transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Create Workflow
+                </button>
               </div>
             ) : (
               userWorkflows.map((wf) => (
@@ -326,21 +422,20 @@ export const WorkflowDashboard = () => {
               ))
             )}
 
-            {/* Example workflows heading */}
-            {!workflowsLoading && userWorkflows.length > 0 && (
-              <div className="col-span-full mt-4 mb-2">
-                <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono">
-                  Example Workflows
-                </h2>
-              </div>
-            )}
+            {/* ── EXAMPLE WORKFLOWS SECTION ── */}
+            <div className="col-span-full mt-4">
+              <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider font-mono flex items-center gap-2">
+                <FileText className="w-3.5 h-3.5" />
+                Example Workflows
+              </h2>
+            </div>
 
-            {/* List Mock Workflows */}
             {EXAMPLE_WORKFLOWS.map((wf) => {
               const triggersCount = getNodeCount(wf, 'trigger');
               const agentsCount = getNodeCount(wf, 'agent');
               const supervisorsCount = getNodeCount(wf, 'supervisor');
               const toolsCount = getNodeCount(wf, 'mcp_tool');
+              const mediaBadges = getWorkflowMediaBadges(wf.nodes);
 
               return (
                 <button
@@ -351,7 +446,7 @@ export const WorkflowDashboard = () => {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <FolderOpen className="w-5 h-5 text-slate-400 group-hover:text-[#f97316] transition-colors" />
-                      <div className="flex gap-1.5">
+                      <div className="flex gap-1.5 flex-wrap">
                         {triggersCount > 0 && (
                           <span
                             className="flex items-center gap-0.5 text-[9px] font-mono bg-emerald-50 border border-emerald-200 text-emerald-700 px-1 py-0.5"
@@ -384,6 +479,7 @@ export const WorkflowDashboard = () => {
                             {toolsCount}M
                           </span>
                         )}
+                        {mediaBadges}
                       </div>
                     </div>
                     <div>
@@ -408,7 +504,7 @@ export const WorkflowDashboard = () => {
           </div>
         </div>
       </div>
-      {/* New Workflow Dialog */}
+
       <CreateWorkflowDialog
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
