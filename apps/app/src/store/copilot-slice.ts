@@ -1,6 +1,6 @@
 import { StateCreator } from 'zustand';
 import { StoreState, CopilotSlice, CopilotMessage } from './types.js';
-import { client, getAccessToken } from '../lib/api-client.js';
+import { client } from '../lib/api-client.js';
 import type { CopilotHistoryMessage } from '@qwenweaver/types';
 
 export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> = (set, get) => ({
@@ -92,7 +92,6 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
           ? 'modify'
           : 'generate';
 
-      const token = await getAccessToken();
       const workflowId = get().workflowId;
 
       const response = await client.api.copilot.$post({
@@ -138,16 +137,19 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
           if (!block.trim()) continue;
 
           let eventName = '';
-          let dataStr = '';
+          const dataLines: string[] = [];
           const lines = block.split('\n');
 
           for (const line of lines) {
             if (line.startsWith('event:')) {
               eventName = line.slice(6).trim();
             } else if (line.startsWith('data:')) {
-              dataStr = line.slice(5).trim();
+              dataLines.push(line.slice(5));
+            } else if (line.startsWith('data') && line[4] === undefined) {
+              dataLines.push('');
             }
           }
+          const dataStr = dataLines.join('\n').trim();
 
           if (dataStr) {
             try {
