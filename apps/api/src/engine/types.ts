@@ -35,6 +35,28 @@ export interface SSEPayloadMap {
   complete: { executionId: string; metrics: ExecutionMetrics; timestamp: number };
   error: { message: string; nodeId?: string; timestamp: number };
   ping: { data: string };
+  workspace_write: { nodeId: string; key: string; valueType: string; timestamp: number };
+  message: {
+    fromNodeId: string;
+    toNodeId: string;
+    content: string;
+    round: number;
+    channelId: string;
+    timestamp: number;
+  };
+  debate_round: {
+    arenaId: string;
+    round: number;
+    statements: Array<{ participantId: string; content: string }>;
+    timestamp: number;
+  };
+  debate_verdict: {
+    arenaId: string;
+    verdict: string;
+    scores?: Record<string, number>;
+    rationale?: string;
+    timestamp: number;
+  };
 }
 
 export interface StreamEmitter {

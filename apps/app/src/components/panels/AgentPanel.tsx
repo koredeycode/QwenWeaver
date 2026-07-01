@@ -1,4 +1,4 @@
-import { Bot, Brain } from 'lucide-react';
+import { Bot, Brain, Scale } from 'lucide-react';
 import { WORKER_OPTIONS } from '../../data/worker-options.js';
 import { handleDragStart } from '../../utils/drag-handle.js';
 import { setPendingTouchDrag } from '../../lib/touch-drag.js';
@@ -6,9 +6,11 @@ import { setPendingTouchDrag } from '../../lib/touch-drag.js';
 export function AgentPanel({
   onSelectAgent,
   onSelectSupervisor,
+  onSelectDebateArena,
 }: {
   onSelectAgent: (data: Record<string, unknown>) => void;
   onSelectSupervisor: (data: Record<string, unknown>) => void;
+  onSelectDebateArena?: (data: Record<string, unknown>) => void;
 }) {
   const textWorkers = WORKER_OPTIONS.filter((w) => w.group === 'text');
   const mediaWorkers = WORKER_OPTIONS.filter((w) => w.group === 'media');
@@ -68,6 +70,60 @@ export function AgentPanel({
               </div>
             </div>
           </button>
+          {onSelectDebateArena && (
+            <button
+              onClick={() =>
+                onSelectDebateArena({
+                  label: 'Debate Arena',
+                  debateArenaConfig: {
+                    mode: 'debate',
+                    maxRounds: 3,
+                    hasArbitrator: false,
+                    outputFormat: 'verdict',
+                  },
+                })
+              }
+              onDragStart={(e) =>
+                handleDragStart(e, 'debate_arena', {
+                  label: 'Debate Arena',
+                  debateArenaConfig: {
+                    mode: 'debate',
+                    maxRounds: 3,
+                    hasArbitrator: false,
+                    outputFormat: 'verdict',
+                  },
+                })
+              }
+              onTouchStart={() =>
+                setPendingTouchDrag('debate_arena', {
+                  label: 'Debate Arena',
+                  debateArenaConfig: {
+                    mode: 'debate',
+                    maxRounds: 3,
+                    hasArbitrator: false,
+                    outputFormat: 'verdict',
+                  },
+                })
+              }
+              draggable
+              className="border border-amber-200 p-3 hover:border-amber-400 hover:bg-amber-50/30 transition-all group text-left bg-amber-50/20 cursor-grab active:cursor-grabbing"
+            >
+              <div className="flex items-start gap-2.5">
+                <div className="w-8 h-8 border bg-amber-50 border-amber-200 flex items-center justify-center shrink-0">
+                  <Scale className="w-4 h-4 text-amber-600" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-[11px] font-bold text-slate-900 group-hover:text-amber-700 transition-colors truncate">
+                    Debate Arena
+                  </h4>
+                  <p className="text-[9px] text-slate-500 mt-0.5 line-clamp-2 font-mono leading-relaxed">
+                    Orchestrates multi-agent debate with structured rounds, cross-examination, and
+                    optional arbitration.
+                  </p>
+                </div>
+              </div>
+            </button>
+          )}
         </div>
       </div>
 

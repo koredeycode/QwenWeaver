@@ -1,5 +1,5 @@
 import { StateCreator } from 'zustand';
-import type { NodeTiming, OutputPart } from '@qwenweaver/types';
+import type { NodeTiming, OutputPart, WorkspaceEntry } from '@qwenweaver/types';
 import { StoreState, ExecutionSlice } from './types.js';
 import { toast } from 'sonner';
 import { getAccessToken, client } from '../lib/api-client.js';
@@ -20,6 +20,11 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
   abortController: null,
   executionHistory: [],
   historyLoading: false,
+  workspaceEntries: [],
+  workspaceLoading: false,
+  channelMessages: [],
+  debateRounds: [],
+  debateVerdicts: [],
 
   fetchExecutionHistory: async (limit = 20, offset = 0) => {
     const workflowId = get().workflowId;
@@ -47,6 +52,22 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
     }
   },
 
+  fetchWorkspaceEntries: async (executionId: string) => {
+    set({ workspaceLoading: true });
+    try {
+      const res = await client.api.workspace[':executionId'].list.$get({
+        param: { executionId },
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { entries: WorkspaceEntry[] };
+        set({ workspaceEntries: data.entries || [], workspaceLoading: false });
+      }
+    } catch (err) {
+      console.error('Failed to fetch workspace entries:', err);
+      set({ workspaceLoading: false });
+    }
+  },
+
   runWorkflow: async () => {
     set({
       executionStatus: 'pending',
@@ -54,6 +75,10 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
       nodeOutputs: {},
       nodeThinking: {},
       nodeOutputParts: {},
+      workspaceEntries: [],
+      channelMessages: [],
+      debateRounds: [],
+      debateVerdicts: [],
       activeEdges: new Set(),
       metrics: null,
       activeExecutionId: null,
@@ -92,6 +117,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
           target: e.target,
           sourceHandle: e.sourceHandle || undefined,
           targetHandle: e.targetHandle || undefined,
+          data: e.data || undefined,
         })),
       };
 
@@ -299,13 +325,74 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
               toast.error(message || 'Workflow execution error');
               break;
             }
+
+            case 'workspace_write': {
+              const activeExecutionId = get().activeExecutionId;
+              if (activeExecutionId) {
+                get().fetchWorkspaceEntries(activeExecutionId);
+              }
+              break;
+            }
+
+            case 'message': {
+              const msg = payload as {
+                fromNodeId: string;
+                toNodeId: string;
+                content: string;
+                round: number;
+                channelId: string;
+                timestamp: number;
+              };
+              set((s) => ({
+                channelMessages: [...s.channelMessages, msg],
+              }));
+              break;
+            }
+
+            case 'debate_round': {
+              const round = payload as {
+                arenaId: string;
+                round: number;
+                statements: Array<{ participantId: string; content: string }>;
+                timestamp: number;
+              };
+              set((s) => ({
+                debateRounds: [...s.debateRounds, round],
+              }));
+              break;
+            }
+
+            case 'debate_verdict': {
+              const verdict = payload as {
+                arenaId: string;
+                verdict: string;
+                scores?: Record<string, number>;
+                rationale?: string;
+                timestamp: number;
+              };
+              set((s) => ({
+                debateVerdicts: [...s.debateVerdicts, verdict],
+              }));
+              break;
+            }
           }
         } catch (err) {
           // skip malformed payloads
         }
       };
 
-      const eventTypes = ['token', 'thinking', 'status_update', 'edge_active', 'complete', 'error'];
+      const eventTypes = [
+        'token',
+        'thinking',
+        'status_update',
+        'edge_active',
+        'complete',
+        'error',
+        'workspace_write',
+        'message',
+        'debate_round',
+        'debate_verdict',
+      ];
       for (const eventType of eventTypes) {
         eventSource.addEventListener(eventType, (e) => {
           handleEvent(eventType, e.data);

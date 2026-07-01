@@ -6,6 +6,7 @@ import {
   uuid,
   jsonb,
   index,
+  uniqueIndex,
   varchar,
   boolean,
 } from 'drizzle-orm/pg-core';
@@ -244,6 +245,27 @@ export const pgCreditTransactions = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => [index('credit_transactions_user_id_idx').on(table.userId)],
+);
+
+export const pgWorkspaceEntries = pgTable(
+  'workspace_entries',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    executionId: uuid('execution_id')
+      .notNull()
+      .references(() => pgExecutions.id, { onDelete: 'cascade' }),
+    nodeId: text('node_id').notNull(),
+    key: text('key').notNull(),
+    value: jsonb('value').notNull(),
+    valueType: text('value_type').notNull().default('text'),
+    fileUrl: text('file_url'),
+    round: integer('round').default(0).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('ws_exec_key_idx').on(table.executionId, table.key),
+    index('ws_exec_node_idx').on(table.executionId, table.nodeId),
+  ],
 );
 
 export type PgMcpServer = typeof pgMcpServers.$inferSelect;

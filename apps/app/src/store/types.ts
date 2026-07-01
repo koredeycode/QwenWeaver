@@ -6,6 +6,7 @@ import type {
   OutputPart,
   GraphAction,
   CopilotHistoryMessage,
+  WorkspaceEntry,
 } from '@qwenweaver/types';
 import type {
   TemplateSummary,
@@ -130,9 +131,33 @@ export interface ExecutionSlice {
   abortController: AbortController | null;
   executionHistory: ExecutionSummary[];
   historyLoading: boolean;
+  workspaceEntries: WorkspaceEntry[];
+  workspaceLoading: boolean;
+  channelMessages: Array<{
+    fromNodeId: string;
+    toNodeId: string;
+    content: string;
+    round: number;
+    channelId: string;
+    timestamp: number;
+  }>;
+  debateRounds: Array<{
+    arenaId: string;
+    round: number;
+    statements: Array<{ participantId: string; content: string }>;
+    timestamp: number;
+  }>;
+  debateVerdicts: Array<{
+    arenaId: string;
+    verdict: string;
+    scores?: Record<string, number>;
+    rationale?: string;
+    timestamp: number;
+  }>;
   runWorkflow: () => Promise<void>;
   stopWorkflow: () => void;
   fetchExecutionHistory: (limit?: number, offset?: number) => Promise<void>;
+  fetchWorkspaceEntries: (executionId: string) => Promise<void>;
 }
 
 export interface CopilotSlice {

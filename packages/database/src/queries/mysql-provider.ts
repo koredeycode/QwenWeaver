@@ -1010,4 +1010,142 @@ export const mysqlProvider: QueryProvider = {
       .where(eq(mysqlSchema.mysqlWorkflows.userId, userId));
     return rows[0]?.count ?? 0;
   },
+
+  // ─── Workspace blackboard ─────────────────────────────────────────────────────
+
+  async writeWorkspaceEntry(
+    executionId: string,
+    nodeId: string,
+    key: string,
+    value: unknown,
+    valueType: string = 'text',
+    fileUrl?: string,
+    expectedRound?: number,
+  ): Promise<string> {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const now = new Date();
+
+    const existing = await mysqlDb
+      .select({
+        id: mysqlSchema.mysqlWorkspaceEntries.id,
+        round: mysqlSchema.mysqlWorkspaceEntries.round,
+      })
+      .from(mysqlSchema.mysqlWorkspaceEntries)
+      .where(
+        and(
+          eq(mysqlSchema.mysqlWorkspaceEntries.executionId, executionId),
+          eq(mysqlSchema.mysqlWorkspaceEntries.key, key),
+        ),
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      const row = existing[0];
+      if (expectedRound !== undefined && row.round !== expectedRound) {
+        throw new Error('CONCURRENT_MODIFICATION');
+      }
+      await mysqlDb
+        .update(mysqlSchema.mysqlWorkspaceEntries)
+        .set({
+          value,
+          valueType,
+          fileUrl: fileUrl || null,
+          nodeId,
+          round: row.round + 1,
+          createdAt: now,
+        })
+        .where(eq(mysqlSchema.mysqlWorkspaceEntries.id, row.id));
+      return row.id;
+    }
+
+    const id = crypto.randomUUID();
+    await mysqlDb.insert(mysqlSchema.mysqlWorkspaceEntries).values({
+      id,
+      executionId,
+      nodeId,
+      key,
+      value,
+      valueType,
+      fileUrl: fileUrl || null,
+      round: 0,
+      createdAt: now,
+    });
+    return id;
+  },
+
+  async readWorkspaceEntry(executionId: string, key: string) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const rows = await mysqlDb
+      .select()
+      .from(mysqlSchema.mysqlWorkspaceEntries)
+      .where(
+        and(
+          eq(mysqlSchema.mysqlWorkspaceEntries.executionId, executionId),
+          eq(mysqlSchema.mysqlWorkspaceEntries.key, key),
+        ),
+      )
+      .limit(1);
+
+    if (rows.length === 0) return null;
+    const r = rows[0];
+    return {
+      id: r.id,
+      executionId: r.executionId ?? '',
+      nodeId: r.nodeId,
+      key: r.key,
+      value: r.value,
+      valueType: (r.valueType as any) ?? 'text',
+      fileUrl: r.fileUrl ?? undefined,
+      round: r.round,
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+    };
+  },
+
+  async listWorkspaceEntries(executionId: string, nodeId?: string, prefix?: string) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const conditions = [eq(mysqlSchema.mysqlWorkspaceEntries.executionId, executionId)];
+    if (nodeId) {
+      conditions.push(eq(mysqlSchema.mysqlWorkspaceEntries.nodeId, nodeId));
+    }
+    if (prefix) {
+      conditions.push(sql`${mysqlSchema.mysqlWorkspaceEntries.key} LIKE ${prefix + '%'}`);
+    }
+
+    const rows = await mysqlDb
+      .select()
+      .from(mysqlSchema.mysqlWorkspaceEntries)
+      .where(and(...conditions))
+      .orderBy(mysqlSchema.mysqlWorkspaceEntries.createdAt);
+
+    return rows.map((r) => ({
+      id: r.id,
+      executionId: r.executionId ?? '',
+      nodeId: r.nodeId,
+      key: r.key,
+      value: r.value,
+      valueType: (r.valueType as any) ?? 'text',
+      fileUrl: r.fileUrl ?? undefined,
+      round: r.round,
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+    }));
+  },
+
+  async deleteWorkspaceEntry(id: string) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    await mysqlDb
+      .delete(mysqlSchema.mysqlWorkspaceEntries)
+      .where(eq(mysqlSchema.mysqlWorkspaceEntries.id, id));
+  },
+
+  async clearWorkspace(executionId: string) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    await mysqlDb
+      .delete(mysqlSchema.mysqlWorkspaceEntries)
+      .where(eq(mysqlSchema.mysqlWorkspaceEntries.executionId, executionId));
+  },
 };

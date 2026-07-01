@@ -3,3 +3,4 @@ export * from './mcp.js';
 export * from './templates.js';
 export * from './credits.js';
 export * from './credentials.js';
+export * from './workspace.js';

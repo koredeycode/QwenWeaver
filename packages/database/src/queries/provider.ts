@@ -13,6 +13,7 @@ import type {
   AgentLogOutput,
   CreditTransaction,
   CopilotHistoryMessage,
+  WorkspaceEntry,
 } from '@qwenweaver/types';
 import { getConnection } from '../index.js';
 import { sqliteProvider } from './sqlite-provider.js';
@@ -214,6 +215,25 @@ export interface QueryProvider {
   ): Promise<void>;
   reserveCredits(userId: string, amount: number): Promise<boolean>;
   listCreditTransactions(userId: string, limit?: number): Promise<CreditTransaction[]>;
+
+  // Workspace blackboard
+  writeWorkspaceEntry(
+    executionId: string,
+    nodeId: string,
+    key: string,
+    value: unknown,
+    valueType?: string,
+    fileUrl?: string,
+    expectedRound?: number,
+  ): Promise<string>;
+  readWorkspaceEntry(executionId: string, key: string): Promise<WorkspaceEntry | null>;
+  listWorkspaceEntries(
+    executionId: string,
+    nodeId?: string,
+    prefix?: string,
+  ): Promise<WorkspaceEntry[]>;
+  deleteWorkspaceEntry(id: string): Promise<void>;
+  clearWorkspace(executionId: string): Promise<void>;
 
   // Workflow limits
   countUserWorkflows(userId: string): Promise<number>;

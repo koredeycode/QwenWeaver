@@ -6,6 +6,7 @@ import { createModuleLogger } from '../logger.js';
 import { agent_duration_ms, llm_tokens_total } from '../metrics.js';
 import { buildHeadersFromAuthConfig, callMCPTool, discoverMCPTools } from './mcp-bridge.js';
 import { getModelForNode, getModelIdForNode } from './model-router.js';
+import { createWorkspaceTools } from './workspace-tools.js';
 import type { AgentResult, StreamEmitter, UpstreamOutputs } from './types.js';
 import { EXTENSION_MAP, CONTENT_TYPE_MAP } from './constants.js';
 import { writeBinaryAsset } from './file-asset.js';
@@ -23,6 +24,7 @@ export async function runAgent(
   emitter?: StreamEmitter,
   executionId?: string,
   userId?: string,
+  conversationContext?: string,
 ): Promise<AgentResult> {
   const startTime = performance.now();
 
@@ -194,6 +196,9 @@ export async function runAgent(
     const { model, enableThinking, thinkingBudget } = getModelForNode(node);
     const systemPrompt = buildSystemPrompt(node);
     const userMessage = buildUserMessage(node, upstreamOutputs);
+    const finalPrompt = conversationContext
+      ? `${userMessage}\n\n---\n\n[CONVERSATION CONTEXT]:\n${conversationContext}`
+      : userMessage;
 
     const tools: Record<string, Tool<z.ZodTypeAny, unknown>> = {};
     let mcpToolCount = 0;
@@ -218,6 +223,12 @@ export async function runAgent(
       }
     }
 
+    // Inject built-in workspace tools (blackboard)
+    if (executionId) {
+      const workspaceTools = createWorkspaceTools(executionId, node.id, emitter);
+      Object.assign(tools, workspaceTools);
+    }
+
     const providerOptions = enableThinking
       ? {
           alibaba: {
@@ -235,7 +246,7 @@ export async function runAgent(
     const streamOptions = {
       model,
       system: systemPrompt,
-      prompt: userMessage,
+      prompt: finalPrompt,
       tools: Object.keys(tools).length > 0 ? tools : undefined,
       maxSteps: Math.min(Math.max(Number(process.env.MAX_STEPS) || 5, 1), 25),
       providerOptions: providerOptions as Record<string, Record<string, any>> | undefined,

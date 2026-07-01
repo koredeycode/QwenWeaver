@@ -1,6 +1,44 @@
 import type { NodePayload } from '@qwenweaver/types';
 import type { UpstreamOutputs } from './types.js';
 
+/**
+ * Builds a conversation prompt for a message channel exchange round.
+ * Informs the agent of the transcript so far and their role in the round.
+ */
+export function buildMessagePrompt(
+  agentId: string,
+  transcript: Array<{ sender: string; text: string; round: number }>,
+  channelId: string,
+  currentRound: number,
+  maxRounds: number,
+): string {
+  if (transcript.length === 0) {
+    return `You are participating in a direct message exchange on channel "${channelId}" (round ${currentRound}/${maxRounds}).\n\nProvide your initial message to the other participant(s). Be clear and concise.`;
+  }
+
+  const history = transcript
+    .map((m) => `[${m.sender}] (round ${m.round}):\n${m.text}`)
+    .join('\n\n---\n\n');
+
+  const isFinalRound = currentRound >= maxRounds;
+
+  return `You are participating in a direct message exchange on channel "${channelId}" (round ${currentRound}/${maxRounds}).
+
+## Conversation transcript so far:
+
+${history}
+
+## Instructions:
+- Read the messages from the other participant(s) carefully.
+- Provide your response addressing the points made.
+${
+  isFinalRound
+    ? '- This is the FINAL round. Provide a conclusive synthesis of your position.'
+    : '- This is round ' + currentRound + '. Continue the discussion constructively.'
+}
+`;
+}
+
 export function buildSystemPrompt(node: NodePayload): string {
   let base = node.data.systemPrompt ?? '';
   if (!base && node.type !== 'supervisor') {

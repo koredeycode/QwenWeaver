@@ -1,5 +1,9 @@
 export function isAgent(type?: string): boolean {
-  return type === 'agent' || type === 'supervisor';
+  return type === 'agent' || type === 'supervisor' || type === 'debate_arena';
+}
+
+export function isDebateArena(type?: string): boolean {
+  return type === 'debate_arena';
 }
 
 export function isTrigger(type?: string): boolean {

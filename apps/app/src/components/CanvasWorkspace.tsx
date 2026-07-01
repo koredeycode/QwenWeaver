@@ -80,6 +80,7 @@ export const CanvasWorkspace = () => {
   const workflowDescription = useStore((s) => s.workflowDescription);
   const workflowId = useStore((s) => s.workflowId);
   const setWorkflowMeta = useStore((s) => s.setWorkflowMeta);
+  const setEdgeData = useStore((s) => s.setEdgeData);
   const maximizedNodeId = useStore((s) => s.maximizedNodeId);
   const setMaximizedNodeId = useStore((s) => s.setMaximizedNodeId);
 
@@ -277,8 +278,12 @@ export const CanvasWorkspace = () => {
         if (sameServerExists) return false;
       }
       // Block reverse connections (prevents cycles: A→B blocks B→A)
-      if (edges.some((e: any) => e.source === connection.target && e.target === connection.source))
-        return false;
+      // Allow reverse if the existing edge is a message channel (bidirectional conversation)
+      const reverseEdge = edges.find(
+        (e: any) => e.source === connection.target && e.target === connection.source,
+      );
+      if (reverseEdge && !reverseEdge.data?.messageChannel) return false;
+      if (reverseEdge) return true;
       return true;
     },
     [nodes, edges],
@@ -451,6 +456,19 @@ export const CanvasWorkspace = () => {
   const handlePaneClick = useCallback(() => {
     selectNode(null);
   }, [selectNode]);
+
+  const handleEdgeClick = useCallback(
+    (_: any, edge: any) => {
+      if (isLocked || status === 'running') return;
+      const isChannel = edge.data?.messageChannel === true;
+      setEdgeData(edge.id, { messageChannel: !isChannel });
+      toast(
+        `Message channel ${isChannel ? 'disabled' : 'enabled'} on ${edge.source} ↔ ${edge.target}`,
+        { duration: 1500 },
+      );
+    },
+    [isLocked, status, setEdgeData],
+  );
 
   return (
     <>
@@ -861,6 +879,7 @@ export const CanvasWorkspace = () => {
                       nodeTypes={nodeTypes as any}
                       edgeTypes={edgeTypes as any}
                       onNodeClick={handleNodeClick}
+                      onEdgeClick={handleEdgeClick}
                       onPaneClick={handlePaneClick}
                       fitView
                       minZoom={0.2}
