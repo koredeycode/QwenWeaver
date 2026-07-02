@@ -316,4 +316,43 @@ describe('executor', () => {
     const lastCallNodeArg = calls[calls.length - 1][0];
     expect(lastCallNodeArg.data.outputFormat).toBe('json');
   });
+
+  it('excludes message channel edges from incomingEdges data-flow map', async () => {
+    const { runAgent } = await import('../engine/agent-runner.js');
+    const runAgentSpy = vi.mocked(runAgent);
+
+    const workflow: WorkflowPayload = {
+      name: 'Channel Test',
+      nodes: [
+        { id: 'A', type: 'agent', position: { x: 0, y: 0 }, data: {} },
+        { id: 'B', type: 'agent', position: { x: 0, y: 0 }, data: {} },
+      ],
+      edges: [
+        // Data-flow edge — should be included
+        { id: 'e1', source: 'A', target: 'B', data: {} },
+        // Message channel edge — should be excluded from data-flow
+        { id: 'e2', source: 'B', target: 'A', data: { messageChannel: true } },
+      ],
+    };
+
+    const emitter = createMockEmitter();
+    await executeWorkflow(workflow, 'exec-channel-filter', emitter, {
+      maxNegotiationRounds: 1,
+      persistLogs: false,
+    });
+
+    const calls = runAgentSpy.mock.calls;
+    // Agent A has no upstream (the only incoming edge is a message channel, which is excluded)
+    // Agent B should have A as upstream
+    const agentACall = calls.find((c: any) => c[0].id === 'A');
+    const agentBCall = calls.find((c: any) => c[0].id === 'B');
+    // A should have no upstream outputs (message channel edge excluded)
+    if (agentACall) {
+      expect(agentACall[1].size).toBe(0);
+    }
+    // B should have A as an upstream (data-flow edge included)
+    if (agentBCall) {
+      expect(agentBCall[1].has('A')).toBe(true);
+    }
+  });
 });

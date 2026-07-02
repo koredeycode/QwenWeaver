@@ -466,10 +466,13 @@ export async function executeWorkflow(
   const speedupS =
     totalLatencyMs > 0 ? Math.round((sequentialTime / totalLatencyMs) * 100) / 100 : 1;
 
+  // Average parallelism across batches: mean of each batch's node count
+  const avgBatchSize =
+    dagResult.batches.length > 0 ? workflow.nodes.length / dagResult.batches.length : 1;
+  // Parallel efficiency = actual speedup / theoretical max speedup
+  // Theoretical max = avgBatchSize (if all batches ran perfectly in parallel)
   const parallelEfficiency =
-    dagResult.batches.length > 0
-      ? Math.round((workflow.nodes.length / dagResult.batches.length) * 100) / 100
-      : 1;
+    avgBatchSize > 0 ? Math.round((speedupS / avgBatchSize) * 100) / 100 : 1;
 
   const metrics: ExecutionMetrics = {
     speedupS,
