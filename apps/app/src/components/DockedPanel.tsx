@@ -71,6 +71,10 @@ export const DockedPanel = ({ mode, onClose }: DockedPanelProps) => {
               addNode('supervisor', { x: 250, y: 200 }, data);
               onClose();
             }}
+            onSelectDebateArena={(data) => {
+              addNode('debate_arena', { x: 250, y: 200 }, data);
+              onClose();
+            }}
           />
         ) : (
           <MCPPanel />

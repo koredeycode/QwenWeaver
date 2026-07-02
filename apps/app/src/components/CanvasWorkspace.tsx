@@ -6,7 +6,12 @@ import { toPng } from 'html-to-image';
 
 import type { NodeType } from '@qwenweaver/types';
 import { client, withRefresh } from '../lib/api-client.js';
-import { isAgent, isTrigger, doesNotSupportTools } from '../utils/connection-validation.js';
+import {
+  isAgent,
+  isTrigger,
+  doesNotSupportTools,
+  autoDetectHandles,
+} from '../utils/connection-validation.js';
 import { useStore } from '../store/index.js';
 import { clearDraft } from '../store/auto-save.js';
 import { useCanvasShortcuts } from '../hooks/useCanvasShortcuts.js';
@@ -53,6 +58,8 @@ import { CustomZoomControls } from './CustomZoomControls.js';
 import { ExportWorkflowModal } from './ExportWorkflowModal.js';
 import { ImportWorkflowModal } from './ImportWorkflowModal.js';
 import { MaximizedNodeOverlay } from './MaximizedNodeOverlay.js';
+import { MCPConfigDialog } from './MCPConfigDialog.js';
+import { CompletionSummaryDialog } from './CompletionSummaryDialog.js';
 import { SaveWorkflowDialog } from './SaveWorkflowDialog.js';
 import { PublishTemplateDialog } from './PublishTemplateDialog.js';
 import { ClearCanvasDialog } from './ClearCanvasDialog.js';
@@ -73,6 +80,7 @@ export const CanvasWorkspace = () => {
   const workflowDescription = useStore((s) => s.workflowDescription);
   const workflowId = useStore((s) => s.workflowId);
   const setWorkflowMeta = useStore((s) => s.setWorkflowMeta);
+  const setEdgeData = useStore((s) => s.setEdgeData);
   const maximizedNodeId = useStore((s) => s.maximizedNodeId);
   const setMaximizedNodeId = useStore((s) => s.setMaximizedNodeId);
 
@@ -140,6 +148,7 @@ export const CanvasWorkspace = () => {
   const toolsRef = useRef<HTMLDivElement>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const [draftThumbnail, setDraftThumbnail] = useState<string | undefined>();
   const canvasRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -220,6 +229,66 @@ export const CanvasWorkspace = () => {
     pushHistory();
   }, [pushHistory]);
 
+  const isValidConnection = useCallback(
+    (connection: any) => {
+      if (!connection.source || !connection.target) return false;
+      const sn = nodes.find((n: any) => n.id === connection.source);
+      const tn = nodes.find((n: any) => n.id === connection.target);
+      if (!sn || !tn) return false;
+
+      if (sn.type === 'mcp_tool' && tn.type === 'mcp_tool') return false;
+      if (sn.type === 'mcp_tool' && !isAgent(tn.type)) return false;
+      if (isTrigger(sn.type) && !isAgent(tn.type)) return false;
+
+      // Block MCP tools from connecting to media nodes that don't support tool calling
+      if (sn.type === 'mcp_tool' && isAgent(tn.type) && doesNotSupportTools(tn)) return false;
+      if (isAgent(sn.type) && doesNotSupportTools(sn) && tn.type === 'mcp_tool') return false;
+
+      // Each MCP tool can have at most one incoming connection
+      if (tn.type === 'mcp_tool') {
+        const alreadyConnected = edges.some((e: any) => e.target === connection.target);
+        if (alreadyConnected) return false;
+      }
+
+      // Prevent connecting two MCP tools from the same server to the same agent (tool→agent)
+      if (sn.type === 'mcp_tool' && isAgent(tn.type)) {
+        const sameServerExists = edges.some((e: any) => {
+          if (e.target !== connection.target) return false;
+          if (e.source === connection.source) return false;
+          const src = nodes.find((n: any) => n.id === e.source);
+          return (
+            src?.type === 'mcp_tool' &&
+            src?.data?.mcpServerId != null &&
+            src?.data?.mcpServerId === sn.data?.mcpServerId
+          );
+        });
+        if (sameServerExists) return false;
+      }
+      // Prevent connecting two MCP tools from the same server to the same agent (agent→tool)
+      if (isAgent(sn.type) && tn.type === 'mcp_tool') {
+        const sameServerExists = edges.some((e: any) => {
+          if (e.source !== connection.source) return false;
+          const target = nodes.find((n: any) => n.id === e.target);
+          return (
+            target?.type === 'mcp_tool' &&
+            target?.data?.mcpServerId != null &&
+            target?.data?.mcpServerId === tn.data?.mcpServerId
+          );
+        });
+        if (sameServerExists) return false;
+      }
+      // Block reverse connections (prevents cycles: A→B blocks B→A)
+      // Allow reverse if the existing edge is a message channel (bidirectional conversation)
+      const reverseEdge = edges.find(
+        (e: any) => e.source === connection.target && e.target === connection.source,
+      );
+      if (reverseEdge && !reverseEdge.data?.messageChannel) return false;
+      if (reverseEdge) return true;
+      return true;
+    },
+    [nodes, edges],
+  );
+
   const onConnectEnd = useCallback(
     (event: MouseEvent | TouchEvent) => {
       if (!connectionStartRef.current) return;
@@ -274,39 +343,21 @@ export const CanvasWorkspace = () => {
       const sourceNode = nodes.find((n) => n.id === connectionStartRef.current!.source);
       if (!sourceNode) return;
 
-      let sourceHandle = connectionStartRef.current.sourceHandle;
+      const detected = autoDetectHandles(sourceNode.type, targetNode.type);
+      const sourceHandle = connectionStartRef.current.sourceHandle || detected.sourceHandle;
+      const targetHandle = detected.targetHandle;
 
-      const isAgent = (t?: string) => t === 'agent' || t === 'supervisor';
-      const isTrigger = (t?: string) => t === 'trigger' || t === 'input_trigger';
-
-      if (sourceNode.type === 'mcp_tool' && isAgent(targetNode.type)) {
-        sourceHandle = 'source-bottom';
-      }
-
-      const targetHandle =
-        sourceNode.type === 'mcp_tool' && isAgent(targetNode.type)
-          ? 'target-bottom'
-          : isAgent(targetNode.type)
-            ? 'target-left'
-            : targetNode.type === 'mcp_tool'
-              ? 'target'
-              : undefined;
-
-      if (!targetHandle) return;
-
-      if (isAgent(sourceNode.type) && isAgent(targetNode.type)) {
-        sourceHandle = 'source-right';
-      } else if (isAgent(sourceNode.type) && targetNode.type === 'mcp_tool') {
-        sourceHandle = 'source-bottom';
-      } else if (isTrigger(sourceNode.type) && isAgent(targetNode.type)) {
-        sourceHandle = 'source';
+      if (!targetHandle) {
+        toast.error('Cannot create a connection between these node types.');
+        connectionStartRef.current = null;
+        return;
       }
 
       onConnect({
         source: connectionStartRef.current.source,
         target: targetNodeId,
-        sourceHandle,
-        targetHandle,
+        sourceHandle: sourceHandle || null,
+        targetHandle: targetHandle || null,
       });
 
       connectionStartRef.current = null;
@@ -333,7 +384,14 @@ export const CanvasWorkspace = () => {
 
       // Check for pre-configured node data (from docked panel drags)
       const nodeDataStr = event.dataTransfer.getData('application/qwenweaver-node-data');
-      const nodeData = nodeDataStr ? JSON.parse(nodeDataStr) : undefined;
+      let nodeData: Record<string, unknown> | undefined;
+      if (nodeDataStr) {
+        try {
+          nodeData = JSON.parse(nodeDataStr);
+        } catch {
+          nodeData = undefined;
+        }
+      }
 
       if ((type === 'agent' || type === 'supervisor') && !nodeData) {
         setDockedPanelMode('agents');
@@ -398,6 +456,19 @@ export const CanvasWorkspace = () => {
   const handlePaneClick = useCallback(() => {
     selectNode(null);
   }, [selectNode]);
+
+  const handleEdgeClick = useCallback(
+    (_: any, edge: any) => {
+      if (isLocked || status === 'running') return;
+      const isChannel = edge.data?.messageChannel === true;
+      setEdgeData(edge.id, { messageChannel: !isChannel });
+      toast(
+        `Message channel ${isChannel ? 'disabled' : 'enabled'} on ${edge.source} ↔ ${edge.target}`,
+        { duration: 1500 },
+      );
+    },
+    [isLocked, status, setEdgeData],
+  );
 
   return (
     <>
@@ -596,9 +667,26 @@ export const CanvasWorkspace = () => {
                     </button>
                     {workflowId && nodes.length > 0 && (
                       <button
-                        onClick={() => {
-                          setPublishDialogOpen(true);
+                        onClick={async () => {
                           setToolsOpen(false);
+                          setDraftThumbnail(undefined);
+                          // eagerly capture canvas thumbnail
+                          try {
+                            if (canvasRef.current) {
+                              reactFlowInstance.fitView({ duration: 0 });
+                              await new Promise((r) =>
+                                requestAnimationFrame(() => requestAnimationFrame(r)),
+                              );
+                              const dataUrl = await toPng(canvasRef.current, {
+                                quality: 0.7,
+                                pixelRatio: 2,
+                              });
+                              setDraftThumbnail(dataUrl);
+                            }
+                          } catch {
+                            // non-blocking
+                          }
+                          setPublishDialogOpen(true);
                         }}
                         className="flex items-center gap-3 px-3 py-2 text-xs text-purple-700 hover:bg-purple-50 transition-colors cursor-pointer border-b border-slate-100"
                         title="Publish as template"
@@ -791,6 +879,7 @@ export const CanvasWorkspace = () => {
                       nodeTypes={nodeTypes as any}
                       edgeTypes={edgeTypes as any}
                       onNodeClick={handleNodeClick}
+                      onEdgeClick={handleEdgeClick}
                       onPaneClick={handlePaneClick}
                       fitView
                       minZoom={0.2}
@@ -802,58 +891,7 @@ export const CanvasWorkspace = () => {
                         isLocked || status === 'running' ? null : ['Backspace', 'Delete']
                       }
                       proOptions={{ hideAttribution: true }}
-                      isValidConnection={(connection) => {
-                        if (!connection.source || !connection.target) return false;
-                        const sn = nodes.find((n) => n.id === connection.source);
-                        const tn = nodes.find((n) => n.id === connection.target);
-                        if (!sn || !tn) return false;
-
-                        if (sn.type === 'mcp_tool' && tn.type === 'mcp_tool') return false;
-                        if (sn.type === 'mcp_tool' && !isAgent(tn.type)) return false;
-                        if (isTrigger(sn.type) && !isAgent(tn.type)) return false;
-
-                        // Block MCP tools from connecting to media nodes that don't support tool calling
-                        if (sn.type === 'mcp_tool' && isAgent(tn.type) && doesNotSupportTools(tn))
-                          return false;
-                        if (isAgent(sn.type) && doesNotSupportTools(sn) && tn.type === 'mcp_tool')
-                          return false;
-
-                        // Prevent connecting two MCP tools from the same server to the same agent (tool→agent)
-                        if (sn.type === 'mcp_tool' && isAgent(tn.type)) {
-                          const sameServerExists = edges.some((e) => {
-                            if (e.target !== connection.target) return false;
-                            if (e.source === connection.source) return false;
-                            const src = nodes.find((n) => n.id === e.source);
-                            return (
-                              src?.type === 'mcp_tool' &&
-                              src?.data?.mcpServerId != null &&
-                              src?.data?.mcpServerId === sn.data?.mcpServerId
-                            );
-                          });
-                          if (sameServerExists) return false;
-                        }
-                        // Prevent connecting two MCP tools from the same server to the same agent (agent→tool)
-                        if (isAgent(sn.type) && tn.type === 'mcp_tool') {
-                          const sameServerExists = edges.some((e) => {
-                            if (e.source !== connection.source) return false;
-                            const target = nodes.find((n) => n.id === e.target);
-                            return (
-                              target?.type === 'mcp_tool' &&
-                              target?.data?.mcpServerId != null &&
-                              target?.data?.mcpServerId === tn.data?.mcpServerId
-                            );
-                          });
-                          if (sameServerExists) return false;
-                        }
-                        // Block reverse connections (prevents cycles: A→B blocks B→A)
-                        if (
-                          edges.some(
-                            (e) => e.source === connection.target && e.target === connection.source,
-                          )
-                        )
-                          return false;
-                        return true;
-                      }}
+                      isValidConnection={isValidConnection}
                     >
                       <Background color="#94a3b8" gap={16} size={2} className="opacity-80" />
                       {nodes.length === 0 && (
@@ -1097,6 +1135,12 @@ export const CanvasWorkspace = () => {
         {/* Maximized Node Terminal Dialog Overlay */}
         <MaximizedNodeOverlay />
 
+        {/* MCP Configuration Dialog */}
+        <MCPConfigDialog />
+
+        {/* Post-Execution Summary Dialog */}
+        <CompletionSummaryDialog />
+
         {/* Import Workflow Configuration Modal */}
         <ImportWorkflowModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
 
@@ -1174,23 +1218,34 @@ export const CanvasWorkspace = () => {
           isOpen={publishDialogOpen}
           initialName={workflowName}
           initialDescription={workflowDescription}
-          onClose={() => setPublishDialogOpen(false)}
-          onConfirm={async ({ name, description, categoryId, tags }) => {
+          thumbnailDataUrl={draftThumbnail}
+          onRecapture={async () => {
             try {
-              let thumbnail: string | undefined;
-              try {
-                if (canvasRef.current) {
-                  thumbnail = await toPng(canvasRef.current, { quality: 0.7, pixelRatio: 2 });
-                }
-              } catch {
-                // non-blocking — thumbnail is optional
-              }
+              if (!canvasRef.current) return;
+              reactFlowInstance.fitView({ duration: 0 });
+              await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+              const dataUrl = await toPng(canvasRef.current, {
+                quality: 0.7,
+                pixelRatio: 2,
+              });
+              setDraftThumbnail(dataUrl);
+              return dataUrl;
+            } catch {
+              return;
+            }
+          }}
+          onClose={() => {
+            setPublishDialogOpen(false);
+            setDraftThumbnail(undefined);
+          }}
+          onConfirm={async ({ name, description, categoryId, tags, thumbnail }) => {
+            try {
               const payload = {
                 name,
                 description,
                 categoryId,
                 tags,
-                thumbnail,
+                thumbnail: thumbnail || null,
                 workflowData: {
                   nodes: nodes.map((n) => ({
                     id: n.id,
@@ -1216,6 +1271,7 @@ export const CanvasWorkspace = () => {
                 throw new Error(String(err.error || 'Publish failed'));
               }
               setPublishDialogOpen(false);
+              setDraftThumbnail(undefined);
               toast.success('Template published!');
             } catch (e) {
               toast.error(e instanceof Error ? e.message : 'Failed to publish template');

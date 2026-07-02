@@ -1,17 +1,24 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Search,
-  ChevronDown,
   Loader2,
   Store,
   Plus,
   CheckCircle2,
+  ChevronDown,
   Star,
   Wrench,
 } from 'lucide-react';
 import { useStore } from '../../../store/index.js';
 import { setPendingTouchDrag } from '../../../lib/touch-drag.js';
-import { AUTH_LABELS, AUTH_COLORS } from '../../../data/worker-options.js';
+import {
+  AUTH_LABELS,
+  AUTH_COLORS,
+  AUTH_TIERS,
+  AUTH_TIER_LABELS,
+  AUTH_TIER_COLORS,
+} from '../../../data/worker-options.js';
+import type { AuthTier } from '../../../data/worker-options.js';
 import { handleDragStart } from '../../../utils/drag-handle.js';
 import {
   listUserServers,
@@ -19,6 +26,16 @@ import {
   adoptRegistryServer,
   searchRegistry,
 } from '../../../services/mcp-service.js';
+
+function getAuthTier(server: any): AuthTier {
+  if (server.probeVerified) {
+    return server.probeVerified.authRequired ? 'required' : 'none';
+  }
+  if (server.supportedAuthTypes?.length > 0) {
+    return 'required';
+  }
+  return 'unknown';
+}
 
 export function MCPPanel() {
   const addNode = useStore((s) => s.addNode);
@@ -28,14 +45,29 @@ export function MCPPanel() {
   const [registryServers, setRegistryServers] = useState<any[]>([]);
   const [registryLoading, setRegistryLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const [transportFilter, setTransportFilter] = useState('');
-  const [transportOpen, setTransportOpen] = useState(false);
-  const transportRef = useRef<HTMLDivElement>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [saving, setSaving] = useState<string | null>(null);
+  const [authTierFilter, setAuthTierFilter] = useState<AuthTier>('all');
+  const [authTierOpen, setAuthTierOpen] = useState(false);
+  const authTierRef = useRef<HTMLDivElement>(null);
   const registryServersRef = useRef(registryServers);
   registryServersRef.current = registryServers;
+
+  const filteredServers = useMemo(() => {
+    if (authTierFilter === 'all') return registryServers;
+    return registryServers.filter((s) => getAuthTier(s) === authTierFilter);
+  }, [registryServers, authTierFilter]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (authTierRef.current && !authTierRef.current.contains(e.target as Node)) {
+        setAuthTierOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const fetchUserServers = useCallback(async () => {
     try {
@@ -57,16 +89,6 @@ export function MCPPanel() {
   useEffect(() => {
     fetchUserServers();
   }, [fetchUserServers]);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (transportRef.current && !transportRef.current.contains(e.target as Node)) {
-        setTransportOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const handleToggleFavorite = async (serverId: string) => {
     const ok = await toggleFavorite(serverId);
@@ -106,7 +128,7 @@ export function MCPPanel() {
       : null;
     addNode(
       'mcp_tool',
-      { x: 200, y: 200 },
+      { x: 200 + Math.random() * 150, y: 200 + Math.random() * 150 },
       {
         label: server.name,
         mcpServerUrl: server.url || '',
@@ -120,7 +142,11 @@ export function MCPPanel() {
   };
 
   const handleAddCustomMcp = () => {
-    addNode('mcp_tool', { x: 200, y: 200 }, { label: 'Custom MCP', mcpServerUrl: '' });
+    addNode(
+      'mcp_tool',
+      { x: 200 + Math.random() * 150, y: 200 + Math.random() * 150 },
+      { label: 'Custom MCP', mcpServerUrl: '' },
+    );
   };
 
   const loadRegistry = useCallback(
@@ -144,11 +170,11 @@ export function MCPPanel() {
     if (tab === 'registry') {
       const timer = setTimeout(() => {
         setCursor(null);
-        loadRegistry(search, transportFilter, null);
+        loadRegistry(search, '', null);
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [tab, search, transportFilter, loadRegistry]);
+  }, [tab, search, loadRegistry]);
 
   const configuredIds = new Set(userServers.map((s: any) => s.registryId));
 
@@ -190,35 +216,43 @@ export function MCPPanel() {
                 className="w-full pl-7 pr-2 py-1 text-[10px] border border-slate-300 outline-none focus:border-purple-500 font-mono"
               />
             </div>
-            <div className="relative" ref={transportRef}>
+            <div className="relative" ref={authTierRef}>
               <button
                 type="button"
-                onClick={() => setTransportOpen(!transportOpen)}
-                className="text-[10px] border border-slate-300 px-2 py-1 font-mono outline-none focus:border-purple-500 bg-white flex items-center gap-1 whitespace-nowrap"
+                onClick={() => setAuthTierOpen(!authTierOpen)}
+                className={`text-[10px] border px-2 py-1 font-mono outline-none focus:border-purple-500 bg-white flex items-center gap-1 whitespace-nowrap ${AUTH_TIER_COLORS[authTierFilter] || 'border-slate-300 text-slate-500'}`}
               >
-                {transportFilter ? transportFilter.toUpperCase() : 'All'}
+                {AUTH_TIER_LABELS[authTierFilter]}
                 <ChevronDown
-                  className={`w-2.5 h-2.5 text-slate-400 transition-transform ${transportOpen ? 'rotate-180' : ''}`}
+                  className={`w-2.5 h-2.5 transition-transform ${authTierOpen ? 'rotate-180' : ''}`}
                 />
               </button>
-              {transportOpen && (
-                <div className="absolute z-10 top-full right-0 mt-0.5 border border-slate-300 bg-white shadow-md min-w-[120px]">
-                  {[
-                    { value: '', label: 'All' },
-                    { value: 'http', label: 'HTTP' },
-                    { value: 'stdio', label: 'STDIO' },
-                    { value: 'sse', label: 'SSE' },
-                  ].map((opt) => (
+              {authTierOpen && (
+                <div className="absolute z-10 top-full right-0 mt-0.5 border border-slate-300 bg-white shadow-md min-w-[130px]">
+                  {AUTH_TIERS.map((tier) => (
                     <button
-                      key={opt.value}
+                      key={tier}
                       type="button"
                       onClick={() => {
-                        setTransportFilter(opt.value);
-                        setTransportOpen(false);
+                        setAuthTierFilter(tier);
+                        setAuthTierOpen(false);
                       }}
-                      className={`w-full text-left px-2 py-1.5 text-[10px] font-mono hover:bg-slate-50 transition-colors ${transportFilter === opt.value ? 'bg-slate-100 font-bold' : ''} text-slate-600`}
+                      className={`w-full text-left px-2 py-1.5 text-[10px] font-mono hover:bg-slate-50 transition-colors flex items-center gap-2 ${
+                        authTierFilter === tier ? 'bg-slate-100 font-bold' : ''
+                      } text-slate-600`}
                     >
-                      {opt.label}
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full border ${
+                          tier === 'all'
+                            ? 'border-slate-300 bg-transparent'
+                            : AUTH_TIER_COLORS[tier]
+                              ? AUTH_TIER_COLORS[tier].split(' ')[0].replace('text-', 'bg-') +
+                                ' ' +
+                                AUTH_TIER_COLORS[tier].split(' ').slice(1).join(' ')
+                              : 'bg-slate-300'
+                        }`}
+                      />
+                      {AUTH_TIER_LABELS[tier]}
                     </button>
                   ))}
                 </div>
@@ -239,14 +273,14 @@ export function MCPPanel() {
           />
         ) : (
           <RegistryContent
-            servers={registryServers}
+            servers={filteredServers}
             loading={registryLoading}
             configuredIds={configuredIds}
             saving={saving}
             onSave={handleSaveToMyServers}
             onAddToCanvas={handleAddMcpToCanvas}
             hasMore={hasMore}
-            onLoadMore={() => loadRegistry(search, transportFilter, cursor, true)}
+            onLoadMore={() => loadRegistry(search, '', cursor, true)}
           />
         )}
       </div>
@@ -301,24 +335,30 @@ function MyServersContent({
         {servers.map((server) => (
           <div
             key={server.id}
-            onDragStart={(e) =>
+            onDragStart={(e) => {
+              const initialType =
+                server.supportedAuthTypes?.length > 0 ? server.supportedAuthTypes[0] : 'none';
               handleDragStart(e, 'mcp_tool', {
                 label: server.name,
                 mcpServerUrl: server.url || '',
                 mcpServerId: server.id || '',
                 iconUrl: server.iconUrl,
-                mcpAuthConfig: { type: 'none' },
-              })
-            }
-            onTouchStart={() =>
+                mcpAuthConfig: { type: initialType },
+                mcpSupportedAuthTypes: server.supportedAuthTypes || [],
+              });
+            }}
+            onTouchStart={() => {
+              const initialType =
+                server.supportedAuthTypes?.length > 0 ? server.supportedAuthTypes[0] : 'none';
               setPendingTouchDrag('mcp_tool', {
                 label: server.name,
                 mcpServerUrl: server.url || '',
                 mcpServerId: server.id || '',
                 iconUrl: server.iconUrl,
-                mcpAuthConfig: { type: 'none' },
-              })
-            }
+                mcpAuthConfig: { type: initialType },
+                mcpSupportedAuthTypes: server.supportedAuthTypes || [],
+              });
+            }}
             draggable
             className="border border-slate-200 p-2.5 hover:border-purple-300 hover:shadow-sm transition-all group relative cursor-grab active:cursor-grabbing"
           >
@@ -419,24 +459,30 @@ function RegistryContent({
           return (
             <div
               key={server.registryId}
-              onDragStart={(e) =>
+              onDragStart={(e) => {
+                const initialType =
+                  server.supportedAuthTypes?.length > 0 ? server.supportedAuthTypes[0] : 'none';
                 handleDragStart(e, 'mcp_tool', {
                   label: server.name,
                   mcpServerUrl: server.url || '',
                   mcpServerId: server.registryId || '',
                   iconUrl: server.iconUrl,
-                  mcpAuthConfig: { type: 'none' },
-                })
-              }
-              onTouchStart={() =>
+                  mcpAuthConfig: { type: initialType },
+                  mcpSupportedAuthTypes: server.supportedAuthTypes || [],
+                });
+              }}
+              onTouchStart={() => {
+                const initialType =
+                  server.supportedAuthTypes?.length > 0 ? server.supportedAuthTypes[0] : 'none';
                 setPendingTouchDrag('mcp_tool', {
                   label: server.name,
                   mcpServerUrl: server.url || '',
                   mcpServerId: server.registryId || '',
                   iconUrl: server.iconUrl,
-                  mcpAuthConfig: { type: 'none' },
-                })
-              }
+                  mcpAuthConfig: { type: initialType },
+                  mcpSupportedAuthTypes: server.supportedAuthTypes || [],
+                });
+              }}
               draggable
               className="border border-slate-200 p-2.5 hover:border-purple-300 hover:shadow-sm transition-all group cursor-grab active:cursor-grabbing"
             >
@@ -468,6 +514,11 @@ function RegistryContent({
                   <div className="flex items-center gap-1 mt-1 flex-wrap">
                     <span className="text-[7px] font-mono font-bold px-1 py-0.5 bg-slate-100 text-slate-500 uppercase">
                       {server.transport || 'http'}
+                    </span>
+                    <span
+                      className={`text-[6px] font-mono font-bold px-1 py-0.5 border uppercase ${AUTH_TIER_COLORS[getAuthTier(server)] || ''}`}
+                    >
+                      {AUTH_TIER_LABELS[getAuthTier(server)]}
                     </span>
                     {server.supportedAuthTypes?.map((t: string) => (
                       <span

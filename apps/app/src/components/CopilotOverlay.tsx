@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquareCode, Send, Loader2, X, Sparkles, Check } from 'lucide-react';
+import { Send, Loader2, X, Sparkles, Check } from 'lucide-react';
 import { useStore } from '../store/index.js';
 
 const parseInline = (text: string): React.ReactNode[] => {
@@ -408,17 +408,38 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
                             </div>
                           );
                         }
+                        if (norm.type === 'add_nodes') {
+                          return (
+                            <div key={aIdx} className="text-emerald-600">
+                              + Add {norm.payload.length} Nodes
+                            </div>
+                          );
+                        }
                         if (norm.type === 'delete_node') {
                           return (
                             <div key={aIdx} className="text-rose-600">
-                              - Delete Node ID: {norm.payload.id}
+                              - Delete Node: {norm.payload.id}
+                            </div>
+                          );
+                        }
+                        if (norm.type === 'delete_nodes') {
+                          return (
+                            <div key={aIdx} className="text-rose-600">
+                              - Delete {norm.payload.length} Nodes
                             </div>
                           );
                         }
                         if (norm.type === 'update_node') {
                           return (
                             <div key={aIdx} className="text-blue-600">
-                              ~ Update Node ID: {norm.payload.id}
+                              ~ Update Node: {norm.payload.id}
+                            </div>
+                          );
+                        }
+                        if (norm.type === 'update_nodes') {
+                          return (
+                            <div key={aIdx} className="text-blue-600">
+                              ~ Update {norm.payload.length} Nodes
                             </div>
                           );
                         }
@@ -429,10 +450,24 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
                             </div>
                           );
                         }
+                        if (norm.type === 'add_edges') {
+                          return (
+                            <div key={aIdx} className="text-emerald-600">
+                              + Connect {norm.payload.length} Edges
+                            </div>
+                          );
+                        }
+                        if (norm.type === 'delete_edge') {
+                          return (
+                            <div key={aIdx} className="text-rose-600">
+                              - Disconnect Edge: {norm.payload.id}
+                            </div>
+                          );
+                        }
                         if (norm.type === 'delete_edges') {
                           return (
                             <div key={aIdx} className="text-rose-600">
-                              - Disconnect edges: {norm.payload.join(', ')}
+                              - Disconnect {norm.payload.length} Edges
                             </div>
                           );
                         }
@@ -496,8 +531,4 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
       </div>
     </div>
   );
-};
-
-export const CopilotOverlay = () => {
-  return null;
 };

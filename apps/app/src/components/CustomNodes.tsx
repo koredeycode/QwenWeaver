@@ -10,6 +10,7 @@ import {
   Wrench,
   Square,
   Maximize2,
+  Scale,
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
 
@@ -201,6 +202,14 @@ export const AgentNode = memo(({ id, data }: NodeProps<any>) => {
         title="Connect to MCP Tool"
       />
 
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="target-top"
+        className="w-4 h-4 !bg-purple-500 !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
+        title="Receives from MCP Tool"
+      />
+
       <div className="flex items-center justify-between border-b border-outline-variant pb-2 mb-2">
         <div className="flex items-center gap-2">
           <Bot className="w-4 h-4 text-[#f97316]" />
@@ -241,13 +250,6 @@ export const AgentNode = memo(({ id, data }: NodeProps<any>) => {
         id="source-right"
         className="w-4 h-4 !bg-[#f97316] !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
       />
-      <Handle
-        type="target"
-        position={Position.Bottom}
-        id="target-bottom"
-        className="w-4 h-4 !bg-purple-500 !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
-        title="Receives from MCP Tool"
-      />
     </div>
   );
 });
@@ -277,6 +279,14 @@ export const SupervisorNode = memo(({ id, data }: NodeProps<any>) => {
         id="source-bottom"
         className="w-4 h-4 !bg-purple-500 !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
         title="Connect to MCP Tool"
+      />
+
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="target-top"
+        className="w-4 h-4 !bg-purple-500 !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
+        title="Receives from MCP Tool"
       />
 
       <div className="flex items-center justify-between border-b border-outline pb-2 mb-2">
@@ -319,13 +329,6 @@ export const SupervisorNode = memo(({ id, data }: NodeProps<any>) => {
         id="source-right"
         className="w-4 h-4 !bg-[#2563eb] !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
       />
-      <Handle
-        type="target"
-        position={Position.Bottom}
-        id="target-bottom"
-        className="w-4 h-4 !bg-purple-500 !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
-        title="Receives from MCP Tool"
-      />
     </div>
   );
 });
@@ -336,6 +339,7 @@ export const MCPToolNode = memo(({ id, data }: NodeProps<any>) => {
   const status = useStore((s) => s.nodeStatuses[id] || 'pending');
   const isSelected = useStore((s) => s.selectedNodeId === id);
   const setMaximizedNodeId = useStore((s) => s.setMaximizedNodeId);
+  const setMcpConfigDialogNodeId = useStore((s) => s.setMcpConfigDialogNodeId);
   const [imgError, setImgError] = useState(false);
 
   const isUnconfigured = !data.mcpServerUrl;
@@ -389,6 +393,16 @@ export const MCPToolNode = memo(({ id, data }: NodeProps<any>) => {
             title="Inspect MCP Tool"
           >
             <Maximize2 className="w-2 h-2" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setMcpConfigDialogNodeId(id);
+            }}
+            className="p-0.5 hover:bg-purple-100 text-purple-600 hover:text-purple-800 transition-colors nodrag cursor-pointer text-[6px] font-mono font-bold border border-purple-200 px-1"
+            title="Configure MCP Server"
+          >
+            CONFIG
           </button>
         </div>
       </div>
@@ -502,6 +516,74 @@ export const InputTriggerNode = memo(({ id, data }: NodeProps<any>) => {
 });
 InputTriggerNode.displayName = 'InputTriggerNode';
 
+// --- 6. Debate Arena Node Component ---
+export const DebateArenaNode = memo(({ id, data }: NodeProps<any>) => {
+  const storeStatus = useStore((s) => s.nodeStatuses[id] || 'pending');
+  const isSelected = useStore((s) => s.selectedNodeId === id);
+  const setMaximizedNodeId = useStore((s) => s.setMaximizedNodeId);
+  const status = data._executionStatus || storeStatus;
+  const config = data.debateArenaConfig ?? {};
+
+  return (
+    <div
+      className={`w-72 bg-white border-2 ${isSelected ? 'border-amber-500 shadow-[0_2px_12px_rgba(245,158,11,0.15)]' : getStatusStyles(status)} text-slate-800 p-3 relative font-sans shadow-sm`}
+    >
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="target-left"
+        className="w-4 h-4 !bg-amber-500 !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
+      />
+
+      <div className="flex items-center justify-between border-b border-amber-200 pb-2 mb-2">
+        <div className="flex items-center gap-2">
+          <Scale className="w-4 h-4 text-amber-600" />
+          <span className="text-[10px] font-mono font-bold tracking-wider text-amber-600">
+            DEBATE ARENA ({config.mode ?? 'debate'})
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          {getStatusBadge(status)}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setMaximizedNodeId(id);
+            }}
+            className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors nodrag cursor-pointer"
+            title="View Debate Transcript"
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      <div className="text-sm font-bold tracking-tight text-slate-900">
+        {data.label || 'Debate Arena'}
+      </div>
+
+      <div className="mt-2 flex items-center gap-2 text-[10px] font-mono text-slate-500">
+        <span className="bg-amber-50 border border-amber-200 px-1.5 py-0.5">
+          {config.maxRounds ?? 3} rounds
+        </span>
+        <span className="bg-amber-50 border border-amber-200 px-1.5 py-0.5">participants</span>
+        {config.hasArbitrator && (
+          <span className="bg-blue-50 border border-blue-200 px-1.5 py-0.5 text-blue-600">
+            arbitrator
+          </span>
+        )}
+      </div>
+
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="source-right"
+        className="w-4 h-4 !bg-amber-500 !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
+      />
+    </div>
+  );
+});
+DebateArenaNode.displayName = 'DebateArenaNode';
+
 // Node Types registry for React Flow
 export const nodeTypes = {
   trigger: TriggerNode,
@@ -509,4 +591,5 @@ export const nodeTypes = {
   agent: AgentNode,
   supervisor: SupervisorNode,
   mcp_tool: MCPToolNode,
+  debate_arena: DebateArenaNode,
 };

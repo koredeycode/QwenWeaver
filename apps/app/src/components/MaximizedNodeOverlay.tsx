@@ -1,7 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store/index.js';
-import { X, Bot, Brain, Wrench, Play, PanelLeft, PanelRight } from 'lucide-react';
+import {
+  X,
+  Bot,
+  Brain,
+  Wrench,
+  Play,
+  PanelLeft,
+  PanelRight,
+  Database,
+  MessageCircle,
+  Scale,
+} from 'lucide-react';
 import { OutputRenderer } from './OutputRenderer.js';
+import { WorkspacePanel } from './panels/WorkspacePanel.js';
 
 export const MaximizedNodeOverlay = () => {
   const nodes = useStore((s) => s.nodes);
@@ -15,6 +27,15 @@ export const MaximizedNodeOverlay = () => {
 
   const [showOverlayLeft, setShowOverlayLeft] = useState(false);
   const [showOverlayRight, setShowOverlayRight] = useState(true);
+  const [overlayTab, setOverlayTab] = useState<'output' | 'workspace' | 'messages' | 'transcript'>(
+    'output',
+  );
+  const channelMessages = useStore((s) => s.channelMessages);
+  const debateRounds = useStore((s) => s.debateRounds);
+  const debateVerdicts = useStore((s) => s.debateVerdicts);
+  const workspaceEntries = useStore((s) => s.workspaceEntries);
+  const workspaceLoading = useStore((s) => s.workspaceLoading);
+  const activeExecutionId = useStore((s) => s.activeExecutionId);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -188,48 +209,205 @@ export const MaximizedNodeOverlay = () => {
             </div>
           )}
 
-          {/* Middle Side: Log Console Terminal */}
-          <div
-            ref={scrollRef}
-            className="flex-1 min-w-0 p-6 flex flex-col bg-white text-slate-800 overflow-y-auto"
-          >
-            <div className="flex items-center justify-between border-b border-slate-200 pb-2 mb-3">
-              <div className="flex items-center gap-2 text-xs font-mono font-bold text-slate-400 tracking-wider">
-                <span>MONITOR / OUTPUT</span>
+          {/* Middle Side: Tabs (Output / Workspace) */}
+          <div className="flex-1 min-w-0 flex flex-col bg-white text-slate-800 overflow-hidden">
+            {/* Tab bar */}
+            <div className="flex items-stretch border-b border-slate-200 shrink-0">
+              <button
+                onClick={() => setOverlayTab('output')}
+                className={`px-4 py-2 text-[10px] font-mono font-bold tracking-wider transition-colors cursor-pointer ${
+                  overlayTab === 'output'
+                    ? 'text-orange-600 border-b-2 border-orange-500 bg-orange-50/30'
+                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                MONITOR / OUTPUT
                 {(maximizedNode.data?._executionStatus || storeStatus) === 'running' && (
-                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse border border-slate-200" />
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse border border-slate-200 inline-block ml-1.5" />
                 )}
-              </div>
-              <span className="text-[10px] font-mono text-slate-400">AUTO-SCROLL ENABLED</span>
+              </button>
+              <button
+                onClick={() => setOverlayTab('workspace')}
+                className={`px-4 py-2 text-[10px] font-mono font-bold tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  overlayTab === 'workspace'
+                    ? 'text-orange-600 border-b-2 border-orange-500 bg-orange-50/30'
+                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <Database className="w-3 h-3" />
+                WORKSPACE
+              </button>
+              <button
+                onClick={() => setOverlayTab('messages')}
+                className={`px-4 py-2 text-[10px] font-mono font-bold tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  overlayTab === 'messages'
+                    ? 'text-orange-600 border-b-2 border-orange-500 bg-orange-50/30'
+                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <MessageCircle className="w-3 h-3" />
+                MESSAGES
+              </button>
+              {maximizedNode.type === 'debate_arena' && (
+                <button
+                  onClick={() => setOverlayTab('transcript')}
+                  className={`px-4 py-2 text-[10px] font-mono font-bold tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer ${
+                    overlayTab === 'transcript'
+                      ? 'text-amber-600 border-b-2 border-amber-500 bg-amber-50/30'
+                      : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <Scale className="w-3 h-3" />
+                  TRANSCRIPT
+                </button>
+              )}
             </div>
 
-            {(storeOutput ||
-              maximizedNode?.data?._output ||
-              (storeStatus || maximizedNode?.data?._executionStatus) !== 'running') && (
-              <OutputRenderer
-                outputUrl={
-                  (maximizedNodeId
-                    ? useStore.getState().nodeOutputUrls[maximizedNodeId]
-                    : undefined) || maximizedNode?.data?._outputUrl
-                }
-                streamingText={storeOutput || maximizedNode?.data?._output}
-                thinkingText={storeThinking}
-                fileExtension={
-                  maximizedNode?.data?.outputFormat === 'markdown'
-                    ? 'md'
-                    : maximizedNode?.data?.outputFormat || 'txt'
-                }
-                status={storeStatus || maximizedNode?.data?._executionStatus}
-              />
-            )}
-            {!maximizedNode?.data?._output &&
-              !storeOutput &&
-              (maximizedNode?.data?._executionStatus || storeStatus) === 'running' && (
-                <div className="flex-1 font-mono text-[11px] leading-relaxed p-2 text-slate-500">
-                  Awaiting telemetry stream...
-                  <span className="animate-pulse text-orange-500 ml-0.5">_</span>
+            {/* Tab content */}
+            {overlayTab === 'output' ? (
+              <div ref={scrollRef} className="flex-1 p-6 overflow-y-auto">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[10px] font-mono text-slate-400">AUTO-SCROLL ENABLED</span>
                 </div>
-              )}
+                {(storeOutput ||
+                  maximizedNode?.data?._output ||
+                  (storeStatus || maximizedNode?.data?._executionStatus) !== 'running') && (
+                  <OutputRenderer
+                    outputUrl={
+                      (maximizedNodeId
+                        ? useStore.getState().nodeOutputUrls[maximizedNodeId]
+                        : undefined) || maximizedNode?.data?._outputUrl
+                    }
+                    streamingText={storeOutput || maximizedNode?.data?._output}
+                    thinkingText={storeThinking}
+                    fileExtension={
+                      maximizedNode?.data?.outputFormat === 'markdown'
+                        ? 'md'
+                        : maximizedNode?.data?.outputFormat || 'txt'
+                    }
+                    status={storeStatus || maximizedNode?.data?._executionStatus}
+                  />
+                )}
+                {!maximizedNode?.data?._output &&
+                  !storeOutput &&
+                  (maximizedNode?.data?._executionStatus || storeStatus) === 'running' && (
+                    <div className="flex-1 font-mono text-[11px] leading-relaxed p-2 text-slate-500">
+                      Awaiting telemetry stream...
+                      <span className="animate-pulse text-orange-500 ml-0.5">_</span>
+                    </div>
+                  )}
+              </div>
+            ) : overlayTab === 'messages' ? (
+              <div className="flex-1 p-6 overflow-y-auto">
+                <div className="text-[10px] font-mono text-slate-400 mb-3 tracking-wider">
+                  CHANNEL MESSAGES
+                </div>
+                {channelMessages.filter(
+                  (m) => m.fromNodeId === maximizedNodeId || m.toNodeId === maximizedNodeId,
+                ).length === 0 ? (
+                  <div className="font-mono text-[11px] text-slate-400 italic">
+                    No messages for this node yet.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {channelMessages
+                      .filter(
+                        (m) => m.fromNodeId === maximizedNodeId || m.toNodeId === maximizedNodeId,
+                      )
+                      .map((m, i) => (
+                        <div
+                          key={i}
+                          className={`border p-3 font-mono text-xs ${
+                            m.fromNodeId === maximizedNodeId
+                              ? 'bg-orange-50 border-orange-200 ml-6'
+                              : 'bg-blue-50 border-blue-200 mr-6'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1 text-[10px] text-slate-500">
+                            <span className="font-bold">
+                              {m.fromNodeId === maximizedNodeId ? 'SENT' : 'RECEIVED'}
+                            </span>
+                            <span>
+                              round {m.round} &middot; channel {m.channelId}
+                            </span>
+                          </div>
+                          <div className="text-slate-800 whitespace-pre-wrap leading-relaxed">
+                            {m.content}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            ) : overlayTab === 'transcript' && maximizedNode.type === 'debate_arena' ? (
+              <div className="flex-1 p-6 overflow-y-auto">
+                <div className="text-[10px] font-mono text-slate-400 mb-3 tracking-wider">
+                  DEBATE TRANSCRIPT
+                </div>
+                {debateRounds.filter((r) => r.arenaId === maximizedNode.id).length === 0 ? (
+                  <div className="font-mono text-[11px] text-slate-400 italic">
+                    No debate rounds yet.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {debateRounds
+                      .filter((r) => r.arenaId === maximizedNode.id)
+                      .map((round) => (
+                        <div key={round.round} className="border border-amber-200 p-3">
+                          <div className="text-[10px] font-mono font-bold text-amber-600 mb-2 tracking-wider">
+                            ROUND {round.round}
+                          </div>
+                          <div className="space-y-2">
+                            {round.statements.map((s, i) => (
+                              <div key={i} className="border-l-2 border-amber-300 pl-3">
+                                <div className="text-[10px] font-mono font-bold text-slate-600 mb-1">
+                                  {s.participantId}
+                                </div>
+                                <div className="text-xs font-mono text-slate-800 whitespace-pre-wrap leading-relaxed">
+                                  {s.content || '(empty)'}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    {debateVerdicts
+                      .filter((v) => v.arenaId === maximizedNode.id)
+                      .map((v, i) => (
+                        <div key={i} className="border border-blue-200 bg-blue-50 p-3">
+                          <div className="text-[10px] font-mono font-bold text-blue-600 mb-2 tracking-wider">
+                            VERDICT
+                          </div>
+                          <div className="text-xs font-mono text-slate-800 whitespace-pre-wrap leading-relaxed">
+                            {v.verdict}
+                          </div>
+                          {v.scores && Object.keys(v.scores).length > 0 && (
+                            <div className="mt-2 text-[10px] font-mono text-slate-600">
+                              {Object.entries(v.scores).map(([id, score]) => (
+                                <span key={id} className="mr-3">
+                                  {id}: {score}/10
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex-1 overflow-hidden">
+                <WorkspacePanel
+                  entries={workspaceEntries}
+                  loading={workspaceLoading}
+                  onRefresh={() => {
+                    const eid = useStore.getState().activeExecutionId;
+                    if (eid) useStore.getState().fetchWorkspaceEntries(eid);
+                  }}
+                  activeExecutionId={activeExecutionId}
+                />
+              </div>
+            )}
           </div>
 
           {/* Right Side: Connection Navigation */}

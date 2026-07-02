@@ -98,8 +98,6 @@ export const sqliteProvider: QueryProvider = {
       description: input.description || null,
       transport: input.transport,
       url: input.url || null,
-      command: input.command || null,
-      args: input.args || null,
       iconUrl: input.iconUrl || null,
       authConfig: input.authConfig || null,
       registryOrigin: input.registryOrigin || 'manual',
@@ -118,8 +116,8 @@ export const sqliteProvider: QueryProvider = {
       description: input.description ?? undefined,
       transport: input.transport,
       url: input.url ?? undefined,
-      command: input.command ?? undefined,
-      args: input.args ?? undefined,
+      command: undefined,
+      args: undefined,
       iconUrl: input.iconUrl ?? undefined,
       authConfig: input.authConfig ?? undefined,
       registryOrigin: input.registryOrigin ?? undefined,
@@ -1043,5 +1041,143 @@ export const sqliteProvider: QueryProvider = {
       .from(sqliteSchema.sqliteWorkflows)
       .where(eq(sqliteSchema.sqliteWorkflows.userId, userId));
     return rows[0]?.count ?? 0;
+  },
+
+  // ─── Workspace blackboard ─────────────────────────────────────────────────────
+
+  async writeWorkspaceEntry(
+    executionId: string,
+    nodeId: string,
+    key: string,
+    value: unknown,
+    valueType: string = 'text',
+    fileUrl?: string,
+    expectedRound?: number,
+  ): Promise<string> {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const now = Date.now();
+
+    const existing = await sqliteDb
+      .select({
+        id: sqliteSchema.sqliteWorkspaceEntries.id,
+        round: sqliteSchema.sqliteWorkspaceEntries.round,
+      })
+      .from(sqliteSchema.sqliteWorkspaceEntries)
+      .where(
+        and(
+          eq(sqliteSchema.sqliteWorkspaceEntries.executionId, executionId),
+          eq(sqliteSchema.sqliteWorkspaceEntries.key, key),
+        ),
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      const row = existing[0];
+      if (expectedRound !== undefined && row.round !== expectedRound) {
+        throw new Error('CONCURRENT_MODIFICATION');
+      }
+      await sqliteDb
+        .update(sqliteSchema.sqliteWorkspaceEntries)
+        .set({
+          value,
+          valueType,
+          fileUrl: fileUrl || null,
+          nodeId,
+          round: row.round + 1,
+          createdAt: now,
+        })
+        .where(eq(sqliteSchema.sqliteWorkspaceEntries.id, row.id));
+      return row.id;
+    }
+
+    const id = crypto.randomUUID();
+    await sqliteDb.insert(sqliteSchema.sqliteWorkspaceEntries).values({
+      id,
+      executionId,
+      nodeId,
+      key,
+      value,
+      valueType,
+      fileUrl: fileUrl || null,
+      round: 0,
+      createdAt: now,
+    });
+    return id;
+  },
+
+  async readWorkspaceEntry(executionId: string, key: string) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const rows = await sqliteDb
+      .select()
+      .from(sqliteSchema.sqliteWorkspaceEntries)
+      .where(
+        and(
+          eq(sqliteSchema.sqliteWorkspaceEntries.executionId, executionId),
+          eq(sqliteSchema.sqliteWorkspaceEntries.key, key),
+        ),
+      )
+      .limit(1);
+
+    if (rows.length === 0) return null;
+    const r = rows[0];
+    return {
+      id: r.id,
+      executionId: r.executionId ?? '',
+      nodeId: r.nodeId,
+      key: r.key,
+      value: r.value,
+      valueType: (r.valueType as any) ?? 'text',
+      fileUrl: r.fileUrl ?? undefined,
+      round: r.round,
+      createdAt: new Date(r.createdAt).toISOString(),
+    };
+  },
+
+  async listWorkspaceEntries(executionId: string, nodeId?: string, prefix?: string) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const conditions = [eq(sqliteSchema.sqliteWorkspaceEntries.executionId, executionId)];
+    if (nodeId) {
+      conditions.push(eq(sqliteSchema.sqliteWorkspaceEntries.nodeId, nodeId));
+    }
+    if (prefix) {
+      conditions.push(sql`${sqliteSchema.sqliteWorkspaceEntries.key} LIKE ${prefix + '%'}`);
+    }
+
+    const rows = await sqliteDb
+      .select()
+      .from(sqliteSchema.sqliteWorkspaceEntries)
+      .where(and(...conditions))
+      .orderBy(sqliteSchema.sqliteWorkspaceEntries.createdAt);
+
+    return rows.map((r) => ({
+      id: r.id,
+      executionId: r.executionId ?? '',
+      nodeId: r.nodeId,
+      key: r.key,
+      value: r.value,
+      valueType: (r.valueType as any) ?? 'text',
+      fileUrl: r.fileUrl ?? undefined,
+      round: r.round,
+      createdAt: new Date(r.createdAt).toISOString(),
+    }));
+  },
+
+  async deleteWorkspaceEntry(id: string) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    await sqliteDb
+      .delete(sqliteSchema.sqliteWorkspaceEntries)
+      .where(eq(sqliteSchema.sqliteWorkspaceEntries.id, id));
+  },
+
+  async clearWorkspace(executionId: string) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    await sqliteDb
+      .delete(sqliteSchema.sqliteWorkspaceEntries)
+      .where(eq(sqliteSchema.sqliteWorkspaceEntries.executionId, executionId));
   },
 };

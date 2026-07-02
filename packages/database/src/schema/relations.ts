@@ -8,6 +8,7 @@ import {
   pgTemplateCategories,
   pgTemplateReviews,
   pgCredentials,
+  pgWorkspaceEntries,
   user as pgUser,
 } from './pg.js';
 import {
@@ -19,6 +20,7 @@ import {
   sqliteTemplateCategories,
   sqliteTemplateReviews,
   sqliteCredentials,
+  sqliteWorkspaceEntries,
   user as sqliteUser,
 } from './sqlite.js';
 
@@ -32,11 +34,19 @@ export const pgExecutionsRelations = relations(pgExecutions, ({ one, many }) => 
     references: [pgWorkflows.id],
   }),
   agentLogs: many(pgAgentLogs),
+  workspaceEntries: many(pgWorkspaceEntries),
 }));
 
 export const pgAgentLogsRelations = relations(pgAgentLogs, ({ one }) => ({
   execution: one(pgExecutions, {
     fields: [pgAgentLogs.executionId],
+    references: [pgExecutions.id],
+  }),
+}));
+
+export const pgWorkspaceEntriesRelations = relations(pgWorkspaceEntries, ({ one }) => ({
+  execution: one(pgExecutions, {
+    fields: [pgWorkspaceEntries.executionId],
     references: [pgExecutions.id],
   }),
 }));
@@ -83,11 +93,19 @@ export const sqliteExecutionsRelations = relations(sqliteExecutions, ({ one, man
     references: [sqliteWorkflows.id],
   }),
   agentLogs: many(sqliteAgentLogs),
+  workspaceEntries: many(sqliteWorkspaceEntries),
 }));
 
 export const sqliteAgentLogsRelations = relations(sqliteAgentLogs, ({ one }) => ({
   execution: one(sqliteExecutions, {
     fields: [sqliteAgentLogs.executionId],
+    references: [sqliteExecutions.id],
+  }),
+}));
+
+export const sqliteWorkspaceEntriesRelations = relations(sqliteWorkspaceEntries, ({ one }) => ({
+  execution: one(sqliteExecutions, {
+    fields: [sqliteWorkspaceEntries.executionId],
     references: [sqliteExecutions.id],
   }),
 }));

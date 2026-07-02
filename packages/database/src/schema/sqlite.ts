@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import type {
   ExecutionMetrics,
   AgentLogInput,
@@ -236,6 +236,27 @@ export const sqliteCreditTransactions = sqliteTable(
     createdAt: integer('created_at').notNull(),
   },
   (table) => [index('credit_transactions_user_id_idx').on(table.userId)],
+);
+
+export const sqliteWorkspaceEntries = sqliteTable(
+  'workspace_entries',
+  {
+    id: text('id').primaryKey(),
+    executionId: text('execution_id')
+      .notNull()
+      .references(() => sqliteExecutions.id, { onDelete: 'cascade' }),
+    nodeId: text('node_id').notNull(),
+    key: text('key').notNull(),
+    value: text('value', { mode: 'json' }).notNull(),
+    valueType: text('value_type').notNull().default('text'),
+    fileUrl: text('file_url'),
+    round: integer('round').default(0).notNull(),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [
+    uniqueIndex('ws_exec_key_idx').on(table.executionId, table.key),
+    index('ws_exec_node_idx').on(table.executionId, table.nodeId),
+  ],
 );
 
 export type SqliteMcpServer = typeof sqliteMcpServers.$inferSelect;

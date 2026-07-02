@@ -7,6 +7,7 @@ export const NodeType = z.enum([
   'mcp_tool',
   'logic',
   'input_trigger',
+  'debate_arena',
 ]);
 export type NodeType = z.infer<typeof NodeType>;
 
@@ -35,6 +36,22 @@ export const OutputPart = z.object({
 });
 export type OutputPart = z.infer<typeof OutputPart>;
 
+export const DebateArenaMode = z.enum(['debate', 'negotiation', 'consensus']);
+export type DebateArenaMode = z.infer<typeof DebateArenaMode>;
+
+export const DebateArenaOutputFormat = z.enum(['verdict', 'transcript', 'score']);
+export type DebateArenaOutputFormat = z.infer<typeof DebateArenaOutputFormat>;
+
+export const DebateArenaConfig = z.object({
+  mode: DebateArenaMode.optional().default('debate'),
+  maxRounds: z.number().int().min(1).max(20).optional().default(3),
+  hasArbitrator: z.boolean().optional().default(false),
+  arbitratorModel: z.string().optional(),
+  scoringCriteria: z.string().optional(),
+  outputFormat: DebateArenaOutputFormat.optional().default('verdict'),
+});
+export type DebateArenaConfig = z.infer<typeof DebateArenaConfig>;
+
 export const NodeData = z.object({
   label: z.string().optional(),
   systemPrompt: z.string().optional(),
@@ -42,6 +59,8 @@ export const NodeData = z.object({
   thinkingBudget: z.number().optional(),
   mcpServerUrl: z.string().optional(),
   mcpServerId: z.string().optional(),
+  mcpUserServerId: z.string().optional(),
+  mcpSupportedAuthTypes: z.array(z.string()).optional(),
   iconUrl: z.string().optional(),
   mcpAuthConfig: z
     .object({
@@ -60,6 +79,7 @@ export const NodeData = z.object({
   _output: z.string().optional(),
   _outputUrl: z.string().optional(),
   _edgeActive: z.boolean().optional(),
+  debateArenaConfig: DebateArenaConfig.optional(),
 });
 export type NodeData = z.infer<typeof NodeData>;
 
@@ -76,6 +96,12 @@ export const NodePayload = z.object({
 });
 export type NodePayload = z.infer<typeof NodePayload>;
 
+export const ChannelConfig = z.object({
+  maxRounds: z.number().int().min(1).max(50).optional().default(5),
+  turnBased: z.boolean().optional().default(true),
+});
+export type ChannelConfig = z.infer<typeof ChannelConfig>;
+
 export const EdgePayload = z.object({
   id: z.string(),
   source: z.string(),
@@ -83,6 +109,12 @@ export const EdgePayload = z.object({
   type: z.string().optional(),
   sourceHandle: z.string().optional(),
   targetHandle: z.string().optional(),
+  data: z
+    .object({
+      messageChannel: z.boolean().optional().default(false),
+      channelConfig: ChannelConfig.optional(),
+    })
+    .optional(),
 });
 export type EdgePayload = z.infer<typeof EdgePayload>;
 
@@ -203,6 +235,10 @@ export const SSEEventType = z.enum([
   'complete',
   'error',
   'ping',
+  'workspace_write',
+  'message',
+  'debate_round',
+  'debate_verdict',
 ]);
 export type SSEEventType = z.infer<typeof SSEEventType>;
 

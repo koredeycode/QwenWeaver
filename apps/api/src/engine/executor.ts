@@ -1,7 +1,16 @@
 import type { WorkflowPayload, ExecutionMetrics, NodeTiming } from '@qwenweaver/types';
-import type { UpstreamOutputs, ExecutionResult, ExecutionOptions, StreamEmitter } from './types.js';
+import type {
+  AgentResult,
+  UpstreamOutputs,
+  ExecutionResult,
+  ExecutionOptions,
+  StreamEmitter,
+} from './types.js';
 import { compileDag } from './dag-compiler.js';
 import { runAgent } from './agent-runner.js';
+import { runDebate } from './debate-runner.js';
+import { MessageBus } from './message-bus.js';
+import { buildMessagePrompt } from './prompt-builder.js';
 import { getQueryProvider } from '@qwenweaver/database';
 import { createModuleLogger } from '../logger.js';
 import { executions_total } from '../metrics.js';
@@ -69,6 +78,26 @@ export async function executeWorkflow(
     { executionId, batchCount: dagResult.batches.length },
     'DAG compiled, starting batch execution',
   );
+
+  // Reset workspace blackboard for a fresh execution
+  provider.clearWorkspace(executionId).catch((err: Error) => {
+    log.warn({ executionId, error: err.message }, 'Failed to clear workspace');
+  });
+
+  // Create message bus for agent-to-agent messaging channels
+  const messageBus = new MessageBus();
+  const messageChannelEdges = workflow.edges.filter((e) => e.data?.messageChannel);
+
+  // Register all message channels
+  for (const edge of messageChannelEdges) {
+    const channelId = [edge.source, edge.target].sort().join('|');
+    const maxRounds = edge.data?.channelConfig?.maxRounds ?? 5;
+    messageBus.createChannel(channelId, [edge.source, edge.target], { maxRounds });
+    log.info(
+      { channelId, source: edge.source, target: edge.target, maxRounds },
+      'Message channel registered',
+    );
+  }
 
   const allOutputs: UpstreamOutputs = new Map();
   const nodeTimings: NodeTiming[] = [];
@@ -147,7 +176,21 @@ export async function executeWorkflow(
           };
         }
 
-        const result = await runAgent(nodeToRun, upstream, emitter, executionId, userId);
+        let result: AgentResult;
+        if (node.type === 'debate_arena') {
+          const participantIds = incomingEdges.get(node.id) ?? [];
+          const participantNodes = workflow.nodes.filter((n) => participantIds.includes(n.id));
+          result = await runDebate(
+            nodeToRun,
+            participantNodes,
+            upstream,
+            emitter,
+            executionId,
+            userId,
+          );
+        } else {
+          result = await runAgent(nodeToRun, upstream, emitter, executionId, userId);
+        }
 
         // Non-blocking log save
         if (options.persistLogs) {
@@ -232,6 +275,7 @@ export async function executeWorkflow(
         status: result.status,
         timestamp: Date.now(),
         outputUrl: result.outputs?.[0]?.value,
+        outputParts: result.outputs,
       });
 
       if (result.status === 'failed') {
@@ -245,7 +289,8 @@ export async function executeWorkflow(
 
     for (const result of batchResults) {
       const nodePayload = batch.find((n) => n.id === result.nodeId);
-      const textVal = result.text ?? result.outputs?.map((o) => o.value).join('\n') ?? '';
+      const textVal =
+        result.text ?? result.outputs?.map((o: { value: string }) => o.value).join('\n') ?? '';
       if (
         nodePayload &&
         nodePayload.type === 'supervisor' &&
@@ -309,6 +354,92 @@ export async function executeWorkflow(
 
       batchIdx = minBatchIdx - 1;
       continue;
+    }
+    // ─── Message channel exchange ───────────────────────────────────────────
+    const batchNodeIds = new Set(batch.map((n) => n.id));
+    const relevantChannelEdges = messageChannelEdges.filter(
+      (e) => batchNodeIds.has(e.source) || batchNodeIds.has(e.target),
+    );
+
+    if (relevantChannelEdges.length > 0) {
+      log.info(
+        { executionId, batchIdx, channelCount: relevantChannelEdges.length },
+        'Running message channel exchange',
+      );
+
+      for (const edge of relevantChannelEdges) {
+        const channelId = [edge.source, edge.target].sort().join('|');
+        const maxRounds = edge.data?.channelConfig?.maxRounds ?? 5;
+        const participants = [edge.source, edge.target];
+
+        // Run message exchange rounds — alternate turns between participants
+        for (let round = 1; round <= maxRounds && !messageBus.isComplete(channelId); round++) {
+          for (const agentId of participants) {
+            const agentBatchIdx = nodeToBatchIdx.get(agentId);
+            if (agentBatchIdx === undefined || agentBatchIdx > batchIdx) continue;
+
+            // Skip if agent already sent a message this round
+            const transcriptMessages = messageBus.getTranscript(channelId);
+            const alreadyResponded = transcriptMessages.some(
+              (m) => m.fromNodeId === agentId && m.round === round,
+            );
+            if (alreadyResponded) continue;
+
+            const agentNode = batch.find((n) => n.id === agentId);
+            if (!agentNode) continue;
+
+            // Build upstream context
+            const upstreamSources = incomingEdges.get(agentId) ?? [];
+            const upstream: UpstreamOutputs = new Map();
+            for (const sourceId of upstreamSources) {
+              const sourceResult = allOutputs.get(sourceId);
+              if (sourceResult) {
+                upstream.set(sourceId, sourceResult);
+              }
+            }
+
+            // Build conversation prompt from transcript
+            const transcript = transcriptMessages.map((m) => ({
+              sender: m.fromNodeId,
+              text: m.content,
+              round: m.round,
+            }));
+            const conversationPrompt = buildMessagePrompt(
+              agentId,
+              transcript,
+              channelId,
+              round,
+              maxRounds,
+            );
+
+            // Run agent with conversation context
+            const msgResult = await runAgent(
+              agentNode,
+              upstream,
+              emitter,
+              executionId,
+              userId,
+              conversationPrompt,
+            );
+
+            // Send the agent's response through the message bus
+            if (msgResult.text) {
+              await messageBus.send(agentId, channelId, msgResult.text);
+
+              await emitter.emit('message', {
+                fromNodeId: agentId,
+                toNodeId: edge.source === agentId ? edge.target : edge.source,
+                content: msgResult.text,
+                round,
+                channelId,
+                timestamp: Date.now(),
+              });
+
+              log.info({ executionId, channelId, agentId, round }, 'Message exchanged on channel');
+            }
+          }
+        }
+      }
     }
   }
 

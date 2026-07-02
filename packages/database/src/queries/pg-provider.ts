@@ -95,8 +95,6 @@ export const pgProvider: QueryProvider = {
       description: input.description || null,
       transport: input.transport,
       url: input.url || null,
-      command: input.command || null,
-      args: input.args || null,
       iconUrl: input.iconUrl || null,
       registryOrigin: input.registryOrigin || 'manual',
       registryId: input.registryId || null,
@@ -114,8 +112,8 @@ export const pgProvider: QueryProvider = {
       description: input.description ?? undefined,
       transport: input.transport,
       url: input.url ?? undefined,
-      command: input.command ?? undefined,
-      args: input.args ?? undefined,
+      command: undefined,
+      args: undefined,
       iconUrl: input.iconUrl ?? undefined,
       registryOrigin: input.registryOrigin ?? undefined,
       registryId: input.registryId ?? undefined,
@@ -987,5 +985,138 @@ export const pgProvider: QueryProvider = {
       .from(pgSchema.pgWorkflows)
       .where(eq(pgSchema.pgWorkflows.userId, userId));
     return rows[0]?.count ?? 0;
+  },
+
+  // ─── Workspace blackboard ─────────────────────────────────────────────────────
+
+  async writeWorkspaceEntry(
+    executionId: string,
+    nodeId: string,
+    key: string,
+    value: unknown,
+    valueType: string = 'text',
+    fileUrl?: string,
+    expectedRound?: number,
+  ): Promise<string> {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const now = new Date();
+
+    const existing = await pgDb
+      .select({ id: pgSchema.pgWorkspaceEntries.id, round: pgSchema.pgWorkspaceEntries.round })
+      .from(pgSchema.pgWorkspaceEntries)
+      .where(
+        and(
+          eq(pgSchema.pgWorkspaceEntries.executionId, executionId),
+          eq(pgSchema.pgWorkspaceEntries.key, key),
+        ),
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      const row = existing[0];
+      if (expectedRound !== undefined && row.round !== expectedRound) {
+        throw new Error('CONCURRENT_MODIFICATION');
+      }
+      await pgDb
+        .update(pgSchema.pgWorkspaceEntries)
+        .set({
+          value,
+          valueType,
+          fileUrl: fileUrl || null,
+          nodeId,
+          round: row.round + 1,
+          createdAt: now,
+        })
+        .where(eq(pgSchema.pgWorkspaceEntries.id, row.id));
+      return row.id;
+    }
+
+    const id = crypto.randomUUID();
+    await pgDb.insert(pgSchema.pgWorkspaceEntries).values({
+      id,
+      executionId,
+      nodeId,
+      key,
+      value,
+      valueType,
+      fileUrl: fileUrl || null,
+      round: 0,
+      createdAt: now,
+    });
+    return id;
+  },
+
+  async readWorkspaceEntry(executionId: string, key: string) {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const rows = await pgDb
+      .select()
+      .from(pgSchema.pgWorkspaceEntries)
+      .where(
+        and(
+          eq(pgSchema.pgWorkspaceEntries.executionId, executionId),
+          eq(pgSchema.pgWorkspaceEntries.key, key),
+        ),
+      )
+      .limit(1);
+
+    if (rows.length === 0) return null;
+    const r = rows[0];
+    return {
+      id: r.id,
+      executionId: r.executionId ?? '',
+      nodeId: r.nodeId,
+      key: r.key,
+      value: r.value,
+      valueType: (r.valueType as any) ?? 'text',
+      fileUrl: r.fileUrl ?? undefined,
+      round: r.round,
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+    };
+  },
+
+  async listWorkspaceEntries(executionId: string, nodeId?: string, prefix?: string) {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const conditions = [eq(pgSchema.pgWorkspaceEntries.executionId, executionId)];
+    if (nodeId) {
+      conditions.push(eq(pgSchema.pgWorkspaceEntries.nodeId, nodeId));
+    }
+    if (prefix) {
+      conditions.push(sql`${pgSchema.pgWorkspaceEntries.key} LIKE ${prefix + '%'}`);
+    }
+
+    const rows = await pgDb
+      .select()
+      .from(pgSchema.pgWorkspaceEntries)
+      .where(and(...conditions))
+      .orderBy(pgSchema.pgWorkspaceEntries.createdAt);
+
+    return rows.map((r) => ({
+      id: r.id,
+      executionId: r.executionId ?? '',
+      nodeId: r.nodeId,
+      key: r.key,
+      value: r.value,
+      valueType: (r.valueType as any) ?? 'text',
+      fileUrl: r.fileUrl ?? undefined,
+      round: r.round,
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+    }));
+  },
+
+  async deleteWorkspaceEntry(id: string) {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    await pgDb.delete(pgSchema.pgWorkspaceEntries).where(eq(pgSchema.pgWorkspaceEntries.id, id));
+  },
+
+  async clearWorkspace(executionId: string) {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    await pgDb
+      .delete(pgSchema.pgWorkspaceEntries)
+      .where(eq(pgSchema.pgWorkspaceEntries.executionId, executionId));
   },
 };

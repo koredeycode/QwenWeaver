@@ -150,3 +150,20 @@ export const AUTH_COLORS: Record<string, string> = {
   api_key: 'text-blue-700 bg-blue-50 border-blue-200',
   basic: 'text-slate-700 bg-slate-50 border-slate-200',
 };
+
+export const AUTH_TIERS = ['all', 'none', 'required', 'unknown'] as const;
+export type AuthTier = (typeof AUTH_TIERS)[number];
+
+export const AUTH_TIER_LABELS: Record<AuthTier, string> = {
+  all: 'All',
+  none: 'No Auth',
+  required: 'Auth Required',
+  unknown: 'Unknown',
+};
+
+export const AUTH_TIER_COLORS: Record<AuthTier, string> = {
+  all: '',
+  none: 'text-emerald-700 bg-emerald-50 border-emerald-200',
+  required: 'text-amber-700 bg-amber-50 border-amber-200',
+  unknown: 'text-slate-500 bg-slate-50 border-slate-200',
+};

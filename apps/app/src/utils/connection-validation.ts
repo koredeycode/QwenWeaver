@@ -1,5 +1,9 @@
 export function isAgent(type?: string): boolean {
-  return type === 'agent' || type === 'supervisor';
+  return type === 'agent' || type === 'supervisor' || type === 'debate_arena';
+}
+
+export function isDebateArena(type?: string): boolean {
+  return type === 'debate_arena';
 }
 
 export function isTrigger(type?: string): boolean {
@@ -37,7 +41,7 @@ export function autoDetectHandles(sourceNodeType?: string, targetNodeType?: stri
     return { sourceHandle: 'source', targetHandle: 'target-left' };
   }
   if (toolToAgent) {
-    return { sourceHandle: 'source-bottom', targetHandle: 'target-bottom' };
+    return { sourceHandle: 'source-bottom', targetHandle: 'target-top' };
   }
   if (isAgent(targetNodeType)) {
     return { targetHandle: 'target-left' };

@@ -5,6 +5,7 @@ import {
   timestamp,
   json,
   index,
+  uniqueIndex,
   varchar,
   boolean,
 } from 'drizzle-orm/mysql-core';
@@ -250,4 +251,25 @@ export const mysqlCreditTransactions = mysqlTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => [index('credit_transactions_user_id_idx').on(table.userId)],
+);
+
+export const mysqlWorkspaceEntries = mysqlTable(
+  'workspace_entries',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    executionId: varchar('execution_id', { length: 36 })
+      .notNull()
+      .references(() => mysqlExecutions.id, { onDelete: 'cascade' }),
+    nodeId: text('node_id').notNull(),
+    key: text('key').notNull(),
+    value: json('value').notNull(),
+    valueType: text('value_type').notNull().default('text'),
+    fileUrl: text('file_url'),
+    round: int('round').default(0).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('ws_exec_key_idx').on(table.executionId, table.key),
+    index('ws_exec_node_idx').on(table.executionId, table.nodeId),
+  ],
 );

@@ -18,10 +18,8 @@ export const MCPIcon = z.object({
 export type MCPIcon = z.infer<typeof MCPIcon>;
 
 export const MCPConnectionConfig = z.object({
-  transport: z.enum(['http', 'stdio', 'sse']),
+  transport: z.enum(['http']).default('http'),
   url: z.string().optional(),
-  command: z.string().optional(),
-  args: z.array(z.string()).optional(),
 });
 export type MCPConnectionConfig = z.infer<typeof MCPConnectionConfig>;
 

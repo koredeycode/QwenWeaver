@@ -14,6 +14,8 @@ import { analyticsRoutes } from './routes/analytics/index.js';
 import { creditsRoutes } from './routes/credits/index.js';
 import { credentialsRoutes } from './routes/credentials/index.js';
 import { templateRoutes } from './routes/templates/index.js';
+import { fileRoutes } from './routes/files/index.js';
+import { workspaceRoutes } from './routes/workspace/index.js';
 
 import { register } from './metrics.js';
 import { getQueryProvider } from '@qwenweaver/database';
@@ -196,7 +198,9 @@ app
   .route('/api/mcp/registry', registryRoutes)
   .route('/api/analytics', analyticsRoutes)
   .route('/api/credits', creditsRoutes)
-  .route('/api/credentials', credentialsRoutes);
+  .route('/api/credentials', credentialsRoutes)
+  .route('/api/files', fileRoutes)
+  .route('/api/workspace', workspaceRoutes);
 
 export type AppType = typeof app;
 

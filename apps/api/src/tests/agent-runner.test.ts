@@ -31,7 +31,7 @@ describe('agent-runner', () => {
     expect(result.outputs[0].value).toContain('/public/storage/runs/');
   });
 
-  it('generates placeholder mock image and writes to local disk when outputFormat is image', async () => {
+  it('fails image generation gracefully when DASHSCOPE_API_KEY is not set', async () => {
     const imageNode: NodePayload = {
       id: 'I1',
       type: 'agent',
@@ -44,20 +44,10 @@ describe('agent-runner', () => {
 
     const result = await runAgent(imageNode, new Map(), undefined, 'test-run-id');
 
-    expect(result.status).toBe('completed');
-    expect(result.outputs).toHaveLength(1);
-    expect(result.outputs[0].type).toBe('image');
-    expect(result.outputs[0].contentType).toBe('image/png');
-
-    const fileUrl = result.outputs[0].value;
-    expect(fileUrl).toContain('/public/storage/runs/test-run-id/I1_output.png');
-
-    // Assert that the file was actually written to disk
-    const absolutePath = path.resolve('.' + fileUrl);
-    expect(fs.existsSync(absolutePath)).toBe(true);
+    expect(result.status).toBe('failed');
   });
 
-  it('generates placeholder mock audio and writes to local disk when outputFormat is audio', async () => {
+  it('fails audio generation gracefully when DASHSCOPE_API_KEY is not set', async () => {
     const audioNode: NodePayload = {
       id: 'A1',
       type: 'agent',
@@ -70,20 +60,10 @@ describe('agent-runner', () => {
 
     const result = await runAgent(audioNode, new Map(), undefined, 'test-run-id');
 
-    expect(result.status).toBe('completed');
-    expect(result.outputs).toHaveLength(1);
-    expect(result.outputs[0].type).toBe('audio');
-    expect(result.outputs[0].contentType).toBe('audio/mpeg');
-
-    const fileUrl = result.outputs[0].value;
-    expect(fileUrl).toContain('/public/storage/runs/test-run-id/A1_output.mp3');
-
-    // Assert that the file was actually written to disk
-    const absolutePath = path.resolve('.' + fileUrl);
-    expect(fs.existsSync(absolutePath)).toBe(true);
+    expect(result.status).toBe('failed');
   });
 
-  it('generates placeholder mock video and writes to local disk when outputFormat is video', async () => {
+  it('fails video generation gracefully when DASHSCOPE_API_KEY is not set', async () => {
     const videoNode: NodePayload = {
       id: 'V1',
       type: 'agent',
@@ -96,16 +76,6 @@ describe('agent-runner', () => {
 
     const result = await runAgent(videoNode, new Map(), undefined, 'test-run-id');
 
-    expect(result.status).toBe('completed');
-    expect(result.outputs).toHaveLength(1);
-    expect(result.outputs[0].type).toBe('video');
-    expect(result.outputs[0].contentType).toBe('video/mp4');
-
-    const fileUrl = result.outputs[0].value;
-    expect(fileUrl).toContain('/public/storage/runs/test-run-id/V1_output.mp4');
-
-    // Assert that the file was actually written to disk
-    const absolutePath = path.resolve('.' + fileUrl);
-    expect(fs.existsSync(absolutePath)).toBe(true);
+    expect(result.status).toBe('failed');
   });
 });

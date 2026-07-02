@@ -6,6 +6,7 @@ import { createModuleLogger } from '../logger.js';
 import { agent_duration_ms, llm_tokens_total } from '../metrics.js';
 import { buildHeadersFromAuthConfig, callMCPTool, discoverMCPTools } from './mcp-bridge.js';
 import { getModelForNode, getModelIdForNode } from './model-router.js';
+import { createWorkspaceTools } from './workspace-tools.js';
 import type { AgentResult, StreamEmitter, UpstreamOutputs } from './types.js';
 import { EXTENSION_MAP, CONTENT_TYPE_MAP } from './constants.js';
 import { writeBinaryAsset } from './file-asset.js';
@@ -23,6 +24,7 @@ export async function runAgent(
   emitter?: StreamEmitter,
   executionId?: string,
   userId?: string,
+  conversationContext?: string,
 ): Promise<AgentResult> {
   const startTime = performance.now();
 
@@ -46,9 +48,10 @@ export async function runAgent(
   }
 
   const abortController = new AbortController();
+  const nodeTimeoutMs = node.data.outputFormat === 'video' ? 300000 : 120000;
   const timeoutId = setTimeout(
-    () => abortController.abort('Agent execution timed out (120s)'),
-    120000,
+    () => abortController.abort(`Agent execution timed out (${nodeTimeoutMs / 1000}s)`),
+    nodeTimeoutMs,
   );
 
   let pollInterval: ReturnType<typeof setInterval> | undefined;
@@ -101,14 +104,7 @@ export async function runAgent(
         log.info({ nodeId: node.id, prompt }, 'Calling Wanx image generation API');
         buffer = await generateWanxImage(prompt, apiKey, abortController.signal);
       } else {
-        log.info(
-          { nodeId: node.id },
-          'No DASHSCOPE_API_KEY set, generating placeholder mock image',
-        );
-        buffer = Buffer.from(
-          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
-          'base64',
-        );
+        throw new Error(`Node "${node.id}" has outputFormat "image" but no DASHSCOPE_API_KEY set`);
       }
 
       const runId = executionId ?? 'local-run';
@@ -127,21 +123,28 @@ export async function runAgent(
 
     // Handle Audio Generation (CosyVoice)
     if (node.data.outputFormat === 'audio') {
-      const prompt = node.data.systemPrompt || node.data.label || 'Generates audio';
+      // Use upstream output text as the script to narrate, not the system prompt
+      let ttsText = '';
+      for (const [, result] of upstreamOutputs) {
+        if (result.text) {
+          ttsText += (ttsText ? '\n\n' : '') + result.text;
+        } else if (result.outputs) {
+          ttsText += (ttsText ? '\n\n' : '') + result.outputs.map((o) => o.value).join('\n\n');
+        }
+      }
+      if (!ttsText) {
+        ttsText = node.data.label || 'Generates audio';
+      }
       let buffer: Buffer;
 
       if (apiKey) {
-        log.info({ nodeId: node.id, prompt }, 'Calling CosyVoice speech synthesis API');
-        buffer = await generateCosyVoiceAudio(prompt, apiKey);
-      } else {
         log.info(
-          { nodeId: node.id },
-          'No DASHSCOPE_API_KEY set, generating placeholder mock audio',
+          { nodeId: node.id, textLength: ttsText.length },
+          'Calling CosyVoice speech synthesis API',
         );
-        buffer = Buffer.from(
-          '//MkxAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABXhpbmcAAAADAAAAAQAAAAAAAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ohs=',
-          'base64',
-        );
+        buffer = await generateCosyVoiceAudio(ttsText, apiKey);
+      } else {
+        throw new Error(`Node "${node.id}" has outputFormat "audio" but no DASHSCOPE_API_KEY set`);
       }
 
       const runId = executionId ?? 'local-run';
@@ -167,14 +170,7 @@ export async function runAgent(
         log.info({ nodeId: node.id, prompt }, 'Calling Wanx video generation API');
         buffer = await generateWanxVideo(prompt, apiKey, abortController.signal);
       } else {
-        log.info(
-          { nodeId: node.id },
-          'No DASHSCOPE_API_KEY set, generating placeholder mock video',
-        );
-        buffer = Buffer.from(
-          'AAAAGGZ0eXBtcDQyAAAAAG1wNDJpc29tAAAAKHV1aWRkZWYoY29tcGxldGVfZmlsZV9tZXRhZGF0YSkAAAAIZnJlZQAAAAttZGF0AAAAAG1vb3YAAABs',
-          'base64',
-        );
+        throw new Error(`Node "${node.id}" has outputFormat "video" but no DASHSCOPE_API_KEY set`);
       }
 
       const runId = executionId ?? 'local-run';
@@ -194,6 +190,9 @@ export async function runAgent(
     const { model, enableThinking, thinkingBudget } = getModelForNode(node);
     const systemPrompt = buildSystemPrompt(node);
     const userMessage = buildUserMessage(node, upstreamOutputs);
+    const finalPrompt = conversationContext
+      ? `${userMessage}\n\n---\n\n[CONVERSATION CONTEXT]:\n${conversationContext}`
+      : userMessage;
 
     const tools: Record<string, Tool<z.ZodTypeAny, unknown>> = {};
     let mcpToolCount = 0;
@@ -218,6 +217,12 @@ export async function runAgent(
       }
     }
 
+    // Inject built-in workspace tools (blackboard)
+    if (executionId) {
+      const workspaceTools = createWorkspaceTools(executionId, node.id, emitter);
+      Object.assign(tools, workspaceTools);
+    }
+
     const providerOptions = enableThinking
       ? {
           alibaba: {
@@ -235,7 +240,7 @@ export async function runAgent(
     const streamOptions = {
       model,
       system: systemPrompt,
-      prompt: userMessage,
+      prompt: finalPrompt,
       tools: Object.keys(tools).length > 0 ? tools : undefined,
       maxSteps: Math.min(Math.max(Number(process.env.MAX_STEPS) || 5, 1), 25),
       providerOptions: providerOptions as Record<string, Record<string, any>> | undefined,
