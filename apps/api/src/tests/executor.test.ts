@@ -329,7 +329,7 @@ describe('executor', () => {
       ],
       edges: [
         // Data-flow edge — should be included
-        { id: 'e1', source: 'A', target: 'B', data: {} },
+        { id: 'e1', source: 'A', target: 'B' },
         // Message channel edge — should be excluded from data-flow
         { id: 'e2', source: 'B', target: 'A', data: { messageChannel: true } },
       ],

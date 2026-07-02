@@ -119,65 +119,65 @@ export const EdgePayload = z.object({
 });
 export type EdgePayload = z.infer<typeof EdgePayload>;
 
-export const WorkflowPayload = z
-  .object({
-    id: z.string().optional(),
-    name: z.string(),
-    description: z.string().optional(),
-    nodes: z.array(NodePayload),
-    edges: z.array(EdgePayload),
-  })
-  .refine(
-    (data) => {
-      const nodeMap = new Map(data.nodes.map((n) => [n.id, n]));
-      const incomingToolEdges = new Map<string, number>();
-      for (const edge of data.edges) {
-        const sourceNode = nodeMap.get(edge.source);
-        const targetNode = nodeMap.get(edge.target);
-        if (!sourceNode || !targetNode) continue;
+export const WorkflowPayloadBase = z.object({
+  id: z.string().optional(),
+  name: z.string(),
+  description: z.string().optional(),
+  nodes: z.array(NodePayload),
+  edges: z.array(EdgePayload),
+});
 
-        // Tool→Tool blocked
-        if (sourceNode.type === 'mcp_tool' && targetNode.type === 'mcp_tool') {
-          return false;
-        }
+export const WorkflowPayload = WorkflowPayloadBase.refine(
+  (data) => {
+    const nodeMap = new Map(data.nodes.map((n) => [n.id, n]));
+    const incomingToolEdges = new Map<string, number>();
+    for (const edge of data.edges) {
+      const sourceNode = nodeMap.get(edge.source);
+      const targetNode = nodeMap.get(edge.target);
+      if (!sourceNode || !targetNode) continue;
 
-        // Tool can only receive from agent or supervisor
-        if (
-          targetNode.type === 'mcp_tool' &&
-          sourceNode.type !== 'agent' &&
-          sourceNode.type !== 'supervisor'
-        ) {
-          return false;
-        }
-
-        // Tool can only connect to agent or supervisor
-        if (
-          sourceNode.type === 'mcp_tool' &&
-          targetNode.type !== 'agent' &&
-          targetNode.type !== 'supervisor'
-        ) {
-          return false;
-        }
-
-        // Track incoming edges to tools
-        if (targetNode.type === 'mcp_tool') {
-          incomingToolEdges.set(edge.target, (incomingToolEdges.get(edge.target) || 0) + 1);
-        }
+      // Tool→Tool blocked
+      if (sourceNode.type === 'mcp_tool' && targetNode.type === 'mcp_tool') {
+        return false;
       }
 
-      // Each tool can have at most one incoming connection
-      for (const [toolId, count] of incomingToolEdges) {
-        if (count > 1) return false;
+      // Tool can only receive from agent or supervisor
+      if (
+        targetNode.type === 'mcp_tool' &&
+        sourceNode.type !== 'agent' &&
+        sourceNode.type !== 'supervisor'
+      ) {
+        return false;
       }
 
-      return true;
-    },
-    {
-      message:
-        'Invalid connections: tools must connect to/from agents/supervisors only, and each tool can have at most one incoming connection',
-      path: ['edges'],
-    },
-  );
+      // Tool can only connect to agent or supervisor
+      if (
+        sourceNode.type === 'mcp_tool' &&
+        targetNode.type !== 'agent' &&
+        targetNode.type !== 'supervisor'
+      ) {
+        return false;
+      }
+
+      // Track incoming edges to tools
+      if (targetNode.type === 'mcp_tool') {
+        incomingToolEdges.set(edge.target, (incomingToolEdges.get(edge.target) || 0) + 1);
+      }
+    }
+
+    // Each tool can have at most one incoming connection
+    for (const [toolId, count] of incomingToolEdges) {
+      if (count > 1) return false;
+    }
+
+    return true;
+  },
+  {
+    message:
+      'Invalid connections: tools must connect to/from agents/supervisors only, and each tool can have at most one incoming connection',
+    path: ['edges'],
+  },
+);
 export type WorkflowPayload = z.infer<typeof WorkflowPayload>;
 
 export const ExecutionStatus = z.enum(['pending', 'running', 'completed', 'failed']);
