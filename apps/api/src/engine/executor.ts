@@ -13,6 +13,7 @@ import { MessageBus } from './message-bus.js';
 import { buildMessagePrompt } from './prompt-builder.js';
 import { getQueryProvider } from '@qwenweaver/database';
 import { createModuleLogger } from '../logger.js';
+import { createDiagnosticLogger, type CopilotDiag } from '../diagnostic-logger.js';
 import { executions_total } from '../metrics.js';
 
 const log = createModuleLogger('engine/executor');
@@ -27,6 +28,17 @@ export async function executeWorkflow(
   const executionStart = performance.now();
   const provider = getQueryProvider();
 
+  // Create diagnostic logger for this execution
+  const diag = createDiagnosticLogger(`exec-${executionId}`);
+  diag.log(`╔══ WORKFLOW EXECUTION START ══╗`);
+  diag.log(`Execution ID: ${executionId}`);
+  diag.log(
+    `Workflow: "${workflow.name}" (${workflow.nodes.length} nodes, ${workflow.edges.length} edges)`,
+  );
+  diag.log(
+    `Options: persistLogs=${options.persistLogs}, maxRounds=${options.maxNegotiationRounds}`,
+  );
+
   // Try fetching to verify execution exists
   const existing = await provider.getExecution(executionId).catch(() => null);
   if (existing) {
@@ -37,6 +49,7 @@ export async function executeWorkflow(
     }
   } else {
     log.error({ executionId }, 'Execution not found at start');
+    diag.log('ERROR: Execution not found at start');
   }
 
   log.info(
@@ -45,11 +58,13 @@ export async function executeWorkflow(
   );
 
   const dagResult = compileDag(workflow.nodes, workflow.edges);
+  diag.log(`DAG compiled: ${dagResult.batches.length} batches, cycle=${dagResult.hasCycle}`);
 
   if (dagResult.hasCycle) {
     const errorMsg = `Cycle detected in workflow DAG. Nodes involved: ${dagResult.cycleNodeIds?.join(', ')}`;
 
     log.error({ executionId, cycleNodeIds: dagResult.cycleNodeIds }, errorMsg);
+    diag.log(`CYCLE DETECTED: ${errorMsg}`);
 
     if (options.persistLogs) {
       await provider.updateExecution(executionId, 'failed').catch((err: Error) => {
@@ -65,6 +80,7 @@ export async function executeWorkflow(
       timestamp: Date.now(),
     });
 
+    diag.close();
     return {
       executionId,
       status: 'failed',
@@ -78,18 +94,24 @@ export async function executeWorkflow(
     { executionId, batchCount: dagResult.batches.length },
     'DAG compiled, starting batch execution',
   );
+  for (let i = 0; i < dagResult.batches.length; i++) {
+    diag.log(`  Batch ${i}: [${dagResult.batches[i].map((n) => n.id).join(', ')}]`);
+  }
 
   // Reset workspace blackboard for a fresh execution
   // Must await to prevent race with agents writing new entries
   try {
     await provider.clearWorkspace(executionId);
+    diag.log('Workspace blackboard cleared');
   } catch (err) {
     log.warn({ executionId, error: (err as Error).message }, 'Failed to clear workspace');
+    diag.log('WARN: Failed to clear workspace');
   }
 
   // Create message bus for agent-to-agent messaging channels
   const messageBus = new MessageBus();
   const messageChannelEdges = workflow.edges.filter((e) => e.data?.messageChannel);
+  diag.log(`Message channel edges: ${messageChannelEdges.length}`);
 
   // Register all message channels
   for (const edge of messageChannelEdges) {
@@ -137,6 +159,9 @@ export async function executeWorkflow(
     }
 
     log.info({ executionId, batchIdx, batchSize: batch.length, currentRound }, 'Executing batch');
+    diag.log(
+      `BATCH ${batchIdx} START: ${batch.length} nodes [${batch.map((n) => n.id).join(', ')}]`,
+    );
 
     for (const node of batch) {
       await emitter.emit('status_update', {
@@ -179,12 +204,14 @@ export async function executeWorkflow(
               _revisionFeedback: feedback,
             },
           };
+          diag.log(`  Feedback injected for ${node.id}: "${feedback.substring(0, 200)}..."`);
         }
 
         let result: AgentResult;
         if (node.type === 'debate_arena') {
           const participantIds = incomingEdges.get(node.id) ?? [];
           const participantNodes = workflow.nodes.filter((n) => participantIds.includes(n.id));
+          diag.log(`  DEBATE ARENA: ${node.id} with ${participantNodes.length} participants`);
           result = await runDebate(
             nodeToRun,
             participantNodes,
@@ -193,8 +220,10 @@ export async function executeWorkflow(
             executionId,
             userId,
             options.signal,
+            diag,
           );
         } else {
+          diag.log(`  RUN AGENT: ${node.id} (${node.type}) — diag attached: ${!!diag}`);
           result = await runAgent(
             nodeToRun,
             upstream,
@@ -203,6 +232,7 @@ export async function executeWorkflow(
             userId,
             undefined,
             options.signal,
+            diag,
           );
         }
 
@@ -251,6 +281,7 @@ export async function executeWorkflow(
       if (r.status === 'fulfilled') return r.value;
       const node = batch[i];
       const errorMsg = r.reason instanceof Error ? r.reason.message : String(r.reason);
+      diag.log(`  BATCH PROMISE REJECTED: ${node.id} — ${errorMsg}`);
       return {
         nodeId: node.id,
         status: 'failed' as const,
@@ -266,6 +297,16 @@ export async function executeWorkflow(
       allOutputs.set(result.nodeId, result);
       totalTokens += result.tokensUsed;
       sequentialTime += result.durationMs;
+
+      diag.log(
+        `  RESULT: ${result.nodeId} — status=${result.status}, tokens=${result.tokensUsed}, duration=${result.durationMs}ms`,
+      );
+      if (result.reasoning) {
+        diag.log(`    reasoning length: ${result.reasoning.length} chars`);
+      }
+      if (result.toolCalls && result.toolCalls.length > 0) {
+        diag.log(`    toolCalls: ${result.toolCalls.length}`);
+      }
 
       const existingTimingIdx = nodeTimings.findIndex((t) => t.nodeId === result.nodeId);
       if (existingTimingIdx !== -1) {
@@ -337,6 +378,11 @@ export async function executeWorkflow(
         }
       }
 
+      diag.log(`SUPERVISOR REJECTION detected (round ${currentRound})`);
+      diag.log(`  Feedback: "${supervisorFeedback.substring(0, 300)}"`);
+      diag.log(`  Workers to reset: [${upstreamWorkerIdsToReset.join(', ')}]`);
+      diag.log(`  Backtracking from batch ${batchIdx} to batch ${minBatchIdx}`);
+
       log.info(
         { executionId, minBatchIdx, currentRound, upstreamWorkerIdsToReset },
         `Backtracking execution from batch ${batchIdx} to batch ${minBatchIdx}`,
@@ -376,6 +422,9 @@ export async function executeWorkflow(
     );
 
     if (relevantChannelEdges.length > 0) {
+      diag.log(
+        `MESSAGE CHANNEL EXCHANGE: ${relevantChannelEdges.length} edges in batch ${batchIdx}`,
+      );
       log.info(
         { executionId, batchIdx, channelCount: relevantChannelEdges.length },
         'Running message channel exchange',
@@ -427,6 +476,9 @@ export async function executeWorkflow(
             );
 
             // Run agent with conversation context
+            diag.log(
+              `  MESSAGE CHANNEL: agent=${agentNode.id}, round=${round}/${maxRounds}, channel=${channelId}`,
+            );
             const msgResult = await runAgent(
               agentNode,
               upstream,
@@ -435,6 +487,7 @@ export async function executeWorkflow(
               userId,
               conversationPrompt,
               options.signal,
+              diag,
             );
 
             // Send the agent's response through the message bus
@@ -498,6 +551,15 @@ export async function executeWorkflow(
     metrics,
     timestamp: Date.now(),
   });
+
+  diag.log(`══ WORKFLOW FINISHED ══`);
+  diag.log(`Status: ${status}, totalLatency: ${totalLatencyMs}ms, tokens: ${totalTokens}`);
+  diag.log(`Metrics: speedup=${speedupS}x, parallelism=${parallelEfficiency}`);
+  diag.log(`Node timings:`);
+  for (const t of nodeTimings) {
+    diag.log(`  ${t.nodeId}: ${t.status} (${t.durationMs}ms, ${t.tokensUsed}tokens)`);
+  }
+  diag.close();
 
   log.info(
     { executionId, status, speedupS, totalTokens, totalLatencyMs },

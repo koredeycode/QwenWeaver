@@ -3,6 +3,7 @@ import type { NodePayload } from '@qwenweaver/types';
 import { jsonSchema, streamText, tool, type Tool } from 'ai';
 import { z } from 'zod';
 import { createModuleLogger } from '../logger.js';
+import { createDiagnosticLogger, type CopilotDiag } from '../diagnostic-logger.js';
 import { agent_duration_ms, llm_tokens_total } from '../metrics.js';
 import { buildHeadersFromAuthConfig, callMCPTool, discoverMCPTools } from './mcp-bridge.js';
 import { getModelForNode, getModelIdForNode } from './model-router.js';
@@ -26,8 +27,12 @@ export async function runAgent(
   userId?: string,
   conversationContext?: string,
   externalSignal?: AbortSignal,
+  diag?: CopilotDiag,
 ): Promise<AgentResult> {
   const startTime = performance.now();
+  const nodeLabel = node.data.label || node.id;
+
+  diag?.log(`=== AGENT START: ${node.id} (${node.type}) "${nodeLabel}" ===`);
 
   if (node.type === 'trigger' || node.type === 'input_trigger' || node.type === 'logic') {
     const text = node.data.label ?? `[${node.type}] pass-through`;
@@ -38,6 +43,7 @@ export async function runAgent(
     const runId = executionId ?? 'local-run';
     const fileUrl = await writeBinaryAsset(runId, node.id, ext, buffer);
     const durationMs = Math.round(performance.now() - startTime);
+    diag?.log(`PASS-THROUGH node ${node.id} (type=${node.type}) — label length: ${text.length}`);
     return {
       nodeId: node.id,
       outputs: [{ type: 'text', contentType, value: fileUrl }],
@@ -64,7 +70,7 @@ export async function runAgent(
       );
     }
   }
-  const nodeTimeoutMs = node.data.outputFormat === 'video' ? 300000 : 120000;
+  const nodeTimeoutMs = 600000;
   const timeoutId = setTimeout(
     () => abortController.abort(`Agent execution timed out (${nodeTimeoutMs / 1000}s)`),
     nodeTimeoutMs,
@@ -114,6 +120,7 @@ export async function runAgent(
     // Handle Image Generation (Wanx)
     if (node.data.outputFormat === 'image') {
       const prompt = node.data.systemPrompt || node.data.label || 'Generates an image';
+      diag?.log(`IMAGE GEN: node=${node.id}, prompt="${prompt.substring(0, 100)}"`);
       let buffer: Buffer;
 
       if (apiKey) {
@@ -126,6 +133,7 @@ export async function runAgent(
       const runId = executionId ?? 'local-run';
       const fileUrl = await writeBinaryAsset(runId, node.id, 'png', buffer);
       const durationMs = Math.round(performance.now() - startTime);
+      diag?.log(`IMAGE DONE: node=${node.id}, fileUrl=${fileUrl}, duration=${durationMs}ms`);
 
       return {
         nodeId: node.id,
@@ -151,6 +159,7 @@ export async function runAgent(
       if (!ttsText) {
         ttsText = node.data.label || 'Generates audio';
       }
+      diag?.log(`AUDIO GEN: node=${node.id}, ttsTextLength=${ttsText.length}`);
       let buffer: Buffer;
 
       if (apiKey) {
@@ -166,6 +175,7 @@ export async function runAgent(
       const runId = executionId ?? 'local-run';
       const fileUrl = await writeBinaryAsset(runId, node.id, 'mp3', buffer);
       const durationMs = Math.round(performance.now() - startTime);
+      diag?.log(`AUDIO DONE: node=${node.id}, fileUrl=${fileUrl}, duration=${durationMs}ms`);
 
       return {
         nodeId: node.id,
@@ -180,6 +190,7 @@ export async function runAgent(
     // Handle Video Generation (Wanx Video)
     if (node.data.outputFormat === 'video') {
       const prompt = node.data.systemPrompt || node.data.label || 'Generates a video';
+      diag?.log(`VIDEO GEN: node=${node.id}, prompt="${prompt.substring(0, 100)}"`);
       let buffer: Buffer;
 
       if (apiKey) {
@@ -192,6 +203,7 @@ export async function runAgent(
       const runId = executionId ?? 'local-run';
       const fileUrl = await writeBinaryAsset(runId, node.id, 'mp4', buffer);
       const durationMs = Math.round(performance.now() - startTime);
+      diag?.log(`VIDEO DONE: node=${node.id}, fileUrl=${fileUrl}, duration=${durationMs}ms`);
 
       return {
         nodeId: node.id,
@@ -214,22 +226,46 @@ export async function runAgent(
     let mcpToolCount = 0;
 
     if (node.type === 'mcp_tool' && node.data.mcpServerUrl) {
+      diag?.log(`MCP TOOL DISCOVERY: node=${node.id}, server=${node.data.mcpServerUrl}`);
       try {
         const mcpTools = await discoverMCPTools(node, mcpAuthHeaders);
         mcpToolCount = mcpTools.length;
+        diag?.log(`MCP TOOLS DISCOVERED: ${mcpToolCount} tools for ${node.id}`);
         for (const t of mcpTools) {
+          diag?.log(`  MCP tool: "${t.name}" — ${t.description?.substring(0, 80)}`);
           tools[t.name] = tool({
             description: t.description,
             parameters: jsonSchema(t.inputSchema),
             execute: async (args: any) => {
               log.info({ nodeId: node.id, toolName: t.name, args }, 'Executing MCP tool call');
+              diag?.log(`MCP EXEC: node=${node.id}, tool="${t.name}"`);
+              diag?.logJson(`MCP args for ${t.name}`, args);
               const typedArgs = args as Record<string, unknown>;
-              return await callMCPTool(node.data.mcpServerUrl!, t.name, typedArgs, mcpAuthHeaders);
+              try {
+                const result = await callMCPTool(
+                  node.data.mcpServerUrl!,
+                  t.name,
+                  typedArgs,
+                  mcpAuthHeaders,
+                );
+                diag?.log(`MCP RESULT: tool="${t.name}" — success`);
+                diag?.logJson(
+                  `MCP result for ${t.name}`,
+                  typeof result === 'string' ? result.substring(0, 500) : result,
+                );
+                return result;
+              } catch (err) {
+                const msg = (err as Error).message;
+                diag?.log(`MCP ERROR: tool="${t.name}" — ${msg}`);
+                throw err;
+              }
             },
           } as any);
         }
       } catch (err) {
-        log.warn({ nodeId: node.id, error: (err as Error).message }, 'Failed to load MCP tools');
+        const msg = (err as Error).message;
+        log.warn({ nodeId: node.id, error: msg }, 'Failed to load MCP tools');
+        diag?.log(`MCP DISCOVERY ERROR: ${msg}`);
       }
     }
 
@@ -237,6 +273,7 @@ export async function runAgent(
     if (executionId) {
       const workspaceTools = createWorkspaceTools(executionId, node.id, emitter);
       Object.assign(tools, workspaceTools);
+      diag?.log(`Workspace tools injected: ${Object.keys(workspaceTools).join(', ')}`);
     }
 
     const providerOptions = enableThinking
@@ -253,28 +290,48 @@ export async function runAgent(
       'Starting agent execution',
     );
 
+    diag?.log(
+      `LLM START: node=${node.id}, model=${getModelIdForNode(node)}, thinking=${enableThinking}`,
+    );
+    diag?.log(`System prompt length: ${systemPrompt.length} chars`);
+    diag?.log(`User message length: ${finalPrompt.length} chars`);
+    diag?.log(`Tools available: ${Object.keys(tools).length}`);
+
     const streamOptions = {
       model,
       system: systemPrompt,
       prompt: finalPrompt,
       tools: Object.keys(tools).length > 0 ? tools : undefined,
-      maxSteps: Math.min(Math.max(Number(process.env.MAX_STEPS) || 5, 1), 25),
+      maxSteps: Math.min(Math.max(Number(process.env.MAX_STEPS) || 10, 1), 50),
       providerOptions: providerOptions as Record<string, Record<string, any>> | undefined,
       abortSignal: abortController.signal,
     };
+
+    diag?.logJson('streamText options', {
+      ...streamOptions,
+      model: getModelIdForNode(node),
+      tools: Object.keys(tools).length > 0 ? Object.keys(tools) : 'none',
+    });
 
     const result = streamText(streamOptions);
 
     let fullText = '';
     let tokensUsed = 0;
     let reasoningText = '';
+    let toolInputBuffer = '';
+    let streamPartCount = 0;
 
     if (enableThinking) {
+      diag?.log('fullStream loop (thinking enabled)');
       for await (const part of result.fullStream) {
+        streamPartCount++;
         if (part.type === 'reasoning-delta') {
           const textChunk = (part as any).text || '';
           if (textChunk) {
             reasoningText += textChunk;
+            diag?.log(
+              `[${node.id}] THINKING (${textChunk.length}c): ${textChunk.substring(0, 150)}`,
+            );
             if (emitter && !emitter.isClosed()) {
               await emitter.emit('thinking', { nodeId: node.id, chunk: textChunk });
             }
@@ -283,15 +340,41 @@ export async function runAgent(
           const textChunk = (part as any).text || '';
           if (textChunk) {
             fullText += textChunk;
+            diag?.log(`[${node.id}] TOKEN (${textChunk.length}c): ${textChunk.substring(0, 150)}`);
             if (emitter && !emitter.isClosed()) {
               await emitter.emit('token', { nodeId: node.id, chunk: textChunk });
             }
           }
+        } else if (part.type === 'tool-call') {
+          const tc = part as any;
+          const toolArgs = tc.args ?? tc.toolCall?.args ?? tc.arguments;
+          diag?.log(`[${node.id}] TOOL CALL: "${tc.toolName}"`);
+          diag?.logJson(`[${node.id}] Tool args`, toolArgs);
+        } else if (part.type === 'tool-result') {
+          const tr = part as any;
+          const toolResult = tr.result ?? tr;
+          diag?.log(`[${node.id}] TOOL RESULT: "${tr.toolName || tr.name}"`);
+          diag?.logJson(`[${node.id}] Tool result`, toolResult);
+        } else if (part.type === 'tool-input-delta') {
+          const chunk = (part as any).text || (part as any).delta || '';
+          if (chunk) toolInputBuffer += chunk;
+        } else if (part.type === 'tool-input-start') {
+          toolInputBuffer = '';
+        } else if (part.type === 'tool-input-end') {
+          diag?.log(`[${node.id}] TOOL INPUT (full JSON): ${toolInputBuffer.substring(0, 1000)}`);
+          toolInputBuffer = '';
+        } else if (part.type === 'error') {
+          const errPart = part as any;
+          const errMsg = errPart.error || JSON.stringify(errPart);
+          diag?.log(`[${node.id}] STREAM ERROR: ${errMsg}`);
         }
       }
+      diag?.log(`[${node.id}] Stream parts processed: ${streamPartCount}`);
     } else {
+      diag?.log('textStream loop (no thinking)');
       for await (const chunk of result.textStream) {
         fullText += chunk;
+        diag?.log(`[${node.id}] TOKEN (${chunk.length}c): ${chunk.substring(0, 150)}`);
         if (emitter && !emitter.isClosed()) {
           await emitter.emit('token', { nodeId: node.id, chunk });
         }
@@ -303,6 +386,17 @@ export async function runAgent(
     tokensUsed = usage?.totalTokens ?? 0;
     const toolCalls = finalResult.toolCalls ? await finalResult.toolCalls : undefined;
     const toolResults = finalResult.toolResults ? await finalResult.toolResults : undefined;
+
+    diag?.log(
+      `[${node.id}] LLM DONE: tokens=${tokensUsed}, textLength=${fullText.length}, reasoningLength=${reasoningText.length}`,
+    );
+    diag?.log(`[${node.id}] Tool calls count: ${(toolCalls as unknown[])?.length || 0}`);
+    if (toolCalls) {
+      diag?.logJson(`[${node.id}] Final tool calls`, toolCalls);
+    }
+    if (toolResults) {
+      diag?.logJson(`[${node.id}] Final tool results`, toolResults);
+    }
 
     const format = node.data.outputFormat ?? 'markdown';
     const ext = EXTENSION_MAP[format] ?? 'txt';
@@ -336,8 +430,11 @@ export async function runAgent(
   } catch (error) {
     const durationMs = Math.round(performance.now() - startTime);
     const errorMessage = (error as Error).message;
+    const errorStack = (error as Error).stack;
 
     log.error({ nodeId: node.id, error: errorMessage, durationMs }, 'Agent execution failed');
+    diag?.log(`[${node.id}] AGENT FAILED: ${errorMessage}`);
+    if (errorStack) diag?.log(`[${node.id}] Stack: ${errorStack}`);
 
     return {
       nodeId: node.id,

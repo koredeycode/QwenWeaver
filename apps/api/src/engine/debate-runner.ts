@@ -3,6 +3,7 @@ import type { AgentResult, StreamEmitter, UpstreamOutputs } from './types.js';
 import { getModelForNode, getProvider } from './model-router.js';
 import { streamText } from 'ai';
 import { createModuleLogger } from '../logger.js';
+import type { CopilotDiag } from '../diagnostic-logger.js';
 import { agent_duration_ms, llm_tokens_total } from '../metrics.js';
 import { writeBinaryAsset } from './file-asset.js';
 
@@ -23,6 +24,7 @@ export async function runDebate(
   executionId: string,
   userId?: string,
   signal?: AbortSignal,
+  diag?: CopilotDiag,
 ): Promise<AgentResult> {
   const startTime = performance.now();
   const config = arena.data.debateArenaConfig;
@@ -30,6 +32,10 @@ export async function runDebate(
   const maxRounds = config?.maxRounds ?? 3;
   const hasArbitrator = config?.hasArbitrator ?? false;
   const outputFormat = config?.outputFormat ?? 'verdict';
+
+  diag?.log(`=== DEBATE ARENA: ${arena.id} ===`);
+  diag?.log(`Participants: [${participantNodes.map((n) => n.id).join(', ')}]`);
+  diag?.log(`Mode=${mode}, maxRounds=${maxRounds}, hasArbitrator=${hasArbitrator}`);
 
   log.info(
     {
@@ -55,6 +61,7 @@ export async function runDebate(
       participant.data.systemPrompt ??
       participant.data.label ??
       `${participant.data.label ?? participant.id} has no initial position.`;
+    diag?.log(`  Round 1 — ${participant.id}: ${content.substring(0, 100)}...`);
     round1Statements.push({
       participantId: participant.id,
       participantLabel: participant.data.label ?? participant.id,
@@ -78,6 +85,7 @@ export async function runDebate(
     { arenaId: arena.id, round: 1, statementCount: round1Statements.length },
     'Debate round 1 complete',
   );
+  diag?.log(`Round 1 complete: ${round1Statements.length} statements`);
 
   // Rounds 2..N: Rebuttals — participants respond to the previous round in parallel
   for (let round = 2; round <= maxRounds; round++) {
@@ -113,6 +121,10 @@ export async function runDebate(
           const final = await result;
           const usage = await final.usage;
           totalTokens += usage?.totalTokens ?? 0;
+
+          diag?.log(
+            `  Round ${round} — ${participant.id}: ${text.substring(0, 100)}... (${usage?.totalTokens}tokens)`,
+          );
 
           log.info(
             { arenaId: arena.id, participantId: participant.id, round, tokens: usage?.totalTokens },
@@ -163,6 +175,9 @@ export async function runDebate(
       { arenaId: arena.id, round, statementCount: roundStatements.length },
       'Debate round complete',
     );
+    diag?.log(
+      `Round ${round} complete: ${roundStatements.length} statements, totalTokens=${totalTokens}`,
+    );
   }
 
   // Arbitration
@@ -171,6 +186,9 @@ export async function runDebate(
 
   if (hasArbitrator) {
     const arbitratorModelId = config?.arbitratorModel ?? 'qwen3.7-max';
+    diag?.log(
+      `ARBITRATOR: model=${arbitratorModelId}, scoring=${config?.scoringCriteria || 'none'}`,
+    );
     const provider = getProvider();
     const model = provider(arbitratorModelId);
     const transcript = formatTranscript(allStatements);
@@ -194,11 +212,19 @@ export async function runDebate(
       const final = await result;
       const usage = await final.usage;
       totalTokens += usage?.totalTokens ?? 0;
+      diag?.log(
+        `Arbitrator verdict: ${verdict.substring(0, 200)}... (${usage?.totalTokens}tokens)`,
+      );
 
       scores = extractScores(verdict, participantNodes);
+      if (scores) {
+        diag?.logJson('Arbitrator scores', scores);
+      }
     } catch (err) {
-      log.error({ arenaId: arena.id, error: (err as Error).message }, 'Arbitration failed');
-      verdict = `[Arbitration error: ${(err as Error).message}]`;
+      const msg = (err as Error).message;
+      log.error({ arenaId: arena.id, error: msg }, 'Arbitration failed');
+      diag?.log(`ARBITRATOR ERROR: ${msg}`);
+      verdict = `[Arbitration error: ${msg}]`;
     }
   }
 
