@@ -115,10 +115,10 @@ export const PublishTemplateDialog = ({
       onClick={onClose}
     >
       <div
-        className="bg-white border-2 border-slate-900 shadow-2xl rounded-none w-full max-w-lg flex flex-col relative overflow-hidden"
+        className="bg-white border-2 border-slate-900 shadow-2xl rounded-none w-full max-w-lg flex flex-col relative max-h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="bg-white text-slate-800 px-6 py-4 flex items-center justify-between border-b border-slate-200">
+        <div className="bg-white text-slate-800 px-6 py-4 flex items-center justify-between border-b border-slate-200 shrink-0">
           <div className="flex items-center gap-2.5">
             <Upload className="w-4 h-4 text-purple-600" />
             <h2 className="text-sm font-bold font-mono text-slate-800 tracking-tight">
@@ -133,7 +133,7 @@ export const PublishTemplateDialog = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
           <div className="space-y-1.5">
             <label className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block">
               Template Name <span className="text-rose-500">*</span>

@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import type { Variables } from '../../index.js';
-import { handleCopilot, handleUpdateProposal } from './handlers.js';
+import { handleCopilotInit, handleCopilotStream, handleUpdateProposal } from './handlers.js';
 
 export const copilotRoutes = new Hono<{ Variables: Variables }>()
-  .post('/', handleCopilot)
+  .post('/init', handleCopilotInit)
+  .get('/stream/:sessionId', handleCopilotStream)
   .put('/proposal', handleUpdateProposal);
