@@ -100,7 +100,7 @@ jobs:
           PUBLIC_URL=${{ secrets.PUBLIC_URL }}
           CREDENTIALS_ENCRYPTION_KEY=${{ secrets.CREDENTIALS_ENCRYPTION_KEY }}
           BETTER_AUTH_SECRET=${{ secrets.BETTER_AUTH_SECRET }}
-          BETTER_AUTH_URL=https://api.qwenweaver.xyz/api
+          BETTER_AUTH_URL=https://app.qwenweaver.xyz/api
           GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
           GH_CLIENT_ID=${{ secrets.GH_CLIENT_ID }}
