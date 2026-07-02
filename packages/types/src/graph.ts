@@ -79,6 +79,7 @@ export const NodeData = z.object({
   _output: z.string().optional(),
   _outputUrl: z.string().optional(),
   _edgeActive: z.boolean().optional(),
+  _revisionFeedback: z.string().optional(),
   debateArenaConfig: DebateArenaConfig.optional(),
 });
 export type NodeData = z.infer<typeof NodeData>;

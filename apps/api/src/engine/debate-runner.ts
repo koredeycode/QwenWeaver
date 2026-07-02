@@ -22,6 +22,7 @@ export async function runDebate(
   emitter: StreamEmitter,
   executionId: string,
   userId?: string,
+  signal?: AbortSignal,
 ): Promise<AgentResult> {
   const startTime = performance.now();
   const config = arena.data.debateArenaConfig;

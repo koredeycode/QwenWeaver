@@ -381,6 +381,8 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
         }
       };
 
+      let hadError = false;
+
       const eventTypes = [
         'token',
         'thinking',
@@ -397,7 +399,11 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
         eventSource.addEventListener(eventType, (e) => {
           handleEvent(eventType, e.data);
 
-          if (eventType === 'complete' || eventType === 'error') {
+          if (eventType === 'error') {
+            hadError = true;
+          }
+
+          if (eventType === 'complete') {
             eventSource.close();
 
             for (const timer of edgeActiveTimers.values()) {
@@ -405,11 +411,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
             }
             edgeActiveTimers.clear();
 
-            if (eventType === 'complete') {
-              set({ executionStatus: 'completed' });
-            } else {
-              set({ executionStatus: 'failed' });
-            }
+            set({ executionStatus: hadError ? 'failed' : 'completed' });
           }
         });
       }

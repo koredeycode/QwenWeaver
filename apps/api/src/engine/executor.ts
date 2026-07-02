@@ -21,7 +21,7 @@ export async function executeWorkflow(
   workflow: WorkflowPayload,
   executionId: string,
   emitter: StreamEmitter,
-  options: ExecutionOptions = { maxNegotiationRounds: 3, persistLogs: true },
+  options: ExecutionOptions = { maxNegotiationRounds: 3, persistLogs: true, signal: undefined },
   userId?: string,
 ): Promise<ExecutionResult> {
   const executionStart = performance.now();
@@ -126,8 +126,8 @@ export async function executeWorkflow(
   for (let batchIdx = 0; batchIdx < dagResult.batches.length; batchIdx++) {
     const batch = dagResult.batches[batchIdx];
 
-    if (emitter.isClosed()) {
-      log.warn({ executionId, batchIdx }, 'Client disconnected, aborting execution');
+    if (emitter.isClosed() || options.signal?.aborted) {
+      log.warn({ executionId, batchIdx }, 'Client disconnected or aborted, aborting execution');
       break;
     }
 
@@ -171,7 +171,7 @@ export async function executeWorkflow(
             ...node,
             data: {
               ...node.data,
-              label: (node.data.label ?? '') + feedback,
+              _revisionFeedback: feedback,
             },
           };
         }
@@ -187,9 +187,18 @@ export async function executeWorkflow(
             emitter,
             executionId,
             userId,
+            options.signal,
           );
         } else {
-          result = await runAgent(nodeToRun, upstream, emitter, executionId, userId);
+          result = await runAgent(
+            nodeToRun,
+            upstream,
+            emitter,
+            executionId,
+            userId,
+            undefined,
+            options.signal,
+          );
         }
 
         // Non-blocking log save
@@ -420,6 +429,7 @@ export async function executeWorkflow(
               executionId,
               userId,
               conversationPrompt,
+              options.signal,
             );
 
             // Send the agent's response through the message bus

@@ -221,8 +221,8 @@ describe('executor', () => {
           };
         }
       }
-      const label = node.data?.label ?? '';
-      const text = label.includes('[REVISION REQUESTED BY SUPERVISOR]')
+      const revisionFeedback = node.data?._revisionFeedback ?? '';
+      const text = revisionFeedback.includes('[REVISION REQUESTED BY SUPERVISOR]')
         ? `Revised output from ${node.id}`
         : `Initial output from ${node.id}`;
       return {

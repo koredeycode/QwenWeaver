@@ -70,11 +70,11 @@ export function buildSystemPrompt(node: NodePayload): string {
 }
 
 export function buildUserMessage(node: NodePayload, upstreamOutputs: UpstreamOutputs): string {
-  if (upstreamOutputs.size === 0) {
+  const parts: string[] = [];
+
+  if (upstreamOutputs.size === 0 && !node.data._revisionFeedback) {
     return node.data.label ?? 'Begin your task.';
   }
-
-  const parts: string[] = [];
 
   for (const [sourceId, result] of upstreamOutputs) {
     let textContent = result.text;
@@ -83,6 +83,12 @@ export function buildUserMessage(node: NodePayload, upstreamOutputs: UpstreamOut
     }
     parts.push(
       `## Output from upstream agent "${sourceId}":\n<upstream_output>\n${textContent}\n</upstream_output>`,
+    );
+  }
+
+  if (node.data._revisionFeedback) {
+    parts.push(
+      `## REVISION REQUESTED BY SUPERVISOR\n${node.data._revisionFeedback}\n\nPlease revise your previous response addressing the above feedback. Do NOT repeat your previous output — produce a new, improved version.`,
     );
   }
 
