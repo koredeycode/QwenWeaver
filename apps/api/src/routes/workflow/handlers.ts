@@ -103,60 +103,42 @@ export const handleDeleteWorkflow = async (c: Context<{ Variables: Variables }>)
   return c.json({ success: true }, 200);
 };
 
+type ValidWorkflowPayload = z.infer<typeof WorkflowPayload>;
+type ValidExecuteRequest = ValidWorkflowPayload & { workflowId?: string };
+
 export const handleUpdateWorkflow = async (c: Context<{ Variables: Variables }>) => {
   const user = c.get('user');
   const workflowId = c.req.param('workflowId');
   if (!workflowId) {
     return c.json({ error: 'Missing workflowId parameter' }, 400);
   }
-  const raw = await c.req.json();
-  const parsed = WorkflowPayload.safeParse(raw);
-  if (!parsed.success) {
-    return c.json({ error: 'Invalid workflow', details: parsed.error.format() }, 400);
-  }
+  const body = (c.req as any).valid('json') as ValidWorkflowPayload;
   const provider = getQueryProvider();
   const existing = await provider.getWorkflow(workflowId, user!.id);
   if (!existing) {
     return c.json({ error: 'Workflow not found' }, 404);
   }
-  await provider.updateWorkflow(workflowId, user!.id, parsed.data);
+  await provider.updateWorkflow(workflowId, user!.id, body);
   return c.json({ workflowId }, 200);
 };
 
 export const handleSaveWorkflow = async (c: Context<{ Variables: Variables }>) => {
   const user = c.get('user');
-  const raw = await c.req.json();
-  const parsed = WorkflowPayload.safeParse(raw);
-  if (!parsed.success) {
-    return c.json({ error: 'Invalid workflow', details: parsed.error.format() }, 400);
-  }
+  const body = (c.req as any).valid('json') as ValidWorkflowPayload;
   const provider = getQueryProvider();
-  const workflowId = await provider.saveWorkflow(user!.id, parsed.data);
+  const workflowId = await provider.saveWorkflow(user!.id, body);
   return c.json({ workflowId }, 201);
 };
 
 export const handleExecute = async (c: Context<{ Variables: Variables }>) => {
-  const raw = await c.req.json();
+  const { workflowId: requestWorkflowId, ...body } = (c.req as any).valid(
+    'json',
+  ) as ValidExecuteRequest;
 
-  // Accept optional workflowId alongside the DAG
-  const requestWorkflowId: string | undefined = raw.workflowId;
-  const parsed = WorkflowPayload.safeParse(raw);
-
-  if (!parsed.success) {
-    return c.json({ error: 'Invalid workflow payload', details: parsed.error.format() }, 400);
-  }
-
-  const body = parsed.data;
   const executionId = crypto.randomUUID();
   const userId = c.get('user')!.id;
 
-  const workflow: z.infer<typeof WorkflowPayload> = {
-    id: body.id,
-    name: body.name,
-    description: body.description,
-    nodes: body.nodes,
-    edges: body.edges,
-  };
+  const workflow: z.infer<typeof WorkflowPayload> = body;
 
   const provider = getQueryProvider();
   let workflowId: string;

@@ -100,7 +100,7 @@ packages/mcp-client/  Model Context Protocol connection logic
 
 ### AI & MCP (Vercel AI SDK)
 
-- **Alibaba provider.** Use `@ai-sdk/alibaba`. For Supervisor nodes, use `qwen3-max` with `enableThinking: true` and a `thinkingBudget` in `providerOptions`.
+- **Alibaba provider.** Use `@ai-sdk/alibaba`. For Supervisor nodes, use `qwen3.7-max` with `enableThinking: true` and a `thinkingBudget` in `providerOptions`.
 - **MCP tools.** Use `@modelcontextprotocol/sdk` via `createMCPClient()`. Inject discovered tools into agent prompts.
 
 ---

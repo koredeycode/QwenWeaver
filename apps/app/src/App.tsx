@@ -10,6 +10,7 @@ import { CanvasWorkspace } from './components/CanvasWorkspace.js';
 import { TemplateGallery } from './components/TemplateGallery.js';
 import { TemplateDetailPage } from './components/TemplateDetail.js';
 import { SpotlightOverlay } from './tour/SpotlightOverlay.js';
+import { ErrorBoundary } from './components/ErrorBoundary.js';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const user = useStore((s) => s.user);
@@ -23,49 +24,51 @@ function App() {
   return (
     <ReactFlowProvider>
       <Toaster position="top-right" />
-      <SpotlightOverlay />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/signin" element={<SignInScreen />} />
-          <Route path="/signup" element={<SignUpScreen />} />
-          {/* Legacy redirects */}
-          <Route path="/login" element={<Navigate to="/signin" replace />} />
-          <Route path="/register" element={<Navigate to="/signup" replace />} />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <WorkflowDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/workflows/:id"
-            element={
-              <ProtectedRoute>
-                <CanvasWorkspace />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/templates"
-            element={
-              <ProtectedRoute>
-                <TemplateGallery />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/templates/:id"
-            element={
-              <ProtectedRoute>
-                <TemplateDetailPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
+      <ErrorBoundary>
+        <SpotlightOverlay />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/signin" element={<SignInScreen />} />
+            <Route path="/signup" element={<SignUpScreen />} />
+            {/* Legacy redirects */}
+            <Route path="/login" element={<Navigate to="/signin" replace />} />
+            <Route path="/register" element={<Navigate to="/signup" replace />} />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <WorkflowDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/workflows/:id"
+              element={
+                <ProtectedRoute>
+                  <CanvasWorkspace />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/templates"
+              element={
+                <ProtectedRoute>
+                  <TemplateGallery />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/templates/:id"
+              element={
+                <ProtectedRoute>
+                  <TemplateDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </ErrorBoundary>
     </ReactFlowProvider>
   );
 }

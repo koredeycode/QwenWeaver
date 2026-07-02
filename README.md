@@ -33,6 +33,39 @@ qwenweaver/
 │   └── mcp-client/   Model Context Protocol transport (HTTP & Stdio)
 ```
 
+```mermaid
+flowchart LR
+    subgraph Frontend
+        Canvas["🎨 Visual Canvas<br/>React Flow v12"]
+        Store["📦 Zustand Store<br/>Granular selectors"]
+    end
+    subgraph Backend
+        API["🌐 Hono.js API<br/>REST + SSE"]
+        DAG["📐 DAG Compiler<br/>Kahn's Algorithm"]
+        Exec["⚡ Parallel Executor<br/>Promise.all batches"]
+        Supervisor["🧠 Supervisor<br/>Conflict Resolution"]
+        Debate["🗣️ Debate Arena<br/>Multi-round + Arbitrator"]
+        Bus["📨 Message Bus<br/>Agent-to-Agent"]
+        Blackboard["📋 Workspace<br/>Optimistic Concurrency"]
+    end
+    subgraph AI
+        Qwen["🤖 Qwen3-Max/Plus<br/>DashScope API"]
+        MCP["🔌 MCP Tools<br/>HTTP & Stdio"]
+    end
+    Canvas -->|"DAG JSON"| API
+    API -->|"POST /execute"| DAG
+    DAG -->|"Batched batches"| Exec
+    Exec -->|"SSE stream"| API
+    API -->|"events"| Store
+    Exec --> Supervisor
+    Exec --> Debate
+    Exec --> Bus
+    Exec --> Blackboard
+    Supervisor -->|"feedback loop"| Exec
+    Exec -->|"AI calls"| Qwen
+    Exec -->|"Tool calls"| MCP
+```
+
 ## Prerequisites
 
 - **Node.js** >= 20

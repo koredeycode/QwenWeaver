@@ -22,6 +22,7 @@ export async function runDebate(
   emitter: StreamEmitter,
   executionId: string,
   userId?: string,
+  signal?: AbortSignal,
 ): Promise<AgentResult> {
   const startTime = performance.now();
   const config = arena.data.debateArenaConfig;
@@ -45,13 +46,19 @@ export async function runDebate(
   let totalTokens = 0;
 
   // Round 1: Opening statements from participant upstream outputs
+  // Fall back to participant's label or systemPrompt if no upstream output
   const round1Statements: DebateStatement[] = [];
   for (const participant of participantNodes) {
     const output = upstreamOutputs.get(participant.id);
+    const content =
+      output?.text ??
+      participant.data.systemPrompt ??
+      participant.data.label ??
+      `${participant.data.label ?? participant.id} has no initial position.`;
     round1Statements.push({
       participantId: participant.id,
       participantLabel: participant.data.label ?? participant.id,
-      content: output?.text ?? '',
+      content,
       round: 1,
     });
   }
@@ -72,69 +79,73 @@ export async function runDebate(
     'Debate round 1 complete',
   );
 
-  // Rounds 2..N: Rebuttals — each participant responds to the previous round
+  // Rounds 2..N: Rebuttals — participants respond to the previous round in parallel
   for (let round = 2; round <= maxRounds; round++) {
     const roundStatements: DebateStatement[] = [];
 
-    for (const participant of participantNodes) {
-      const prompt = buildDebatePrompt(participant, allStatements, mode, round, maxRounds);
+    const statements = await Promise.all(
+      participantNodes.map(async (participant) => {
+        const prompt = buildDebatePrompt(participant, allStatements, mode, round, maxRounds);
 
-      try {
-        const { model, enableThinking, thinkingBudget } = getModelForNode(participant);
-        const providerOptions = enableThinking
-          ? {
-              alibaba: { enableThinking: true, thinkingBudget: thinkingBudget ?? 4096 } as Record<
-                string,
-                unknown
-              >,
-            }
-          : undefined;
+        try {
+          const { model, enableThinking, thinkingBudget } = getModelForNode(participant);
+          const providerOptions = enableThinking
+            ? {
+                alibaba: { enableThinking: true, thinkingBudget: thinkingBudget ?? 4096 } as Record<
+                  string,
+                  unknown
+                >,
+              }
+            : undefined;
 
-        const result = streamText({
-          model,
-          system: participant.data.systemPrompt ?? '',
-          prompt,
-          providerOptions: providerOptions as Record<string, Record<string, any>> | undefined,
-        });
+          const result = streamText({
+            model,
+            system: participant.data.systemPrompt ?? '',
+            prompt,
+            providerOptions: providerOptions as Record<string, Record<string, any>> | undefined,
+          });
 
-        let text = '';
-        for await (const chunk of result.textStream) {
-          text += chunk;
-        }
+          let text = '';
+          for await (const chunk of result.textStream) {
+            text += chunk;
+          }
 
-        const final = await result;
-        const usage = await final.usage;
-        totalTokens += usage?.totalTokens ?? 0;
+          const final = await result;
+          const usage = await final.usage;
+          totalTokens += usage?.totalTokens ?? 0;
 
-        roundStatements.push({
-          participantId: participant.id,
-          participantLabel: participant.data.label ?? participant.id,
-          content: text,
-          round,
-        });
+          log.info(
+            { arenaId: arena.id, participantId: participant.id, round, tokens: usage?.totalTokens },
+            'Debate round statement generated',
+          );
 
-        log.info(
-          { arenaId: arena.id, participantId: participant.id, round, tokens: usage?.totalTokens },
-          'Debate round statement generated',
-        );
-      } catch (err) {
-        log.error(
-          {
-            arenaId: arena.id,
+          return {
             participantId: participant.id,
+            participantLabel: participant.data.label ?? participant.id,
+            content: text,
             round,
-            error: (err as Error).message,
-          },
-          'Failed to generate debate statement',
-        );
-        roundStatements.push({
-          participantId: participant.id,
-          participantLabel: participant.data.label ?? participant.id,
-          content: `[Error generating response: ${(err as Error).message}]`,
-          round,
-        });
-      }
-    }
+          } as DebateStatement;
+        } catch (err) {
+          log.error(
+            {
+              arenaId: arena.id,
+              participantId: participant.id,
+              round,
+              error: (err as Error).message,
+            },
+            'Failed to generate debate statement',
+          );
+          return {
+            participantId: participant.id,
+            participantLabel: participant.data.label ?? participant.id,
+            content: `[Error generating response: ${(err as Error).message}]`,
+            round,
+          } as DebateStatement;
+        }
+      }),
+    );
+
+    roundStatements.push(...statements);
 
     allStatements.push(...roundStatements);
 
@@ -258,13 +269,17 @@ function formatTranscript(statements: DebateStatement[]): string {
     .join('\n');
 }
 
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function extractScores(
   verdict: string,
   participantNodes: NodePayload[],
 ): Record<string, number> | undefined {
   const scores: Record<string, number> = {};
   for (const node of participantNodes) {
-    const label = node.data.label ?? node.id;
+    const label = escapeRegex(node.data.label ?? node.id);
     const regex = new RegExp(`${label}[\\s\\S]{0,50}?(\\d+(?:\\.\\d+)?)\\s*\\/?\\s*\\d*`, 'i');
     const match = verdict.match(regex);
     if (match) {

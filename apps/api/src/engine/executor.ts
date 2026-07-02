@@ -21,7 +21,7 @@ export async function executeWorkflow(
   workflow: WorkflowPayload,
   executionId: string,
   emitter: StreamEmitter,
-  options: ExecutionOptions = { maxNegotiationRounds: 3, persistLogs: true },
+  options: ExecutionOptions = { maxNegotiationRounds: 3, persistLogs: true, signal: undefined },
   userId?: string,
 ): Promise<ExecutionResult> {
   const executionStart = performance.now();
@@ -80,9 +80,12 @@ export async function executeWorkflow(
   );
 
   // Reset workspace blackboard for a fresh execution
-  provider.clearWorkspace(executionId).catch((err: Error) => {
-    log.warn({ executionId, error: err.message }, 'Failed to clear workspace');
-  });
+  // Must await to prevent race with agents writing new entries
+  try {
+    await provider.clearWorkspace(executionId);
+  } catch (err) {
+    log.warn({ executionId, error: (err as Error).message }, 'Failed to clear workspace');
+  }
 
   // Create message bus for agent-to-agent messaging channels
   const messageBus = new MessageBus();
@@ -114,8 +117,10 @@ export async function executeWorkflow(
     }
   }
 
+  // Only data-flow edges, exclude message channels
   const incomingEdges = new Map<string, string[]>();
   for (const edge of workflow.edges) {
+    if (edge.data?.messageChannel) continue;
     const sources = incomingEdges.get(edge.target) ?? [];
     sources.push(edge.source);
     incomingEdges.set(edge.target, sources);
@@ -126,8 +131,8 @@ export async function executeWorkflow(
   for (let batchIdx = 0; batchIdx < dagResult.batches.length; batchIdx++) {
     const batch = dagResult.batches[batchIdx];
 
-    if (emitter.isClosed()) {
-      log.warn({ executionId, batchIdx }, 'Client disconnected, aborting execution');
+    if (emitter.isClosed() || options.signal?.aborted) {
+      log.warn({ executionId, batchIdx }, 'Client disconnected or aborted, aborting execution');
       break;
     }
 
@@ -171,7 +176,7 @@ export async function executeWorkflow(
             ...node,
             data: {
               ...node.data,
-              label: (node.data.label ?? '') + feedback,
+              _revisionFeedback: feedback,
             },
           };
         }
@@ -187,9 +192,18 @@ export async function executeWorkflow(
             emitter,
             executionId,
             userId,
+            options.signal,
           );
         } else {
-          result = await runAgent(nodeToRun, upstream, emitter, executionId, userId);
+          result = await runAgent(
+            nodeToRun,
+            upstream,
+            emitter,
+            executionId,
+            userId,
+            undefined,
+            options.signal,
+          );
         }
 
         // Non-blocking log save
@@ -420,6 +434,7 @@ export async function executeWorkflow(
               executionId,
               userId,
               conversationPrompt,
+              options.signal,
             );
 
             // Send the agent's response through the message bus
@@ -451,10 +466,13 @@ export async function executeWorkflow(
   const speedupS =
     totalLatencyMs > 0 ? Math.round((sequentialTime / totalLatencyMs) * 100) / 100 : 1;
 
+  // Average parallelism across batches: mean of each batch's node count
+  const avgBatchSize =
+    dagResult.batches.length > 0 ? workflow.nodes.length / dagResult.batches.length : 1;
+  // Parallel efficiency = actual speedup / theoretical max speedup
+  // Theoretical max = avgBatchSize (if all batches ran perfectly in parallel)
   const parallelEfficiency =
-    dagResult.batches.length > 0
-      ? Math.round((workflow.nodes.length / dagResult.batches.length) * 100) / 100
-      : 1;
+    avgBatchSize > 0 ? Math.round((speedupS / avgBatchSize) * 100) / 100 : 1;
 
   const metrics: ExecutionMetrics = {
     speedupS,

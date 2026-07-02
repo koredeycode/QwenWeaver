@@ -25,6 +25,7 @@ export async function runAgent(
   executionId?: string,
   userId?: string,
   conversationContext?: string,
+  externalSignal?: AbortSignal,
 ): Promise<AgentResult> {
   const startTime = performance.now();
 
@@ -48,6 +49,21 @@ export async function runAgent(
   }
 
   const abortController = new AbortController();
+
+  // Link external abort signal to internal controller
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      abortController.abort(externalSignal.reason);
+    } else {
+      externalSignal.addEventListener(
+        'abort',
+        () => {
+          abortController.abort(externalSignal.reason);
+        },
+        { once: true },
+      );
+    }
+  }
   const nodeTimeoutMs = node.data.outputFormat === 'video' ? 300000 : 120000;
   const timeoutId = setTimeout(
     () => abortController.abort(`Agent execution timed out (${nodeTimeoutMs / 1000}s)`),

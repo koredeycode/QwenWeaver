@@ -1,4 +1,7 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
+import { zValidator } from '@hono/zod-validator';
+import { WorkflowPayload, WorkflowPayloadBase } from '@qwenweaver/types';
 import type { Variables } from '../../index.js';
 import {
   handleListWorkflows,
@@ -15,9 +18,13 @@ export const workflowRoutes = new Hono<{ Variables: Variables }>()
   .get('/', handleListWorkflows)
   .get('/detail/:workflowId', handleGetWorkflow)
   .delete('/detail/:workflowId', handleDeleteWorkflow)
-  .put('/detail/:workflowId', handleUpdateWorkflow)
-  .post('/', handleSaveWorkflow)
-  .post('/execute', handleExecute)
+  .put('/detail/:workflowId', zValidator('json', WorkflowPayload), handleUpdateWorkflow)
+  .post('/', zValidator('json', WorkflowPayload), handleSaveWorkflow)
+  .post(
+    '/execute',
+    zValidator('json', WorkflowPayloadBase.extend({ workflowId: z.string().optional() })),
+    handleExecute,
+  )
   .get('/:executionId/stream', handleStream)
   .get('/:executionId', handleGetStatus);
 
