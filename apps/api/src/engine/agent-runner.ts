@@ -138,7 +138,10 @@ export async function runAgent(
       let buffer: Buffer;
 
       if (apiKey) {
-        log.info({ nodeId: node.id, textLength: ttsText.length }, 'Calling CosyVoice speech synthesis API');
+        log.info(
+          { nodeId: node.id, textLength: ttsText.length },
+          'Calling CosyVoice speech synthesis API',
+        );
         buffer = await generateCosyVoiceAudio(ttsText, apiKey);
       } else {
         throw new Error(`Node "${node.id}" has outputFormat "audio" but no DASHSCOPE_API_KEY set`);
