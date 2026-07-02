@@ -117,8 +117,10 @@ export async function executeWorkflow(
     }
   }
 
+  // Only data-flow edges, exclude message channels
   const incomingEdges = new Map<string, string[]>();
   for (const edge of workflow.edges) {
+    if (edge.data?.messageChannel) continue;
     const sources = incomingEdges.get(edge.target) ?? [];
     sources.push(edge.source);
     incomingEdges.set(edge.target, sources);

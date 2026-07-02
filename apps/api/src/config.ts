@@ -52,7 +52,7 @@ export const CORS_ORIGINS: string[] = process.env.CORS_ORIGINS
         'https://app.qwenweaver.xyz',
         'https://api.qwenweaver.xyz',
       ]
-    : [];
+    : ['https://app.qwenweaver.xyz', 'https://api.qwenweaver.xyz'];
 
 // ─── Public URL (used for generating absolute asset URLs) ────────────
 export const PUBLIC_URL = process.env.PUBLIC_URL || (isDev ? 'http://localhost:3001' : '');

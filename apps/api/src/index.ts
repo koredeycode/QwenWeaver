@@ -204,17 +204,15 @@ app
 
 export type AppType = typeof app;
 
-// Expose metrics endpoint only in development/test environments, authenticated via METRICS_TOKEN
-if (process.env.NODE_ENV !== 'production') {
-  app.get('/api/metrics', async (c) => {
-    const token = c.req.query('token') || c.req.header('Authorization')?.replace('Bearer ', '');
-    if (!METRICS_TOKEN || token !== METRICS_TOKEN) {
-      return c.json({ error: 'Unauthorized' }, 401);
-    }
-    c.header('content-type', register.contentType);
-    return c.text(await register.metrics());
-  });
-}
+// Expose metrics endpoint authenticated via METRICS_TOKEN
+app.get('/api/metrics', async (c) => {
+  const token = c.req.query('token') || c.req.header('Authorization')?.replace('Bearer ', '');
+  if (!METRICS_TOKEN || token !== METRICS_TOKEN) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+  c.header('content-type', register.contentType);
+  return c.text(await register.metrics());
+});
 
 // ─── Error handling ─────────────────────────────────────────────────────────
 app.onError((err, c) => {
