@@ -74,6 +74,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
       nodeStatuses: {},
       nodeOutputs: {},
       nodeThinking: {},
+      nodeOutputUrls: {},
       nodeOutputParts: {},
       workspaceEntries: [],
       channelMessages: [],

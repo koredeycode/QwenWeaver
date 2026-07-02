@@ -194,7 +194,8 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
       position: position || { x: 100 + Math.random() * 200, y: 100 + Math.random() * 200 },
       data: {
         label,
-        model: type === 'supervisor' ? 'qwen3-max' : type === 'agent' ? 'qwen-plus' : undefined,
+        model:
+          type === 'supervisor' ? 'qwen3.7-max' : type === 'agent' ? 'qwen3.7-plus' : undefined,
         systemPrompt:
           type === 'agent' || type === 'supervisor' ? 'You are a helpful assistant.' : undefined,
         outputFormat: 'text',

@@ -80,9 +80,12 @@ export async function executeWorkflow(
   );
 
   // Reset workspace blackboard for a fresh execution
-  provider.clearWorkspace(executionId).catch((err: Error) => {
-    log.warn({ executionId, error: err.message }, 'Failed to clear workspace');
-  });
+  // Must await to prevent race with agents writing new entries
+  try {
+    await provider.clearWorkspace(executionId);
+  } catch (err) {
+    log.warn({ executionId, error: (err as Error).message }, 'Failed to clear workspace');
+  }
 
   // Create message bus for agent-to-agent messaging channels
   const messageBus = new MessageBus();

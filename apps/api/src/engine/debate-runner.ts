@@ -46,13 +46,19 @@ export async function runDebate(
   let totalTokens = 0;
 
   // Round 1: Opening statements from participant upstream outputs
+  // Fall back to participant's label or systemPrompt if no upstream output
   const round1Statements: DebateStatement[] = [];
   for (const participant of participantNodes) {
     const output = upstreamOutputs.get(participant.id);
+    const content =
+      output?.text ??
+      participant.data.systemPrompt ??
+      participant.data.label ??
+      `${participant.data.label ?? participant.id} has no initial position.`;
     round1Statements.push({
       participantId: participant.id,
       participantLabel: participant.data.label ?? participant.id,
-      content: output?.text ?? '',
+      content,
       round: 1,
     });
   }
@@ -259,13 +265,17 @@ function formatTranscript(statements: DebateStatement[]): string {
     .join('\n');
 }
 
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function extractScores(
   verdict: string,
   participantNodes: NodePayload[],
 ): Record<string, number> | undefined {
   const scores: Record<string, number> = {};
   for (const node of participantNodes) {
-    const label = node.data.label ?? node.id;
+    const label = escapeRegex(node.data.label ?? node.id);
     const regex = new RegExp(`${label}[\\s\\S]{0,50}?(\\d+(?:\\.\\d+)?)\\s*\\/?\\s*\\d*`, 'i');
     const match = verdict.match(regex);
     if (match) {
