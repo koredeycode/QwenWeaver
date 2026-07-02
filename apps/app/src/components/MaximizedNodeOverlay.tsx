@@ -33,6 +33,9 @@ export const MaximizedNodeOverlay = () => {
   const channelMessages = useStore((s) => s.channelMessages);
   const debateRounds = useStore((s) => s.debateRounds);
   const debateVerdicts = useStore((s) => s.debateVerdicts);
+  const workspaceEntries = useStore((s) => s.workspaceEntries);
+  const workspaceLoading = useStore((s) => s.workspaceLoading);
+  const activeExecutionId = useStore((s) => s.activeExecutionId);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -395,13 +398,13 @@ export const MaximizedNodeOverlay = () => {
             ) : (
               <div className="flex-1 overflow-hidden">
                 <WorkspacePanel
-                  entries={useStore((s) => s.workspaceEntries)}
-                  loading={useStore((s) => s.workspaceLoading)}
+                  entries={workspaceEntries}
+                  loading={workspaceLoading}
                   onRefresh={() => {
                     const eid = useStore.getState().activeExecutionId;
                     if (eid) useStore.getState().fetchWorkspaceEntries(eid);
                   }}
-                  activeExecutionId={useStore((s) => s.activeExecutionId)}
+                  activeExecutionId={activeExecutionId}
                 />
               </div>
             )}
