@@ -19,7 +19,26 @@ interface PoolEntry {
   lastUsed: number;
 }
 
+const MAX_POOL_SIZE = 50;
 const clientPool = new Map<string, PoolEntry>();
+
+function evictLru(): void {
+  if (clientPool.size <= MAX_POOL_SIZE) return;
+  let oldestKey: string | null = null;
+  let oldestTime = Infinity;
+  for (const [key, entry] of clientPool) {
+    if (entry.lastUsed < oldestTime) {
+      oldestTime = entry.lastUsed;
+      oldestKey = key;
+    }
+  }
+  if (oldestKey) {
+    const entry = clientPool.get(oldestKey);
+    entry?.client.close().catch(() => {});
+    clientPool.delete(oldestKey);
+    log.info({ mcpUrl: oldestKey }, 'Evicted LRU MCP connection');
+  }
+}
 
 async function getClient(mcpUrl: string, headers?: Record<string, string>): Promise<Client> {
   const poolKey = headers ? `${mcpUrl}|${JSON.stringify(headers)}` : mcpUrl;
@@ -43,6 +62,8 @@ async function getClient(mcpUrl: string, headers?: Record<string, string>): Prom
       clientPool.delete(poolKey);
     }
   }
+
+  evictLru();
 
   const client = await createMCPClient(mcpUrl, { name: 'qwenweaver-engine', headers });
   clientPool.set(poolKey, { client, lastUsed: Date.now() });

@@ -84,7 +84,7 @@ export class MessageBus {
     // If all participants have responded this round, advance to next round
     if (
       roundSet.size >= channel.participantIds.length &&
-      channel.currentRound < channel.maxRounds
+      channel.currentRound <= channel.maxRounds
     ) {
       channel.currentRound++;
     }

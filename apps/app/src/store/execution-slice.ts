@@ -156,6 +156,35 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
       const nodeTimings: NodeTiming[] = [];
       const edgeActiveTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
 
+      // Batched token/thinking accumulators to avoid re-render storms
+      const pendingTokenChunks = new Map<string, string>();
+      const pendingThinkingChunks = new Map<string, string>();
+      const flushAccumulators = () => {
+        if (pendingTokenChunks.size > 0) {
+          const snapshot = new Map(pendingTokenChunks);
+          pendingTokenChunks.clear();
+          set((s) => {
+            const next = { ...s.nodeOutputs };
+            for (const [nodeId, chunk] of snapshot) {
+              next[nodeId] = (next[nodeId] || '') + chunk;
+            }
+            return { nodeOutputs: next };
+          });
+        }
+        if (pendingThinkingChunks.size > 0) {
+          const snapshot = new Map(pendingThinkingChunks);
+          pendingThinkingChunks.clear();
+          set((s) => {
+            const next = { ...s.nodeThinking };
+            for (const [nodeId, chunk] of snapshot) {
+              next[nodeId] = (next[nodeId] || '') + chunk;
+            }
+            return { nodeThinking: next };
+          });
+        }
+      };
+      const flushInterval = setInterval(flushAccumulators, 100);
+
       const eventSource = new EventSource(eventSourceUrl);
 
       console.log('[execution] EventSource connecting to', eventSourceUrl);
@@ -171,6 +200,8 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
 
       // Add signal abort handling
       abortController.signal.addEventListener('abort', () => {
+        clearInterval(flushInterval);
+        flushAccumulators();
         console.log('[execution] Aborting EventSource');
         eventSource.close();
       });
@@ -185,23 +216,13 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
           switch (currentEvent) {
             case 'token': {
               const { nodeId, chunk } = payload as { nodeId: string; chunk: string };
-              set((s) => ({
-                nodeOutputs: {
-                  ...s.nodeOutputs,
-                  [nodeId]: (s.nodeOutputs[nodeId] || '') + chunk,
-                },
-              }));
+              pendingTokenChunks.set(nodeId, (pendingTokenChunks.get(nodeId) || '') + chunk);
               break;
             }
 
             case 'thinking': {
               const { nodeId, chunk } = payload as { nodeId: string; chunk: string };
-              set((s) => ({
-                nodeThinking: {
-                  ...s.nodeThinking,
-                  [nodeId]: (s.nodeThinking[nodeId] || '') + chunk,
-                },
-              }));
+              pendingThinkingChunks.set(nodeId, (pendingThinkingChunks.get(nodeId) || '') + chunk);
               break;
             }
 
@@ -405,6 +426,8 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
           }
 
           if (eventType === 'complete') {
+            clearInterval(flushInterval);
+            flushAccumulators();
             eventSource.close();
 
             for (const timer of edgeActiveTimers.values()) {
