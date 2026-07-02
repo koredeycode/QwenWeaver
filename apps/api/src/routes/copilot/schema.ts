@@ -36,7 +36,7 @@ export const CopilotGenerateBody = z.object({
 
 export const COPILOT_GENERATE_SYSTEM_PROMPT = `You are QwenWeaver's AI Copilot — an expert at designing new multi-agent workflow graphs.
 
-When the user describes a workflow, you should explain your design in Markdown and propose the required canvas changes by calling the "propose_canvas_changes" tool.
+When the user describes a workflow, you should explain your design in Markdown AND propose the required canvas changes by calling the "propose_canvas_changes" tool with the actual action objects in the "actions" array. Do NOT leave the actions array empty — every node/edge you describe in text must also be present as a structured action in the tool call.
 
 Design principles:
 1. Use "trigger" nodes as entry points (type: "trigger" or "input_trigger").
@@ -46,11 +46,16 @@ Design principles:
 5. Ensure the graph is a valid DAG (no circular dependencies).
 6. Position nodes in a left-to-right layout with ~250px spacing.
 
-To apply changes to the canvas, call the "propose_canvas_changes" tool with the actions. The user will review and approve them before they are executed.`;
+CRITICAL: You MUST provide the actual action objects in the "propose_canvas_changes" tool call. Example actions:
+  add_node:    {"type":"add_node","payload":{"type":"agent","id":"node-videographer","data":{"label":"Videographer","workerType":"video"},"position":{"x":500,"y":300}}}
+  add_edge:    {"type":"add_edge","payload":{"source":"node-trigger","target":"node-videographer"}}
+  update_node: {"type":"update_node","payload":{"id":"node-photo-editor","data":{"label":"Photo & Video Editor"}}}
+  delete_node: {"type":"delete_node","payload":{"id":"node-old"}}
+Place ALL your changes in the "actions" array. At least one action is required. If you describe changes in text without providing them as structured actions, nothing will be applied.`;
 
 export const COPILOT_MODIFY_SYSTEM_PROMPT = `You are QwenWeaver's AI Copilot — an expert at modifying multi-agent workflow graphs.
 
-You are given the current canvas state and a user request. You should describe your modifications and call the "propose_canvas_changes" tool to propose the additions, updates, or deletions.
+You are given the current canvas state and a user request. You should describe your modifications in Markdown AND call the "propose_canvas_changes" tool to propose the additions, updates, or deletions.
 
 Modification instructions:
 1. Preserve existing node IDs unless deleting/replacing them.
@@ -58,7 +63,12 @@ Modification instructions:
 3. Ensure the modified graph remains a valid DAG.
 4. Position new nodes cleanly.
 
-Call the "propose_canvas_changes" tool with the list of actions to apply the edits. The user will review and approve them.`;
+CRITICAL: You MUST provide the actual action objects in the "propose_canvas_changes" tool call. Example actions:
+  add_node:    {"type":"add_node","payload":{"type":"agent","id":"node-videographer","data":{"label":"Videographer","workerType":"video"},"position":{"x":500,"y":300}}}
+  add_edge:    {"type":"add_edge","payload":{"source":"node-trigger","target":"node-videographer"}}
+  update_node: {"type":"update_node","payload":{"id":"node-photo-editor","data":{"label":"Photo & Video Editor"}}}
+  delete_node: {"type":"delete_node","payload":{"id":"node-old"}}
+Place ALL your changes in the "actions" array. At least one action is required. If you describe changes in text without providing them as structured actions, nothing will be applied.`;
 
 export const COPILOT_EXPLAIN_SYSTEM_PROMPT = `You are QwenWeaver's AI Copilot — an expert at explaining and describing multi-agent workflow graphs.
 

@@ -1,6 +1,6 @@
 import { StateCreator } from 'zustand';
 import { StoreState, CopilotSlice, CopilotMessage } from './types.js';
-import { client } from '../lib/api-client.js';
+import { API_BASE, client } from '../lib/api-client.js';
 import type { CopilotHistoryMessage } from '@qwenweaver/types';
 
 export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> = (set, get) => ({
@@ -21,7 +21,6 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
     const msg = list[messageIndex];
     if (!msg || msg.role !== 'assistant' || !msg.proposal) return;
 
-    // 1. Update local Zustand state
     set((state) => {
       const newList = [...state.copilotMessages];
       const target = newList[messageIndex];
@@ -37,16 +36,11 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
       return { copilotMessages: newList };
     });
 
-    // 2. Persist to backend database
     const workflowId = get().workflowId;
     if (workflowId && msg.proposal.id) {
       try {
         await client.api.copilot.proposal.$put({
-          json: {
-            workflowId,
-            proposalId: msg.proposal.id,
-            status,
-          },
+          json: { workflowId, proposalId: msg.proposal.id, status },
         });
       } catch (err) {
         console.error('Failed to persist proposal status update:', err);
@@ -94,115 +88,134 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
 
       const workflowId = get().workflowId;
 
-      const response = await client.api.copilot.$post({
-        json: {
+      // Step 1: POST to create a session
+      const initRes = await fetch(`${API_BASE}/api/copilot/init`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
           prompt: text,
           canvasState,
-          mode: mode as any,
+          mode,
           model: copilotModel,
           workflowId: workflowId || undefined,
-        },
+        }),
       });
 
-      if (!response.ok) {
-        const errText = await response.text();
+      if (!initRes.ok) {
+        const errText = await initRes.text();
         updateLastAssistantMessage((msg) => ({
           ...msg,
-          text: `Failed: ${errText || response.statusText}`,
+          text: `Failed: ${errText || initRes.statusText}`,
         }));
         return;
       }
 
-      const reader = response.body?.getReader();
-      if (!reader) {
+      const { sessionId } = await initRes.json();
+      if (!sessionId) {
         updateLastAssistantMessage((msg) => ({
           ...msg,
-          text: 'No response body stream received',
+          text: 'Failed: no session ID returned',
         }));
         return;
       }
 
-      const decoder = new TextDecoder();
-      let buffer = '';
+      // Step 2: Open EventSource for SSE streaming (relative URL — same origin via Vite proxy)
+      const eventSourceUrl = `/api/copilot/stream/${sessionId}`;
+      const eventSource = new EventSource(eventSourceUrl);
 
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
+      await new Promise<void>((resolve, reject) => {
+        let _aborted = false;
 
-        buffer += decoder.decode(value, { stream: true });
-        const blocks = buffer.split('\n\n');
-        buffer = blocks.pop() || ''; // Hold onto incomplete last block
-
-        for (const block of blocks) {
-          if (!block.trim()) continue;
-
-          let eventName = '';
-          const dataLines: string[] = [];
-          const lines = block.split('\n');
-
-          for (const line of lines) {
-            if (line.startsWith('event:')) {
-              eventName = line.slice(6).trim();
-            } else if (line.startsWith('data:')) {
-              dataLines.push(line.slice(5));
-            } else if (line.startsWith('data') && line[4] === undefined) {
-              dataLines.push('');
+        eventSource.addEventListener('thinking', (e: MessageEvent) => {
+          try {
+            const { chunk } = JSON.parse(e.data);
+            if (chunk) {
+              updateLastAssistantMessage((msg) => ({
+                ...msg,
+                thinking: (msg.thinking || '') + chunk,
+              }));
             }
+          } catch {
+            /* ignore malformed event */
           }
-          const dataStr = dataLines.join('\n').trim();
+        });
 
-          if (dataStr) {
-            try {
-              const payload = JSON.parse(dataStr);
-              if (eventName === 'thinking') {
-                updateLastAssistantMessage((msg) => ({
-                  ...msg,
-                  thinking: (msg.thinking || '') + payload.chunk,
-                }));
-              } else if (eventName === 'token') {
-                updateLastAssistantMessage((msg) => ({
-                  ...msg,
-                  text: (msg.text || '') + payload.chunk,
-                }));
-              } else if (eventName === 'proposal') {
-                const rawActions = payload.actions;
-                const actions = Array.isArray(rawActions)
-                  ? rawActions
-                  : rawActions &&
-                      typeof rawActions === 'object' &&
-                      typeof rawActions.type === 'string'
-                    ? [rawActions]
-                    : rawActions &&
-                        typeof rawActions === 'object' &&
-                        Array.isArray(rawActions.actions)
-                      ? rawActions.actions
-                      : [];
-                updateLastAssistantMessage((msg) => ({
-                  ...msg,
-                  proposal: {
-                    id: payload.id,
-                    status: 'pending',
-                    actions,
-                  },
-                }));
-              } else if (eventName === 'error') {
-                updateLastAssistantMessage((msg) => ({
-                  ...msg,
-                  text: (msg.text || '') + `\n\n[Error: ${payload.error || 'Unknown error'}]`,
-                }));
-              }
-            } catch (err) {
-              console.error('Failed to parse SSE chunk JSON:', err);
+        eventSource.addEventListener('token', (e: MessageEvent) => {
+          try {
+            const { chunk } = JSON.parse(e.data);
+            if (chunk) {
+              updateLastAssistantMessage((msg) => ({
+                ...msg,
+                text: (msg.text || '') + chunk,
+              }));
             }
+          } catch {
+            /* ignore malformed event */
           }
-        }
-      }
+        });
+
+        eventSource.addEventListener('proposal', (e: MessageEvent) => {
+          try {
+            const payload = JSON.parse(e.data);
+            const rawActions =
+              typeof payload.actions === 'string' ? JSON.parse(payload.actions) : payload.actions;
+            const actions = Array.isArray(rawActions)
+              ? rawActions
+              : rawActions && typeof rawActions === 'object' && typeof rawActions.type === 'string'
+                ? [rawActions]
+                : rawActions && typeof rawActions === 'object' && Array.isArray(rawActions.actions)
+                  ? rawActions.actions
+                  : [];
+            updateLastAssistantMessage((msg) => ({
+              ...msg,
+              proposal: { id: payload.id, status: 'pending', actions },
+            }));
+          } catch {
+            /* ignore */
+          }
+        });
+
+        eventSource.addEventListener('complete', () => {
+          eventSource.close();
+          _aborted = true;
+          resolve();
+        });
+
+        eventSource.addEventListener('error', (e: Event) => {
+          // EventSource fires error on close or connection failure.
+          // If the stream ended cleanly, complete event resolves first.
+          if (!_aborted) {
+            eventSource.close();
+            _aborted = true;
+            resolve();
+          }
+        });
+
+        // Safety timeout — force close after 5 minutes
+        setTimeout(() => {
+          if (!_aborted) {
+            eventSource.close();
+            _aborted = true;
+            resolve();
+          }
+        }, 300_000);
+      });
     } catch (err) {
       console.error('Copilot connection error:', err);
-      updateLastAssistantMessage((msg) => ({
-        ...msg,
-        text: `Connection error: ${(err as Error).message}`,
-      }));
+      set((state) => {
+        const list = [...state.copilotMessages];
+        if (list.length > 0) {
+          const idx = list.length - 1;
+          if (list[idx].role === 'assistant') {
+            list[idx] = {
+              ...list[idx],
+              text: `Connection error: ${(err as Error).message}`,
+            };
+          }
+        }
+        return { copilotMessages: list };
+      });
     } finally {
       set({ isCopilotTyping: false });
     }

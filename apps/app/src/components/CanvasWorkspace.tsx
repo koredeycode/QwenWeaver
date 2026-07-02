@@ -677,10 +677,19 @@ export const CanvasWorkspace = () => {
                               await new Promise((r) =>
                                 requestAnimationFrame(() => requestAnimationFrame(r)),
                               );
+                              const toHide =
+                                canvasRef.current.querySelectorAll<HTMLElement>(
+                                  '[data-export-hide]',
+                                );
+                              toHide.forEach((el) => (el.style.display = 'none'));
+                              await new Promise((r) =>
+                                requestAnimationFrame(() => requestAnimationFrame(r)),
+                              );
                               const dataUrl = await toPng(canvasRef.current, {
                                 quality: 0.7,
                                 pixelRatio: 2,
                               });
+                              toHide.forEach((el) => (el.style.display = ''));
                               setDraftThumbnail(dataUrl);
                             }
                           } catch {
@@ -1224,10 +1233,14 @@ export const CanvasWorkspace = () => {
               if (!canvasRef.current) return;
               reactFlowInstance.fitView({ duration: 0 });
               await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+              const toHide = canvasRef.current.querySelectorAll<HTMLElement>('[data-export-hide]');
+              toHide.forEach((el) => (el.style.display = 'none'));
+              await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
               const dataUrl = await toPng(canvasRef.current, {
                 quality: 0.7,
                 pixelRatio: 2,
               });
+              toHide.forEach((el) => (el.style.display = ''));
               setDraftThumbnail(dataUrl);
               return dataUrl;
             } catch {

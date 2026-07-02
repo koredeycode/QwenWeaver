@@ -116,7 +116,9 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                 )}
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">
-                    {selectedNode.data.label || 'Research Agent'}
+                    {selectedNode.type === 'input_trigger'
+                      ? 'Input Trigger'
+                      : selectedNode.data.label || 'Research Agent'}
                   </h3>
                   <p className="text-[10px] text-slate-400 font-mono">Node Configuration</p>
                 </div>

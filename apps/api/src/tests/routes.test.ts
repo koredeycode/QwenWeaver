@@ -777,3 +777,84 @@ describe('route-level integration tests', () => {
     });
   });
 });
+
+// ─── Copilot actions parsing ──────────────────────────────────────────────
+describe('propose_canvas_changes actions parsing', () => {
+  const parseActions = (rawActions: unknown): any[] => {
+    let actions: any[] = [];
+    if (typeof rawActions === 'string') {
+      try {
+        actions = JSON.parse(rawActions);
+      } catch {
+        actions = [];
+      }
+    } else if (Array.isArray(rawActions)) {
+      actions = rawActions;
+    }
+    return actions;
+  };
+
+  it('should parse stringified JSON array (Qwen model bug)', () => {
+    const actions = parseActions(
+      '[{"type":"add_node","payload":{"type":"agent","id":"node-1","data":{"label":"Test","workerType":"general"},"position":{"x":100,"y":200}}}]',
+    );
+    expect(actions).toHaveLength(1);
+    expect(actions[0].type).toBe('add_node');
+    expect(actions[0].payload.id).toBe('node-1');
+  });
+
+  it('should handle native array directly', () => {
+    const actions = parseActions([
+      {
+        type: 'add_node',
+        payload: {
+          id: 'node-1',
+          type: 'agent',
+          data: { label: 'Test' },
+          position: { x: 100, y: 200 },
+        },
+      },
+      { type: 'add_edge', payload: { source: 'node-1', target: 'node-2' } },
+    ]);
+    expect(actions).toHaveLength(2);
+    expect(actions[0].type).toBe('add_node');
+    expect(actions[1].type).toBe('add_edge');
+  });
+
+  it('should return empty for invalid JSON string', () => {
+    const actions = parseActions('not-valid-json');
+    expect(actions).toHaveLength(0);
+  });
+
+  it('should return empty for null input', () => {
+    const actions = parseActions(null);
+    expect(actions).toHaveLength(0);
+  });
+
+  it('should return empty for undefined input', () => {
+    const actions = parseActions(undefined);
+    expect(actions).toHaveLength(0);
+  });
+
+  it('should return empty for number input', () => {
+    const actions = parseActions(42);
+    expect(actions).toHaveLength(0);
+  });
+
+  it('should preserve all actions when parsing stringified array', () => {
+    const payload = JSON.stringify([
+      {
+        type: 'add_node',
+        payload: { id: 'n1', type: 'agent', data: { label: 'A' }, position: { x: 0, y: 0 } },
+      },
+      {
+        type: 'add_node',
+        payload: { id: 'n2', type: 'agent', data: { label: 'B' }, position: { x: 300, y: 0 } },
+      },
+      { type: 'add_edge', payload: { source: 'n1', target: 'n2' } },
+    ]);
+    const actions = parseActions(payload);
+    expect(actions).toHaveLength(3);
+    expect(actions.map((a: any) => a.type)).toEqual(['add_node', 'add_node', 'add_edge']);
+  });
+});

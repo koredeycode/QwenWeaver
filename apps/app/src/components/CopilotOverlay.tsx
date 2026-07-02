@@ -1,105 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, X, Sparkles, Check } from 'lucide-react';
+import { Send, Loader2, X, Sparkles, Check, ChevronDown, ChevronRight } from 'lucide-react';
 import { useStore } from '../store/index.js';
-
-const parseInline = (text: string): React.ReactNode[] => {
-  const parts = text.split(/(\*\*.*?\*\*|`.*?`)/g);
-  return parts.map((part, idx) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return (
-        <strong key={idx} className="font-extrabold text-slate-900">
-          {part.slice(2, -2)}
-        </strong>
-      );
-    }
-    if (part.startsWith('`') && part.endsWith('`')) {
-      return (
-        <code key={idx} className="bg-slate-100 text-rose-600 px-1 py-0.5 font-mono text-[10px]">
-          {part.slice(1, -1)}
-        </code>
-      );
-    }
-    return part;
-  });
-};
-
-const renderMarkdown = (text: string) => {
-  if (!text) return null;
-
-  const parts = text.split(/(```[\s\S]*?```)/g);
-
-  return parts.map((part, idx) => {
-    if (part.startsWith('```')) {
-      const match = part.match(/```(\w*)\n([\s\S]*?)```/);
-      const lang = match ? match[1] : '';
-      const code = match ? match[2] : part.slice(3, -3);
-      return (
-        <pre
-          key={idx}
-          className="bg-slate-800 text-slate-100 p-2.5 my-2 overflow-x-auto text-[10px] font-mono leading-normal rounded-none"
-        >
-          {lang && <div className="text-[8px] text-slate-400 uppercase mb-1 font-sans">{lang}</div>}
-          <code>{code}</code>
-        </pre>
-      );
-    }
-
-    const lines = part.split('\n');
-    return lines.map((line, lIdx) => {
-      const trimmed = line.trim();
-
-      if (trimmed.startsWith('# ')) {
-        return (
-          <h1 key={lIdx} className="text-xs font-mono font-bold text-slate-900 mt-2 mb-1">
-            {parseInline(trimmed.slice(2))}
-          </h1>
-        );
-      }
-      if (trimmed.startsWith('## ')) {
-        return (
-          <h2 key={lIdx} className="text-[11px] font-mono font-bold text-slate-900 mt-2 mb-1">
-            {parseInline(trimmed.slice(3))}
-          </h2>
-        );
-      }
-      if (trimmed.startsWith('### ')) {
-        return (
-          <h3 key={lIdx} className="text-[10px] font-mono font-bold text-slate-800 mt-1.5 mb-0.5">
-            {parseInline(trimmed.slice(4))}
-          </h3>
-        );
-      }
-      if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-        return (
-          <ul key={lIdx} className="list-disc pl-4 text-[11px] text-slate-700 my-0.5">
-            <li>{parseInline(trimmed.slice(2))}</li>
-          </ul>
-        );
-      }
-      const numMatch = trimmed.match(/^(\d+)\.\s(.*)/);
-      if (numMatch) {
-        return (
-          <ol key={lIdx} className="list-decimal pl-4 text-[11px] text-slate-700 my-0.5">
-            <li>{parseInline(numMatch[2])}</li>
-          </ol>
-        );
-      }
-
-      if (!trimmed) {
-        return <div key={lIdx} className="h-1.5" />;
-      }
-
-      return (
-        <p key={lIdx} className="my-0.5 text-[11px] text-slate-850 leading-relaxed">
-          {parseInline(line)}
-        </p>
-      );
-    });
-  });
-};
-
+import { renderMarkdown } from '../utils/markdown.js';
+import { toast } from 'sonner';
 const normalizeAction = (act: any): any => {
   if (!act) return { type: 'unknown', payload: {} };
+
+  // Normalize AI raw format (node/edge wrapper) to payload format
+  if (act.node) {
+    act = { ...act, payload: act.node };
+    delete act.node;
+  }
+  if (act.edge) {
+    act = { ...act, payload: act.edge };
+    delete act.edge;
+  }
+
   const type = act.type;
 
   const getVal = (keys: string[]) => {
@@ -254,6 +170,23 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
 
   const [input, setInput] = useState('');
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const [thinkingCollapsed, setThinkingCollapsed] = useState<Record<number, boolean>>({});
+
+  const toggleThinking = (idx: number) => {
+    setThinkingCollapsed((prev) => ({ ...prev, [idx]: !prev[idx] }));
+  };
+
+  const getThinkingCollapsed = (
+    idx: number,
+    thinking: string | undefined,
+    text: string | undefined,
+  ): boolean => {
+    const manual = thinkingCollapsed[idx];
+    if (manual !== undefined) return manual;
+    if (text) return true;
+    if (thinking) return false;
+    return true;
+  };
 
   // Auto-scroll chat to bottom
   useEffect(() => {
@@ -275,6 +208,8 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
   };
 
   const handleApproveProposal = (msgIdx: number, proposal: any) => {
+    if (!proposal) return;
+
     const rawActions = Array.isArray(proposal.actions)
       ? proposal.actions
       : proposal.actions &&
@@ -286,10 +221,23 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
             Array.isArray(proposal.actions.actions)
           ? proposal.actions.actions
           : [];
+
     const actions = rawActions.map(normalizeAction);
 
-    applyActions(actions);
-    rearrangeGraph();
+    if (actions.length === 0) {
+      toast.error('No changes to apply from this proposal');
+      return;
+    }
+
+    try {
+      applyActions(actions);
+      rearrangeGraph();
+      toast.success(`Applied ${actions.length} canvas change${actions.length > 1 ? 's' : ''}`);
+    } catch (e) {
+      toast.error('Failed to apply copilot changes');
+      console.error('applyActions error:', e);
+      return;
+    }
     updateProposalStatus(msgIdx, 'approved');
   };
 
@@ -346,14 +294,35 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
               }`}
             >
               {/* Thinking/Reasoning block (if any) */}
-              {msg.thinking && (
-                <div className="mb-2.5 p-2 bg-amber-50/60 border-l-2 border-amber-500/50 text-[10px] font-mono text-amber-800 leading-normal whitespace-pre-wrap select-text">
-                  <div className="text-[8px] font-bold tracking-widest text-amber-600 uppercase mb-1">
-                    Reasoning Process
-                  </div>
-                  {msg.thinking}
-                </div>
-              )}
+              {msg.thinking &&
+                (() => {
+                  const collapsed = getThinkingCollapsed(idx, msg.thinking, msg.text);
+                  return (
+                    <div className="mb-2.5 bg-amber-50/60 border-l-2 border-amber-500/50 overflow-hidden">
+                      <button
+                        onClick={() => toggleThinking(idx)}
+                        className="w-full flex items-center justify-between p-2 text-[10px] font-mono font-bold text-amber-700 hover:bg-amber-100/50 transition-colors cursor-pointer"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          {collapsed ? (
+                            <ChevronRight className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          )}
+                          <span>Reasoning Process</span>
+                        </div>
+                        {!msg.text && !collapsed && (
+                          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                        )}
+                      </button>
+                      {!collapsed && (
+                        <div className="p-2 border-t border-amber-200/50 text-[10px] font-mono text-amber-800 leading-normal whitespace-pre-wrap select-text">
+                          {msg.thinking}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
               {/* Render Markdown Response */}
               <div className="select-text space-y-1">

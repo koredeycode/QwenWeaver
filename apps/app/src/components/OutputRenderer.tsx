@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, ChevronRight, Download } from 'lucide-react';
 import type { OutputPart } from '@qwenweaver/types';
-import { API_URL } from '../lib/api-client.js';
+import { API_BASE } from '../lib/api-client.js';
+import { renderMarkdown } from '../utils/markdown.js';
 
 interface OutputRendererProps {
   outputUrl?: string;
@@ -15,7 +16,7 @@ interface OutputRendererProps {
 function getMediaUrl(val: string): string {
   if (!val) return '';
   if (val.startsWith('http://') || val.startsWith('https://')) return val;
-  const base = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
+  const base = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE;
   const path = val.startsWith('/') ? val : '/' + val;
   return `${base}${path}`;
 }
@@ -121,7 +122,15 @@ export const OutputRenderer = React.memo(
     status,
     outputParts,
   }: OutputRendererProps) => {
-    const [isThinkingCollapsed, setIsThinkingCollapsed] = useState(false);
+    const [isThinkingCollapsed, setIsThinkingCollapsed] = useState(true);
+    const hasExpandedRef = useRef(false);
+
+    useEffect(() => {
+      if (thinkingText && !hasExpandedRef.current) {
+        hasExpandedRef.current = true;
+        setIsThinkingCollapsed(false);
+      }
+    }, [thinkingText]);
 
     // If structured OutputPart[] is provided, render parts directly
     if (outputParts && outputParts.length > 0) {
@@ -159,9 +168,7 @@ export const OutputRenderer = React.memo(
 
     if (!outputUrl && !streamingText && !thinkingText) return null;
 
-    const finalOutputUrl = outputUrl?.startsWith('/')
-      ? `${import.meta.env.VITE_API_URL || ''}${outputUrl}`
-      : outputUrl;
+    const finalOutputUrl = outputUrl?.startsWith('/') ? `${API_BASE}${outputUrl}` : outputUrl;
 
     const isRunning = status === 'running';
     const ext = finalOutputUrl ? finalOutputUrl.split('.').pop()?.toLowerCase() : undefined;
@@ -238,8 +245,8 @@ export const OutputRenderer = React.memo(
             </div>
           )}
           {streamingText && (
-            <div className="whitespace-pre-wrap font-sans text-[13px] text-slate-800">
-              {streamingText}
+            <div className="font-sans text-[13px] text-slate-800">
+              {renderMarkdown(streamingText)}
             </div>
           )}
         </div>

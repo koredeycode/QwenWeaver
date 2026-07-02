@@ -4,6 +4,9 @@ import type { AppType } from '@qwenweaver/api';
 
 export const API_URL = import.meta.env.VITE_API_URL || window.location.origin;
 
+// Root URL without /api prefix — Hono routes already include /api/
+export const API_BASE = API_URL.replace(/\/api\/?$/, '');
+
 const customFetch = (input: RequestInfo | URL, init?: RequestInit) =>
   fetch(input, { ...init, credentials: 'include' });
 
@@ -12,7 +15,7 @@ export const authClient = createAuthClient({
   fetch: customFetch as typeof fetch,
 });
 
-export const client = hc<AppType>(API_URL, {
+export const client = hc<AppType>(API_BASE, {
   fetch: customFetch as typeof fetch,
 }) as unknown as any;
 export const client2 = client;
@@ -37,5 +40,5 @@ export async function withRefresh<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 export function getTemplateApiUrl(): string {
-  return API_URL;
+  return API_BASE;
 }

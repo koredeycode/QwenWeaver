@@ -24,6 +24,7 @@ export const MaximizedNodeOverlay = () => {
   const storeOutput = useStore((s) => s.nodeOutputs[maximizedNodeId || ''] || '');
   const storeThinking = useStore((s) => s.nodeThinking[maximizedNodeId || ''] || '');
   const storeStatus = useStore((s) => s.nodeStatuses[maximizedNodeId || ''] || 'pending');
+  const storeOutputParts = useStore((s) => s.nodeOutputParts[maximizedNodeId || '']);
 
   const [showOverlayLeft, setShowOverlayLeft] = useState(false);
   const [showOverlayRight, setShowOverlayRight] = useState(true);
@@ -50,7 +51,7 @@ export const MaximizedNodeOverlay = () => {
     return () => {
       if (rafId) cancelAnimationFrame(rafId);
     };
-  }, [storeOutput, storeThinking]);
+  }, [storeOutput, storeThinking, channelMessages]);
 
   if (!maximizedNodeId) return null;
 
@@ -221,7 +222,7 @@ export const MaximizedNodeOverlay = () => {
                     : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
                 }`}
               >
-                MONITOR / OUTPUT
+                MONITOR
                 {(maximizedNode.data?._executionStatus || storeStatus) === 'running' && (
                   <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse border border-slate-200 inline-block ml-1.5" />
                 )}
@@ -271,6 +272,7 @@ export const MaximizedNodeOverlay = () => {
                 </div>
                 {(storeOutput ||
                   maximizedNode?.data?._output ||
+                  storeThinking ||
                   (storeStatus || maximizedNode?.data?._executionStatus) !== 'running') && (
                   <OutputRenderer
                     outputUrl={
@@ -280,6 +282,7 @@ export const MaximizedNodeOverlay = () => {
                     }
                     streamingText={storeOutput || maximizedNode?.data?._output}
                     thinkingText={storeThinking}
+                    outputParts={storeOutputParts}
                     fileExtension={
                       maximizedNode?.data?.outputFormat === 'markdown'
                         ? 'md'
@@ -290,6 +293,7 @@ export const MaximizedNodeOverlay = () => {
                 )}
                 {!maximizedNode?.data?._output &&
                   !storeOutput &&
+                  !storeThinking &&
                   (maximizedNode?.data?._executionStatus || storeStatus) === 'running' && (
                     <div className="flex-1 font-mono text-[11px] leading-relaxed p-2 text-slate-500">
                       Awaiting telemetry stream...
@@ -298,44 +302,45 @@ export const MaximizedNodeOverlay = () => {
                   )}
               </div>
             ) : overlayTab === 'messages' ? (
-              <div className="flex-1 p-6 overflow-y-auto">
+              <div ref={scrollRef} className="flex-1 p-6 overflow-y-auto">
                 <div className="text-[10px] font-mono text-slate-400 mb-3 tracking-wider">
                   CHANNEL MESSAGES
                 </div>
-                {channelMessages.filter(
-                  (m) => m.fromNodeId === maximizedNodeId || m.toNodeId === maximizedNodeId,
-                ).length === 0 ? (
+                {channelMessages.length === 0 ? (
                   <div className="font-mono text-[11px] text-slate-400 italic">
-                    No messages for this node yet.
+                    Agent-to-agent messages appear here during execution. Configure message channels
+                    on edges to enable agent communication.
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {channelMessages
-                      .filter(
-                        (m) => m.fromNodeId === maximizedNodeId || m.toNodeId === maximizedNodeId,
-                      )
-                      .map((m, i) => (
-                        <div
-                          key={i}
-                          className={`border p-3 font-mono text-xs ${
-                            m.fromNodeId === maximizedNodeId
-                              ? 'bg-orange-50 border-orange-200 ml-6'
-                              : 'bg-blue-50 border-blue-200 mr-6'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-1 text-[10px] text-slate-500">
-                            <span className="font-bold">
-                              {m.fromNodeId === maximizedNodeId ? 'SENT' : 'RECEIVED'}
-                            </span>
-                            <span>
-                              round {m.round} &middot; channel {m.channelId}
-                            </span>
-                          </div>
-                          <div className="text-slate-800 whitespace-pre-wrap leading-relaxed">
-                            {m.content}
-                          </div>
+                    {channelMessages.map((m, i) => (
+                      <div
+                        key={i}
+                        className={`border p-3 font-mono text-xs ${
+                          m.fromNodeId === maximizedNodeId
+                            ? 'bg-orange-50 border-orange-200 ml-6'
+                            : m.toNodeId === maximizedNodeId
+                              ? 'bg-blue-50 border-blue-200 mr-6'
+                              : 'bg-white border-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1 text-[10px] text-slate-500">
+                          <span className="font-bold">
+                            {m.fromNodeId === maximizedNodeId
+                              ? 'SENT'
+                              : m.toNodeId === maximizedNodeId
+                                ? 'RECEIVED'
+                                : `${m.fromNodeId} → ${m.toNodeId}`}
+                          </span>
+                          <span>
+                            round {m.round} &middot; channel {m.channelId}
+                          </span>
                         </div>
-                      ))}
+                        <div className="text-slate-800 whitespace-pre-wrap leading-relaxed">
+                          {m.content}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
