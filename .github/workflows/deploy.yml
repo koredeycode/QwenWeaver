@@ -92,6 +92,7 @@ jobs:
 
       - name: Write .env from secrets
         run: |
+          set +x  # disable debug output to prevent secret leakage
           cat > .env << EOF
           API_SECRET=${{ secrets.API_SECRET }}
           DATABASE_URL=${{ secrets.DATABASE_URL }}
@@ -118,6 +119,7 @@ jobs:
           MAX_STEPS=${{ secrets.MAX_STEPS }}
           METRICS_TOKEN=${{ secrets.METRICS_TOKEN }}
           EOF
+          set -x  # re-enable debug output
 
       - name: Deploy to VPS
         run: |
@@ -125,6 +127,7 @@ jobs:
 
             ssh deploy@${{ secrets.VPS_HOST }} << 'ENDSSH'
             set -euo pipefail
+            set +x  # disable debug to protect GHCR_PAT from logging
 
             mkdir -p /home/deploy/qwenweaver/www/{site,app}
             cd /home/deploy/qwenweaver/www
