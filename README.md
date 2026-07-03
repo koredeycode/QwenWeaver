@@ -15,9 +15,28 @@
 
 ## Overview
 
-QwenWeaver is a TypeScript-native platform for designing and executing multi-agent workflows. Arrange agents as a directed acyclic graph (DAG) on a canvas, connect them with edges, and run the entire pipeline with parallel execution, SSE streaming, and conflict resolution via supervisor nodes.
+QwenWeaver is a TypeScript-native platform for designing and executing multi-agent AI workflows. Arrange agents as a directed acyclic graph (DAG) on a visual canvas, connect them with edges to define data flow, and execute the entire pipeline with automatic parallelization, real-time SSE streaming, and intelligent conflict resolution.
 
 Built for the Qwen Cloud Hackathon Track 3 ("Agent Society").
+
+## Features
+
+- **Visual DAG Canvas** — drag-and-drop workflow editor powered by React Flow v12. Pan, zoom, connect nodes, and inspect outputs in real time.
+- **Parallel Execution Engine** — Kahn's Algorithm compiles the DAG into topological batches. Zero-in-degree nodes within each batch run concurrently via `Promise.all`, maximizing throughput.
+- **Real-Time SSE Streaming** — every execution streams `token`, `thinking`, `status_update`, `edge_active`, `workspace_write`, `bus_message`, `debate_round`, and `complete` events to the canvas. Nodes glow, edges animate, and output appears token-by-token.
+- **Supervisor Nodes** — quality gate agents that review outputs and can reject them with revision feedback. Supports multi-round backtracking with configurable negotiation limits.
+- **Debate Arena Nodes** — multi-agent debate with configurable modes (debate, negotiation, consensus). Supports multiple rounds, optional AI arbitrator with scoring.
+- **Conversation-Mode Edges** — enable multi-round back-and-forth exchanges between agents on connected edges, simulating natural conversation.
+- **Shared Workspace Blackboard** — agents can read/write/append to a shared key-value workspace with optimistic concurrency control, enabling collaborative data sharing.
+- **Inter-Agent Message Bus** — topic-based pub/sub DataBus for structured communication between agents. Messages are persisted to DB for audit trails.
+- **MCP Tool Integration** — connect any Model Context Protocol server (HTTP Streamable or Stdio) as a node. Tools are automatically discovered and injected into agent prompts.
+- **AI Media Generation** — built-in support for image generation (Wanx), audio synthesis (CosyVoice), and video generation (Wanx Video) via Qwen DashScope API.
+- **Multi-Output Formats** — agents can output markdown, HTML, JSON, CSV, XML, YAML, plain text, images, audio, or video.
+- **AI Copilot** — natural-language workflow builder embedded in the canvas. Describe what you want and the copilot generates or modifies the graph.
+- **Dual-Database** — SQLite (better-sqlite3) for local development, PostgreSQL for production. Schema managed via Drizzle ORM with additive-only migrations.
+- **Granular Metrics** — per-node timing, token counts, parallel speedup ratio, and efficiency metrics reported after every execution.
+- **Template Library** — community workflow templates with fork support. Publish and discover reusable workflows.
+- **Prometheus Metrics** — `/api/metrics` endpoint exposes execution counts, LLM token usage, agent durations, and rate limiting stats.
 
 ## Architecture
 
@@ -31,39 +50,6 @@ qwenweaver/
 │   ├── types/        Shared Zod schemas & TypeScript interfaces
 │   ├── database/     Drizzle ORM — dual dialect (SQLite / PostgreSQL)
 │   └── mcp-client/   Model Context Protocol transport (HTTP & Stdio)
-```
-
-```mermaid
-flowchart LR
-    subgraph Frontend
-        Canvas["🎨 Visual Canvas<br/>React Flow v12"]
-        Store["📦 Zustand Store<br/>Granular selectors"]
-    end
-    subgraph Backend
-        API["🌐 Hono.js API<br/>REST + SSE"]
-        DAG["📐 DAG Compiler<br/>Kahn's Algorithm"]
-        Exec["⚡ Parallel Executor<br/>Promise.all batches"]
-        Supervisor["🧠 Supervisor<br/>Conflict Resolution"]
-        Debate["🗣️ Debate Arena<br/>Multi-round + Arbitrator"]
-        Bus["📨 Message Bus<br/>Agent-to-Agent"]
-        Blackboard["📋 Workspace<br/>Optimistic Concurrency"]
-    end
-    subgraph AI
-        Qwen["🤖 Qwen3-Max/Plus<br/>DashScope API"]
-        MCP["🔌 MCP Tools<br/>HTTP & Stdio"]
-    end
-    Canvas -->|"DAG JSON"| API
-    API -->|"POST /execute"| DAG
-    DAG -->|"Batched batches"| Exec
-    Exec -->|"SSE stream"| API
-    API -->|"events"| Store
-    Exec --> Supervisor
-    Exec --> Debate
-    Exec --> Bus
-    Exec --> Blackboard
-    Supervisor -->|"feedback loop"| Exec
-    Exec -->|"AI calls"| Qwen
-    Exec -->|"Tool calls"| MCP
 ```
 
 ## Prerequisites
@@ -97,15 +83,6 @@ pnpm dev
 | Type-check          | `pnpm typecheck` |
 | DB migrations (dev) | `pnpm db:push`   |
 
-## Key Features
-
-- **Visual canvas** — drag-and-drop DAG editor powered by React Flow v12
-- **Parallel execution** — zero-in-degree nodes run concurrently via `Promise.all`
-- **SSE streaming** — real-time `token`, `status_update`, `edge_active`, `complete` events
-- **Supervisor nodes** — resolve conflicting outputs using `qwen3-max` with chain-of-thought
-- **MCP tool integration** — connect any Model Context Protocol server as a node
-- **Dual-database** — SQLite for local development, PostgreSQL for production
-
 ## Tech Stack
 
 | Layer        | Technology                                                        |
@@ -115,6 +92,7 @@ pnpm dev
 | **Database** | Drizzle ORM, better-sqlite3 (dev) / postgres (prod)               |
 | **AI**       | `@ai-sdk/alibaba` — Qwen3-Max / Qwen3-Plus on DashScope           |
 | **MCP**      | `@modelcontextprotocol/sdk` — HTTP & Stdio transports             |
+| **Auth**     | Better Auth — JWT sessions, email/password, OAuth                 |
 
 ## License
 

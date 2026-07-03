@@ -5,8 +5,8 @@ export function WorkflowGuide() {
     <div>
       <h1>Building Workflows</h1>
       <p>
-        QwenWeaver workflows are directed acyclic graphs (DAGs). Nodes are agents, supervisors, or
-        tools. Edges define data flow between them.
+        QwenWeaver workflows are directed acyclic graphs (DAGs). Nodes are agents, supervisors,
+        debate arenas, or tools. Edges define data flow between them.
       </p>
 
       <h2>The Canvas</h2>
@@ -33,6 +33,10 @@ export function WorkflowGuide() {
         <li>
           <strong>Inspect</strong> — click a node to open the inspector panel on the right
         </li>
+        <li>
+          <strong>AI Copilot</strong> — click the copilot icon (or press Cmd+K) to describe changes
+          in natural language
+        </li>
       </ul>
 
       <h2>Data Flow</h2>
@@ -52,14 +56,59 @@ export function WorkflowGuide() {
           Executes each batch concurrently with <strong>Promise.all</strong>
         </li>
         <li>
-          Streams <code>token</code>, <code>status_update</code>, and <code>edge_active</code>{' '}
-          events via SSE
+          Streams <code>token</code>, <code>thinking</code>, <code>status_update</code>,{' '}
+          <code>edge_active</code>, <code>workspace_write</code>, <code>bus_message</code>, and{' '}
+          <code>debate_round</code> events via SSE
         </li>
         <li>
           If a <strong>Supervisor</strong> rejects output, the engine backtracks and re-executes
           with feedback
         </li>
+        <li>
+          If <strong>conversation-mode edges</strong> are detected, runs multi-round exchanges
+          between the connected agents
+        </li>
       </ol>
+
+      <h2>Conversation-Mode Edges</h2>
+      <p>
+        Standard edges pass data downstream once. Conversation-mode edges enable multi-round
+        back-and-forth exchanges between agents. When enabled on an edge:
+      </p>
+      <ul>
+        <li>
+          Agents exchange messages in rounds (configurable <code>maxRounds</code>, default: 5)
+        </li>
+        <li>Each agent responds to the other's previous message</li>
+        <li>The transcript of all rounds is available as context</li>
+        <li>Ideal for collaborative tasks, brainstorming, or negotiation between two agents</li>
+      </ul>
+
+      <h2>Shared Workspace Blackboard</h2>
+      <p>
+        Every execution has a shared key-value workspace accessible by all agents. Agents can use
+        built-in tools to collaborate:
+      </p>
+      <ul>
+        <li>
+          <code>workspace_write(key, value)</code> — write or update a key (upsert)
+        </li>
+        <li>
+          <code>workspace_read(key)</code> — read a value by key
+        </li>
+        <li>
+          <code>workspace_list(prefix?)</code> — list all keys with an optional prefix filter
+        </li>
+        <li>
+          <code>workspace_append(key, item)</code> — append to an array (with optimistic
+          concurrency)
+        </li>
+      </ul>
+      <p>
+        The workspace uses optimistic concurrency control to prevent data loss when multiple agents
+        write concurrently. The <code>workspace_append</code> function automatically retries on
+        conflict.
+      </p>
 
       <h2>Execution Metrics</h2>
       <p>After execution, the engine reports:</p>
@@ -85,6 +134,10 @@ export function WorkflowGuide() {
       <p>
         Workflows can be exported as JSON and re-imported later. This makes it easy to share
         workflows, version control them, or use community templates.
+      </p>
+      <p>
+        You can also publish workflows as templates to the community library for others to fork and
+        use.
       </p>
 
       <h2>Next Steps</h2>

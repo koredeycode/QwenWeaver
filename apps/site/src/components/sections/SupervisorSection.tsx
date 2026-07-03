@@ -12,52 +12,18 @@ export function SupervisorSection() {
           <h2 className="mt-6 text-3xl font-bold tracking-tight sm:text-4xl">
             Supervisor <span className="text-primary">negotiation</span>
           </h2>
-          <p className="mt-4 text-lg leading-relaxed text-on-surface-variant">
-            Supervisor agents review outputs from worker agents, request revisions when quality
-            drops, and resolve conflicting results — all automatically.
-          </p>
           <div className="mt-6 flex flex-col gap-3">
             <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50/50 px-4 py-3">
-              <svg
-                className="h-5 w-5 shrink-0 text-green-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-              <span className="text-sm text-slate-700">
-                Output meets quality threshold → approve
-              </span>
+              <span className="text-green-600 font-bold text-lg">✓</span>
+              <span className="text-sm text-slate-700">Good output → approve</span>
             </div>
             <div className="flex items-center gap-3 rounded-lg border border-orange-200 bg-orange-50/50 px-4 py-3">
-              <svg
-                className="h-5 w-5 shrink-0 text-orange-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              <span className="text-sm text-slate-700">
-                Conflicting outputs detected → request revision
-              </span>
+              <span className="text-orange-600 font-bold text-lg">✗</span>
+              <span className="text-sm text-slate-700">Conflict → request revision</span>
             </div>
             <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50/50 px-4 py-3">
-              <svg
-                className="h-5 w-5 shrink-0 text-blue-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              <span className="text-sm text-slate-700">
-                Supervisor uses Qwen3-Max with thinking budget
-              </span>
+              <span className="text-blue-600 font-bold text-lg">⚡</span>
+              <span className="text-sm text-slate-700">Qwen3-Max with thinking budget</span>
             </div>
           </div>
         </div>

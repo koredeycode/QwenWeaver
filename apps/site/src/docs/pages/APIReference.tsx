@@ -128,6 +128,40 @@ export function APIReference() {
         </tbody>
       </table>
 
+      <h3>Workspace (Blackboard)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Method</th>
+            <th>Path</th>
+            <th>Auth</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>GET</td>
+            <td>
+              <code>
+                /api/workspace/{'{'}executionId{'}'}
+              </code>
+            </td>
+            <td>JWT</td>
+            <td>List workspace entries</td>
+          </tr>
+          <tr>
+            <td>POST</td>
+            <td>
+              <code>
+                /api/workspace/{'{'}executionId{'}'}
+              </code>
+            </td>
+            <td>JWT</td>
+            <td>Write workspace entry</td>
+          </tr>
+        </tbody>
+      </table>
+
       <h3>Templates</h3>
       <table>
         <thead>
@@ -283,6 +317,54 @@ export function APIReference() {
             <td>No</td>
             <td>OpenAPI 3.1 spec</td>
           </tr>
+          <tr>
+            <td>GET</td>
+            <td>
+              <code>/api/metrics</code>
+            </td>
+            <td>Token</td>
+            <td>Prometheus metrics (authenticated via METRICS_TOKEN)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Credentials</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Method</th>
+            <th>Path</th>
+            <th>Auth</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>GET</td>
+            <td>
+              <code>/api/credentials</code>
+            </td>
+            <td>JWT</td>
+            <td>List saved credentials</td>
+          </tr>
+          <tr>
+            <td>POST</td>
+            <td>
+              <code>/api/credentials</code>
+            </td>
+            <td>JWT</td>
+            <td>Save encrypted credential (API key, token, etc.)</td>
+          </tr>
+          <tr>
+            <td>DELETE</td>
+            <td>
+              <code>
+                /api/credentials/{'{'}id{'}'}
+              </code>
+            </td>
+            <td>JWT</td>
+            <td>Delete credential</td>
+          </tr>
         </tbody>
       </table>
 
@@ -310,6 +392,17 @@ export function APIReference() {
           </tr>
           <tr>
             <td>
+              <code>thinking</code>
+            </td>
+            <td>
+              <code>
+                {'{'} nodeId, chunk {'}'}
+              </code>
+            </td>
+            <td>Chain-of-thought reasoning tokens</td>
+          </tr>
+          <tr>
+            <td>
               <code>status_update</code>
             </td>
             <td>
@@ -317,7 +410,7 @@ export function APIReference() {
                 {'{'} nodeId, status, timestamp {'}'}
               </code>
             </td>
-            <td>Node state change</td>
+            <td>Node state change (pending → running → completed/failed)</td>
           </tr>
           <tr>
             <td>
@@ -329,6 +422,61 @@ export function APIReference() {
               </code>
             </td>
             <td>Data flowing through edge</td>
+          </tr>
+          <tr>
+            <td>
+              <code>workspace_write</code>
+            </td>
+            <td>
+              <code>
+                {'{'} nodeId, key, valueType, timestamp {'}'}
+              </code>
+            </td>
+            <td>Agent wrote to the shared workspace</td>
+          </tr>
+          <tr>
+            <td>
+              <code>bus_message</code>
+            </td>
+            <td>
+              <code>
+                {'{'} message {'}'}
+              </code>
+            </td>
+            <td>Inter-agent bus message published</td>
+          </tr>
+          <tr>
+            <td>
+              <code>message</code>
+            </td>
+            <td>
+              <code>
+                {'{'} fromNodeId, toNodeId, content, round, channelId {'}'}
+              </code>
+            </td>
+            <td>Conversation message exchange</td>
+          </tr>
+          <tr>
+            <td>
+              <code>debate_round</code>
+            </td>
+            <td>
+              <code>
+                {'{'} arenaId, round, statements, timestamp {'}'}
+              </code>
+            </td>
+            <td>Debate arena round completed</td>
+          </tr>
+          <tr>
+            <td>
+              <code>debate_verdict</code>
+            </td>
+            <td>
+              <code>
+                {'{'} arenaId, verdict, scores, timestamp {'}'}
+              </code>
+            </td>
+            <td>Debate arbitration verdict delivered</td>
           </tr>
           <tr>
             <td>
@@ -347,7 +495,7 @@ export function APIReference() {
             </td>
             <td>
               <code>
-                {'{'} message, timestamp {'}'}
+                {'{'} message, nodeId?, timestamp {'}'}
               </code>
             </td>
             <td>Execution error</td>

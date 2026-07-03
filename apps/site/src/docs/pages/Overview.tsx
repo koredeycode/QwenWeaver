@@ -17,9 +17,9 @@ export function Overview() {
           <Link to="/docs/getting-started">Cloud Quickstart</Link> — sign up and run your first
           workflow in minutes
         </li>
-
         <li>
-          <Link to="/docs/workflow-guide">Building Workflows</Link> — understand the DAG editor
+          <Link to="/docs/workflow-guide">Building Workflows</Link> — understand the DAG editor,
+          conversation edges, and the shared workspace
         </li>
         <li>
           <Link to="/docs/node-types">Node Types</Link> — reference for all available nodes
@@ -32,9 +32,9 @@ export function Overview() {
       <h2>What is QwenWeaver?</h2>
       <p>
         QwenWeaver lets you visually compose multi-agent workflows on an interactive graph canvas.
-        Each node is an agent, a supervisor, or a tool connector. Edges define data flow. The engine
-        compiles the graph using Kahn's Algorithm, executes independent branches in parallel, and
-        streams results in real-time via SSE.
+        Each node is an agent, a supervisor, a debate arena, or a tool connector. Edges define data
+        flow. The engine compiles the graph using Kahn's Algorithm, executes independent branches in
+        parallel, and streams results in real-time via SSE.
       </p>
 
       <h2>Key Concepts</h2>
@@ -59,12 +59,24 @@ export function Overview() {
             <td>Reviews agent outputs, can reject and request revisions</td>
           </tr>
           <tr>
+            <td>Debate Arena Node</td>
+            <td>Multi-agent debate with configurable modes and optional arbitrator</td>
+          </tr>
+          <tr>
             <td>MCP Tool Node</td>
             <td>Connects to an external MCP server for tool access</td>
           </tr>
           <tr>
             <td>Trigger Node</td>
             <td>Entry point — passes user input into the workflow</td>
+          </tr>
+          <tr>
+            <td>Conversation Edge</td>
+            <td>Enables multi-round back-and-forth exchanges between agents</td>
+          </tr>
+          <tr>
+            <td>Workspace Blackboard</td>
+            <td>Shared key-value store all agents can read/write during execution</td>
           </tr>
           <tr>
             <td>Execution</td>
@@ -77,6 +89,10 @@ export function Overview() {
       <p>
         <strong>Cloud:</strong> Use our hosted version at <a href={URLS.app}>{URLS.app}</a>. 1000
         free credits on signup, no credit card required.
+      </p>
+      <p>
+        <strong>Self-Hosted:</strong> Clone the repo and run <code>pnpm install && pnpm dev</code>.
+        See the README for details.
       </p>
     </div>
   );

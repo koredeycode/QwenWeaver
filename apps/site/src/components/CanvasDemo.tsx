@@ -165,7 +165,7 @@ function DemoCompactStatus({ status }: { status: 'pending' | 'running' | 'comple
 function DemoTriggerNode({ status }: { status: 'pending' | 'running' | 'completed' }) {
   return (
     <div
-      className={`w-full h-full bg-white border-2 ${status === 'running' ? 'border-primary-container animate-[nodePulse_2s_ease-in-out_infinite]' : status === 'completed' ? 'border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.15)]' : 'border-emerald-500'} text-slate-800 font-sans shadow-sm flex flex-col rounded-none relative`}
+      className={`w-full h-full bg-white border ${status === 'running' ? 'border-primary-container animate-[nodePulse_2s_ease-in-out_infinite]' : status === 'completed' ? 'border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.15)]' : 'border-emerald-500'} text-slate-800 font-sans shadow-sm flex flex-col rounded-none relative`}
     >
       <div className="flex items-center justify-between border-b border-outline-variant px-1.5 py-1">
         <div className="flex items-center gap-1.5">
@@ -191,7 +191,7 @@ function DemoTriggerNode({ status }: { status: 'pending' | 'running' | 'complete
         </div>
         <span className="text-[7px] text-slate-400 font-mono">Click to execute</span>
       </div>
-      <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-emerald-500 border-2 border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
+      <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-1 h-1 bg-emerald-500 border border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
     </div>
   );
 }
@@ -199,10 +199,10 @@ function DemoTriggerNode({ status }: { status: 'pending' | 'running' | 'complete
 function DemoAgentNode({ status }: { status: 'pending' | 'running' | 'completed' }) {
   return (
     <div
-      className={`w-full h-full bg-white border-2 ${status === 'completed' ? 'border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.15)]' : status === 'running' ? 'border-primary-container animate-[nodePulse_2s_ease-in-out_infinite]' : 'border-outline'} text-slate-800 font-sans shadow-sm flex flex-col rounded-none relative`}
+      className={`w-full h-full bg-white border ${status === 'completed' ? 'border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.15)]' : status === 'running' ? 'border-primary-container animate-[nodePulse_2s_ease-in-out_infinite]' : 'border-outline'} text-slate-800 font-sans shadow-sm flex flex-col rounded-none relative`}
     >
-      <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-[#f97316] border-2 border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
-      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-purple-500 border-2 border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
+      <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-1 h-1 bg-[#f97316] border border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
+      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-purple-500 border border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
 
       <div className="flex items-center justify-between border-b border-outline-variant px-1.5 py-1">
         <div className="flex items-center gap-1.5">
@@ -220,7 +220,7 @@ function DemoAgentNode({ status }: { status: 'pending' | 'running' | 'completed'
         </div>
       </div>
 
-      <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-[#f97316] border-2 border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
+      <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-1 h-1 bg-[#f97316] border border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
     </div>
   );
 }
@@ -228,10 +228,10 @@ function DemoAgentNode({ status }: { status: 'pending' | 'running' | 'completed'
 function DemoSupervisorNode({ status }: { status: 'pending' | 'running' | 'completed' }) {
   return (
     <div
-      className={`w-full h-full bg-white border-2 ${status === 'completed' ? 'border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.15)]' : status === 'running' ? 'border-secondary-container animate-[supervisorPulse_2s_ease-in-out_infinite]' : 'border-outline'} text-slate-800 font-sans shadow-md flex flex-col rounded-none relative`}
+      className={`w-full h-full bg-white border ${status === 'completed' ? 'border-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.15)]' : status === 'running' ? 'border-secondary-container animate-[supervisorPulse_2s_ease-in-out_infinite]' : 'border-outline'} text-slate-800 font-sans shadow-md flex flex-col rounded-none relative`}
     >
-      <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-[#2563eb] border-2 border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
-      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-purple-500 border-2 border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
+      <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-1 h-1 bg-[#2563eb] border border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
+      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-purple-500 border border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
 
       <div className="flex items-center justify-between border-b border-outline px-1.5 py-1">
         <div className="flex items-center gap-1.5">
@@ -251,7 +251,7 @@ function DemoSupervisorNode({ status }: { status: 'pending' | 'running' | 'compl
         </div>
       </div>
 
-      <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-[#2563eb] border-2 border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
+      <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-1 h-1 bg-[#2563eb] border border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
     </div>
   );
 }
@@ -259,10 +259,10 @@ function DemoSupervisorNode({ status }: { status: 'pending' | 'running' | 'compl
 function DemoToolNode({ status }: { status: 'pending' | 'running' | 'completed' }) {
   return (
     <div
-      className={`w-full h-full bg-white border-2 ${status === 'completed' ? 'border-emerald-500 shadow-[0_2px_6px_rgba(16,185,129,0.12)]' : status === 'running' ? 'border-purple-500 shadow-[0_2px_8px_rgba(168,85,247,0.15)]' : 'border-purple-200'} text-slate-800 font-sans shadow-sm flex flex-col rounded-none relative`}
+      className={`w-full h-full bg-white border ${status === 'completed' ? 'border-emerald-500 shadow-[0_2px_6px_rgba(16,185,129,0.12)]' : status === 'running' ? 'border-purple-500 shadow-[0_2px_8px_rgba(168,85,247,0.15)]' : 'border-purple-200'} text-slate-800 font-sans shadow-sm flex flex-col rounded-none relative`}
     >
-      <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-purple-500 border-2 border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
-      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-purple-500 border-2 border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
+      <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-purple-500 border border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
+      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-purple-500 border border-slate-700 rounded-full hover:scale-125 transition-transform shadow-sm" />
 
       <div className="flex items-center justify-between px-1 py-0.5 border-b border-outline-variant">
         <div className="flex items-center gap-0.5">
