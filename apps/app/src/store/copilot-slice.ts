@@ -145,10 +145,12 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
           try {
             const { chunk } = JSON.parse(e.data);
             if (chunk) {
-              updateLastAssistantMessage((msg) => ({
-                ...msg,
-                text: (msg.text || '') + chunk,
-              }));
+              updateLastAssistantMessage((msg) => {
+                if (msg.proposal) {
+                  return { ...msg, textAfterProposal: (msg.textAfterProposal || '') + chunk };
+                }
+                return { ...msg, text: (msg.text || '') + chunk };
+              });
             }
           } catch {
             /* ignore malformed event */
@@ -236,6 +238,7 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
       role: msg.role === 'user' ? ('user' as const) : ('assistant' as const),
       text: msg.content,
       thinking: msg.thinking || '',
+      textAfterProposal: msg.textAfterProposal || '',
       proposal: msg.proposal
         ? {
             id: msg.proposal.id,

@@ -26,6 +26,7 @@ export interface CopilotMessage {
     status: 'pending' | 'approved' | 'rejected';
     actions: GraphAction[];
   };
+  textAfterProposal?: string;
 }
 
 export interface CanvasSnapshot {

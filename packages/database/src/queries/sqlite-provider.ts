@@ -978,14 +978,23 @@ export const sqliteProvider: QueryProvider = {
   async reserveCredits(userId: string, amount: number): Promise<boolean> {
     const { db } = getConnection();
     const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
-    const result = await sqliteDb.run(
-      sql`UPDATE ${sqliteSchema.sqliteUserCredits}
-          SET balance = balance - ${amount},
-              lifetime_spent = lifetime_spent + ${amount},
-              updated_at = ${Date.now()}
-          WHERE user_id = ${userId} AND balance >= ${amount}`,
-    );
-    return (result as any).changes > 0;
+    const s = sqliteSchema;
+    const result = await sqliteDb
+      .update(s.sqliteUserCredits)
+      .set({
+        balance: sql`${s.sqliteUserCredits.balance} - ${amount}`,
+        lifetimeSpent: sql`${s.sqliteUserCredits.lifetimeSpent} + ${amount}`,
+        updatedAt: Date.now(),
+      })
+      .where(
+        and(
+          eq(s.sqliteUserCredits.userId, userId),
+          sql`${s.sqliteUserCredits.balance} >= ${amount}`,
+        ),
+      );
+    const r = result as any;
+    const changes = r.changes ?? r.meta?.changes ?? 0;
+    return changes > 0;
   },
 
   async deductCredits(userId: string, amount: number, description?: string, executionId?: string) {

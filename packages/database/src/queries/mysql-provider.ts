@@ -946,14 +946,19 @@ export const mysqlProvider: QueryProvider = {
   async reserveCredits(userId: string, amount: number): Promise<boolean> {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
-    const result = await mysqlDb.execute(
-      sql`UPDATE ${mysqlSchema.mysqlUserCredits}
-          SET balance = balance - ${amount},
-              lifetime_spent = lifetime_spent + ${amount},
-              updated_at = NOW()
-          WHERE user_id = ${userId} AND balance >= ${amount}`,
-    );
-    return (result as any).affectedRows > 0;
+    const s = mysqlSchema;
+    const result = await mysqlDb
+      .update(s.mysqlUserCredits)
+      .set({
+        balance: sql`${s.mysqlUserCredits.balance} - ${amount}`,
+        lifetimeSpent: sql`${s.mysqlUserCredits.lifetimeSpent} + ${amount}`,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(s.mysqlUserCredits.userId, userId), sql`${s.mysqlUserCredits.balance} >= ${amount}`),
+      );
+    const r = result as any;
+    return (r.affectedRows ?? r.meta?.affectedRows ?? 0) > 0;
   },
 
   async deductCredits(userId: string, amount: number, description?: string, executionId?: string) {

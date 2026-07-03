@@ -328,9 +328,9 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
               <div className="select-text space-y-1">
                 {msg.text ? (
                   renderMarkdown(msg.text)
-                ) : (
+                ) : !msg.proposal ? (
                   <p className="text-slate-400 font-mono italic animate-pulse">Generating...</p>
-                )}
+                ) : null}
               </div>
 
               {/* Proposal actions block (if any) */}
@@ -461,6 +461,13 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
                       </button>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Text received after the proposal was emitted */}
+              {msg.textAfterProposal && (
+                <div className="mt-2 select-text space-y-1">
+                  {renderMarkdown(msg.textAfterProposal)}
                 </div>
               )}
             </div>

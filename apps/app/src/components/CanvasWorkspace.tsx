@@ -110,7 +110,7 @@ export const CanvasWorkspace = () => {
   const [dockedPanelMode, setDockedPanelMode] = useState<'triggers' | 'agents' | 'mcp' | null>(
     null,
   );
-  const [rightPanel, setRightPanel] = useState<'copilot' | 'inspector' | null>(null);
+  const [rightPanel, setRightPanel] = useState<'copilot' | 'inspector' | null>('copilot');
   const openRightPanel = useCallback((panel: 'copilot' | 'inspector') => {
     setDockedPanelMode(null);
     setRightPanel(panel);
@@ -584,8 +584,7 @@ export const CanvasWorkspace = () => {
               <div className="relative" ref={toolsRef}>
                 <button
                   onClick={() => setToolsOpen(!toolsOpen)}
-                  disabled={nodes.length === 0}
-                  className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1.5 rounded-none hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1.5 rounded-none hover:bg-slate-50 transition-colors cursor-pointer"
                   title="More tools"
                   data-tour="more-tools"
                 >

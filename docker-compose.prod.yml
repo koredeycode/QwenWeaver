@@ -3,7 +3,7 @@
 # Requires: .env file with DATABASE_URL, API_SECRET, etc.
 services:
   redis:
-    image: redis:7-alpine
+    image: redis:7
     container_name: qw-redis
     restart: unless-stopped
     ports:
@@ -11,10 +11,11 @@ services:
     volumes:
       - redis-data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli ping || exit 1"]
       interval: 5s
-      timeout: 3s
-      retries: 5
+      timeout: 5s
+      retries: 10
+      start_period: 10s
   qwenweaver:
     image: ghcr.io/koredeycode/qwenweaver/qwenweaver:latest
     container_name: qw-app
