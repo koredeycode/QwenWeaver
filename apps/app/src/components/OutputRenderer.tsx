@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, ChevronRight, Download } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { ChevronDown, ChevronRight, Download, FileText } from 'lucide-react';
 import type { OutputPart } from '@qwenweaver/types';
 import { API_BASE } from '../lib/api-client.js';
 import { renderMarkdown } from '../utils/markdown.js';
@@ -123,14 +123,27 @@ export const OutputRenderer = React.memo(
     outputParts,
   }: OutputRendererProps) => {
     const [isThinkingCollapsed, setIsThinkingCollapsed] = useState(true);
-    const hasExpandedRef = useRef(false);
+    const [fetchedContent, setFetchedContent] = useState<string | null>(null);
+
+    const finalOutputUrl = outputUrl?.startsWith('/') ? `${API_BASE}${outputUrl}` : outputUrl;
 
     useEffect(() => {
-      if (thinkingText && !hasExpandedRef.current) {
-        hasExpandedRef.current = true;
-        setIsThinkingCollapsed(false);
+      if (finalOutputUrl && !streamingText) {
+        const ext = finalOutputUrl.split('.').pop()?.toLowerCase();
+        if (ext && !isMediaExt(ext) && status !== 'running') {
+          fetch(finalOutputUrl)
+            .then((r) => r.text())
+            .then(setFetchedContent)
+            .catch(() => setFetchedContent(null));
+        } else {
+          setFetchedContent(null);
+        }
+      } else {
+        setFetchedContent(null);
       }
-    }, [thinkingText]);
+    }, [finalOutputUrl, streamingText, status]);
+
+    const displayText = fetchedContent || streamingText || '';
 
     // If structured OutputPart[] is provided, render parts directly
     if (outputParts && outputParts.length > 0) {
@@ -166,16 +179,14 @@ export const OutputRenderer = React.memo(
       );
     }
 
-    if (!outputUrl && !streamingText && !thinkingText) return null;
-
-    const finalOutputUrl = outputUrl?.startsWith('/') ? `${API_BASE}${outputUrl}` : outputUrl;
+    if (!finalOutputUrl && !streamingText && !fetchedContent && !thinkingText) return null;
 
     const isRunning = status === 'running';
     const ext = finalOutputUrl ? finalOutputUrl.split('.').pop()?.toLowerCase() : undefined;
 
-    const handleDownloadStream = () => {
-      if (!streamingText) return;
-      const blob = new Blob([streamingText], { type: 'text/plain' });
+    const handleDownload = () => {
+      if (!displayText) return;
+      const blob = new Blob([displayText], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -194,14 +205,22 @@ export const OutputRenderer = React.memo(
       );
     }
 
-    if (streamingText || thinkingText || (finalOutputUrl && ext)) {
+    if (displayText || thinkingText || (finalOutputUrl && ext)) {
       const headerLabel = isRunning ? 'STREAMING' : 'OUTPUT';
       return (
         <div className="mt-2.5 bg-white border border-slate-200 p-4 font-sans text-sm text-slate-800 overflow-y-auto leading-relaxed shadow-sm">
           <div className="text-slate-400 border-b border-slate-100 pb-2 mb-3 flex items-center justify-between font-mono">
             <span className="text-[10px] font-bold tracking-wide">{headerLabel}</span>
             <div className="flex items-center gap-2">
-              {finalOutputUrl && !isMediaExt(ext ?? '') ? (
+              {displayText ? (
+                <button
+                  onClick={handleDownload}
+                  className="flex items-center gap-1 text-primary hover:text-primary/80 text-[10px] font-bold uppercase cursor-pointer"
+                >
+                  <Download className="w-3 h-3" />
+                  Save as {(fileExtension || 'txt').toUpperCase()}
+                </button>
+              ) : finalOutputUrl && !isMediaExt(ext ?? '') ? (
                 <a
                   href={finalOutputUrl}
                   download
@@ -210,14 +229,6 @@ export const OutputRenderer = React.memo(
                   <Download className="w-3 h-3" />
                   Download File
                 </a>
-              ) : streamingText ? (
-                <button
-                  onClick={handleDownloadStream}
-                  className="flex items-center gap-1 text-primary hover:text-primary/80 text-[10px] font-bold uppercase cursor-pointer"
-                >
-                  <Download className="w-3 h-3" />
-                  Save as {(fileExtension || 'txt').toUpperCase()}
-                </button>
               ) : null}
               {isRunning && <span className="animate-pulse text-amber-500">_</span>}
             </div>
@@ -244,9 +255,15 @@ export const OutputRenderer = React.memo(
               )}
             </div>
           )}
-          {streamingText && (
+          {displayText && (
             <div className="font-sans text-[13px] text-slate-800">
-              {renderMarkdown(streamingText)}
+              {renderMarkdown(displayText)}
+            </div>
+          )}
+          {fetchedContent && !streamingText && (
+            <div className="mt-2 text-[10px] text-slate-400 font-mono flex items-center gap-1">
+              <FileText className="w-3 h-3" />
+              Rendered from file output
             </div>
           )}
         </div>
