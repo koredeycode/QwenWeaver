@@ -141,7 +141,7 @@ jobs:
             echo ${{ secrets.GHCR_PAT }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml down
-            docker compose -f docker-compose.prod.yml up -d --no-deps qwenweaver
+            docker compose -f docker-compose.prod.yml up -d --no-deps redis qwenweaver
             docker image prune -af
             docker builder prune -af
             df -h /
