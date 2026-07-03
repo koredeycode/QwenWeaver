@@ -13,6 +13,17 @@ export interface ExampleNode {
     iconUrl?: string;
     outputFormat?: string;
     workerType?: string;
+    fileUrl?: string;
+    fileName?: string;
+    imageUrl?: string;
+    debateArenaConfig?: {
+      mode?: string;
+      maxRounds?: number;
+      hasArbitrator?: boolean;
+      arbitratorModel?: string;
+      scoringCriteria?: string;
+      outputFormat?: string;
+    };
   };
 }
 
@@ -2267,6 +2278,379 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
       },
     ],
   },
+  // ── DEBATE ARENA ──────────────────────────────────────
+  {
+    id: 'multi-agent-debate',
+    name: 'Multi-Agent Debate Arena',
+    description:
+      'Pits two AI agents in a structured debate with opening statements, rebuttals, and an impartial arbitrator verdict. Tests the debate runner, message bus, and parallel execution.',
+    nodes: [
+      {
+        id: 'node-trigger-debate',
+        type: 'input_trigger',
+        position: { x: 50, y: 250 },
+        data: {
+          label:
+            'Debate topic: "Should artificial intelligence development be paused until comprehensive safety frameworks are established?" Affirmative and Negative sides.',
+          outputFormat: 'text',
+        },
+      },
+      {
+        id: 'node-debate-affirmative',
+        type: 'agent',
+        position: { x: 350, y: 100 },
+        data: {
+          label: 'Affirmative — Safety First',
+          model: 'qwen3.7-plus',
+          systemPrompt:
+            'You argue FOR the proposition. Present strong arguments about AI safety risks, potential existential threats, and the need for regulatory frameworks before advancing further.',
+          outputFormat: 'markdown',
+        },
+      },
+      {
+        id: 'node-debate-negative',
+        type: 'agent',
+        position: { x: 350, y: 400 },
+        data: {
+          label: 'Negative — Progress Must Continue',
+          model: 'qwen3.7-plus',
+          systemPrompt:
+            'You argue AGAINST the proposition. Make compelling arguments about lost opportunities, economic impact, competitive disadvantages, and how existing safeguards are sufficient.',
+          outputFormat: 'markdown',
+        },
+      },
+      {
+        id: 'node-debate-arena',
+        type: 'debate_arena',
+        position: { x: 700, y: 250 },
+        data: {
+          label: 'Debate Arena',
+          outputFormat: 'verdict',
+          debateArenaConfig: {
+            mode: 'debate',
+            maxRounds: 3,
+            hasArbitrator: true,
+            arbitratorModel: 'qwen3.7-max',
+            scoringCriteria: 'argument_strength, evidence_quality, rebuttal_effectiveness, clarity',
+            outputFormat: 'verdict',
+          },
+        },
+      },
+    ],
+    edges: [
+      {
+        id: 'e-td-da',
+        source: 'node-trigger-debate',
+        target: 'node-debate-affirmative',
+        sourceHandle: 'source',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+      {
+        id: 'e-td-dn',
+        source: 'node-trigger-debate',
+        target: 'node-debate-negative',
+        sourceHandle: 'source',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+      {
+        id: 'e-da-arena',
+        source: 'node-debate-affirmative',
+        target: 'node-debate-arena',
+        sourceHandle: 'source-right',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+      {
+        id: 'e-dn-arena',
+        source: 'node-debate-negative',
+        target: 'node-debate-arena',
+        sourceHandle: 'source-right',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+    ],
+  },
+
+  // ── SUPERVISOR FEEDBACK LOOP ──────────────────────────
+  {
+    id: 'supervisor-feedback-loop',
+    name: 'Supervisor Feedback Loop',
+    description:
+      'A supervisor agent assigns tasks to sub-agents, reviews their output, and requests revisions via the [REJECT] mechanism until quality standards are met. Tests supervisor rejection, backtracking, and multi-round refinement.',
+    nodes: [
+      {
+        id: 'node-trigger-loop',
+        type: 'input_trigger',
+        position: { x: 50, y: 250 },
+        data: {
+          label:
+            'Task: Write a product description for "QuantumShield" — an enterprise quantum-safe encryption platform. Target: CTOs at Fortune 500 companies. Key features: post-quantum algorithms, FIPS 140-3 certified, zero-trust integration.',
+          outputFormat: 'text',
+        },
+      },
+      {
+        id: 'node-agent-tech',
+        type: 'agent',
+        position: { x: 350, y: 100 },
+        data: {
+          label: 'Technical Writer',
+          model: 'qwen3.7-plus',
+          systemPrompt:
+            'Write a technically accurate product description focusing on the cryptographic algorithms, compliance certifications, and integration architecture.',
+          outputFormat: 'markdown',
+        },
+      },
+      {
+        id: 'node-agent-benefits',
+        type: 'agent',
+        position: { x: 350, y: 400 },
+        data: {
+          label: 'Benefits Writer',
+          model: 'qwen3.7-plus',
+          systemPrompt:
+            'Write compelling business benefits focused on risk reduction, competitive advantage, and ROI for enterprise buyers.',
+          outputFormat: 'markdown',
+        },
+      },
+      {
+        id: 'node-supervisor-refiner',
+        type: 'supervisor',
+        position: { x: 700, y: 250 },
+        data: {
+          label: 'Quality Supervisor',
+          model: 'qwen3.7-max',
+          systemPrompt:
+            'Review the combined product description. Check for: (1) technical accuracy, (2) persuasive business value, (3) appropriate tone for CTO audience, (4) coherent structure. If ANY section needs improvement, respond with [REJECT] followed by specific revision feedback. Only respond with [APPROVE] when the content is production-ready.',
+          enableThinking: true,
+          thinkingBudget: 2048,
+          outputFormat: 'markdown',
+        },
+      },
+    ],
+    edges: [
+      {
+        id: 'e-tl-ta',
+        source: 'node-trigger-loop',
+        target: 'node-agent-tech',
+        sourceHandle: 'source',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+      {
+        id: 'e-tl-tb',
+        source: 'node-trigger-loop',
+        target: 'node-agent-benefits',
+        sourceHandle: 'source',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+      {
+        id: 'e-ta-sr',
+        source: 'node-agent-tech',
+        target: 'node-supervisor-refiner',
+        sourceHandle: 'source-right',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+      {
+        id: 'e-tb-sr',
+        source: 'node-agent-benefits',
+        target: 'node-supervisor-refiner',
+        sourceHandle: 'source-right',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+    ],
+  },
+
+  // ── DYNAMIC MEDIA PIPELINE ────────────────────────────
+  {
+    id: 'dynamic-media-pipeline',
+    name: 'Dynamic Media Pipeline',
+    description:
+      'A copywriter generates a marketing description, which is then used as the dynamic prompt for image and video generation agents. The image and video agents get their prompts from upstream text rather than hardcoded system prompts. Tests message bus → media generator integration.',
+    nodes: [
+      {
+        id: 'node-trigger-media',
+        type: 'input_trigger',
+        position: { x: 50, y: 200 },
+        data: {
+          label:
+            'Describe a futuristic smart home product: "AIrHome" — a wall-mounted AI hub with holographic display, voice control, and whole-home automation. Design aesthetic: minimalist, white ceramic, warm ambient lighting.',
+          outputFormat: 'text',
+        },
+      },
+      {
+        id: 'node-media-copywriter',
+        type: 'agent',
+        position: { x: 350, y: 100 },
+        data: {
+          label: 'Creative Copywriter',
+          model: 'qwen3.7-plus',
+          systemPrompt:
+            'Write a vivid, detailed product description for AIrHome. Focus on visual details: the ceramic body, the glowing holographic interface, how it blends into a modern home. End your description with a specific, detailed image generation prompt that an AI image model could use.',
+          outputFormat: 'markdown',
+        },
+      },
+      {
+        id: 'node-media-image',
+        type: 'agent',
+        position: { x: 700, y: 50 },
+        data: {
+          label: 'Image Generator',
+          model: 'wan2.7-image-pro',
+          systemPrompt:
+            'Use the upstream product description as your prompt to generate the product image.',
+          outputFormat: 'image',
+        },
+      },
+      {
+        id: 'node-media-video',
+        type: 'agent',
+        position: { x: 700, y: 200 },
+        data: {
+          label: 'Video Generator',
+          model: 'wan2.7-t2v',
+          systemPrompt:
+            'Use the upstream product description to generate a short promotional video showing the product in use.',
+          outputFormat: 'video',
+        },
+      },
+      {
+        id: 'node-media-tts',
+        type: 'agent',
+        position: { x: 700, y: 350 },
+        data: {
+          label: 'Voice Narration',
+          model: 'qwen3-tts-flash',
+          systemPrompt:
+            'Read the product description text. Use a warm, inviting tone for the smart home product.',
+          outputFormat: 'audio',
+        },
+      },
+    ],
+    edges: [
+      {
+        id: 'e-tm-mc',
+        source: 'node-trigger-media',
+        target: 'node-media-copywriter',
+        sourceHandle: 'source',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+      {
+        id: 'e-mc-mi',
+        source: 'node-media-copywriter',
+        target: 'node-media-image',
+        sourceHandle: 'source-right',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+      {
+        id: 'e-mc-mv',
+        source: 'node-media-copywriter',
+        target: 'node-media-video',
+        sourceHandle: 'source-right',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+      {
+        id: 'e-mc-mt',
+        source: 'node-media-copywriter',
+        target: 'node-media-tts',
+        sourceHandle: 'source-right',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+    ],
+  },
+
+  // ── WORKSPACE COLLABORATION ──────────────────────────
+  {
+    id: 'workspace-collaboration',
+    name: 'Workspace Blackboard Collaboration',
+    description:
+      'Multiple agents collaborate via the workspace/blackboard system. A research agent writes findings, a data analyst reads and augments them, and a report writer compiles the final document — all via workspace_read and workspace_write tools. Tests inter-agent coordination without direct edges.',
+    nodes: [
+      {
+        id: 'node-trigger-ws',
+        type: 'input_trigger',
+        position: { x: 50, y: 200 },
+        data: {
+          label:
+            'Research topic: "The economic impact of remote work on urban real estate markets in 2024-2026." Produce a comprehensive report with findings, data analysis, and recommendations.',
+          outputFormat: 'text',
+        },
+      },
+      {
+        id: 'node-ws-researcher',
+        type: 'agent',
+        position: { x: 350, y: 100 },
+        data: {
+          label: 'Research Analyst',
+          model: 'qwen3.7-plus',
+          systemPrompt:
+            'Research the topic thoroughly. Use workspace_write("research.findings", ...) to share your detailed findings with other agents. Include key trends, statistics, and sources in your workspace output.',
+          outputFormat: 'markdown',
+        },
+      },
+      {
+        id: 'node-ws-analyst',
+        type: 'agent',
+        position: { x: 350, y: 300 },
+        data: {
+          label: 'Data Analyst',
+          model: 'qwen3.7-plus',
+          systemPrompt:
+            'Use workspace_list to discover what the Research Analyst wrote. Then workspace_read("research.findings") to get their data. Analyze the findings, identify patterns, and write your analysis using workspace_write("data.analysis", ...). Include specific numeric insights and projections.',
+          outputFormat: 'markdown',
+        },
+      },
+      {
+        id: 'node-ws-writer',
+        type: 'supervisor',
+        position: { x: 700, y: 200 },
+        data: {
+          label: 'Report Compiler',
+          model: 'qwen3.7-max',
+          systemPrompt:
+            'Use workspace_list to discover available workspace entries, then workspace_read both "research.findings" and "data.analysis". Compile everything into a polished final report with executive summary, methodology, findings, analysis, and recommendations.',
+          enableThinking: true,
+          thinkingBudget: 1024,
+          outputFormat: 'markdown',
+        },
+      },
+    ],
+    edges: [
+      {
+        id: 'e-tw-tr',
+        source: 'node-trigger-ws',
+        target: 'node-ws-researcher',
+        sourceHandle: 'source',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+      {
+        id: 'e-tw-ta',
+        source: 'node-trigger-ws',
+        target: 'node-ws-analyst',
+        sourceHandle: 'source',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+      {
+        id: 'e-tw-tw',
+        source: 'node-trigger-ws',
+        target: 'node-ws-writer',
+        sourceHandle: 'source',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+    ],
+  },
+
   {
     id: 'ecommerce-listing-optimizer',
     name: 'E-Commerce Listing Optimizer',

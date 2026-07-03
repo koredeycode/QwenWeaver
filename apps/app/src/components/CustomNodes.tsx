@@ -11,6 +11,7 @@ import {
   Square,
   Maximize2,
   Scale,
+  Upload,
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
 

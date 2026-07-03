@@ -5,6 +5,7 @@ import { runAgent } from './agent-runner.js';
 import { runDebate } from './debate-runner.js';
 import { DataBus, type BusMessagePersistFn } from './message-bus.js';
 import { buildUserMessageFromBus } from './prompt-builder.js';
+import { buildChannelId, extractPayloadText } from './shared.js';
 import { getQueryProvider } from '@qwenweaver/database';
 import { createModuleLogger } from '../logger.js';
 import { createDiagnosticLogger, type CopilotDiag } from '../diagnostic-logger.js';
@@ -256,7 +257,7 @@ export async function executeWorkflow(
                     ? Object.fromEntries(
                         upstreamMessages.map((m) => [
                           m.sourceNodeId,
-                          { text: extractPayloadText(m), status: m.messageType },
+                          { text: extractPayloadText(m) ?? '', status: m.messageType },
                         ]),
                       )
                     : undefined,
@@ -468,7 +469,7 @@ export async function executeWorkflow(
       );
 
       for (const edge of relevantConversationEdges) {
-        const channelId = [edge.source, edge.target].sort().join('|');
+        const channelId = buildChannelId(edge.source, edge.target);
         const maxRounds = edge.data?.subscription?.maxRounds ?? 5;
         const participants = [edge.source, edge.target];
         const topic = `conversation:${channelId}`;
@@ -627,13 +628,4 @@ export async function executeWorkflow(
     metrics,
     outputs: nodeResults,
   };
-}
-
-function extractPayloadText(msg: BusMessage): string {
-  if (typeof msg.payload === 'string') return msg.payload;
-  if (msg.payload && typeof msg.payload === 'object') {
-    const p = msg.payload as Record<string, unknown>;
-    return (p.text as string) ?? (p.value as string) ?? JSON.stringify(msg.payload);
-  }
-  return String(msg.payload ?? '');
 }

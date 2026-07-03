@@ -3,7 +3,7 @@ import type { NodePayload, BusMessage } from '@qwenweaver/types';
 import { jsonSchema, streamText, tool, type Tool } from 'ai';
 import { z } from 'zod';
 import { createModuleLogger } from '../logger.js';
-import { createDiagnosticLogger, type CopilotDiag } from '../diagnostic-logger.js';
+import type { CopilotDiag } from '../diagnostic-logger.js';
 import { agent_duration_ms, llm_tokens_total } from '../metrics.js';
 import { buildHeadersFromAuthConfig, callMCPTool, discoverMCPTools } from './mcp-bridge.js';
 import { getModelForNode, getModelIdForNode } from './model-router.js';
@@ -12,6 +12,7 @@ import type { AgentResult, StreamEmitter } from './types.js';
 import { EXTENSION_MAP, CONTENT_TYPE_MAP } from './constants.js';
 import { writeBinaryAsset } from './file-asset.js';
 import { buildSystemPrompt, buildUserMessageFromBus } from './prompt-builder.js';
+import { extractPayloadText } from './shared.js';
 import { resolveCredentialAuth } from './credential-resolver.js';
 import { generateWanxImage } from './generators/wanx-image.js';
 import { generateQwenImage } from './generators/qwen-image.js';
@@ -140,7 +141,12 @@ export async function runAgent(
 
     // Handle Image Generation (Wanx)
     if (node.data.outputFormat === 'image') {
-      const prompt = node.data.systemPrompt || node.data.label || 'Generates an image';
+      const upstreamText = busMessages
+        .map((m) => extractPayloadText(m) ?? '')
+        .filter(Boolean)
+        .join('\n\n');
+      const prompt =
+        upstreamText || node.data.systemPrompt || node.data.label || 'Generates an image';
       diag?.log(`IMAGE GEN: node=${node.id}, prompt="${prompt.substring(0, 100)}"`);
       let buffer: Buffer;
 
@@ -176,7 +182,7 @@ export async function runAgent(
       // Use upstream bus messages as the text to narrate
       let ttsText = '';
       for (const msg of busMessages) {
-        const textContent = extractBusPayloadText(msg);
+        const textContent = extractPayloadText(msg);
         if (textContent) {
           ttsText += (ttsText ? '\n\n' : '') + textContent;
         }
@@ -214,7 +220,12 @@ export async function runAgent(
 
     // Handle Video Generation (Wanx Video)
     if (node.data.outputFormat === 'video') {
-      const prompt = node.data.systemPrompt || node.data.label || 'Generates a video';
+      const upstreamText = busMessages
+        .map((m) => extractPayloadText(m) ?? '')
+        .filter(Boolean)
+        .join('\n\n');
+      const prompt =
+        upstreamText || node.data.systemPrompt || node.data.label || 'Generates a video';
       diag?.log(`VIDEO GEN: node=${node.id}, prompt="${prompt.substring(0, 100)}"`);
       let buffer: Buffer;
 
@@ -519,13 +530,4 @@ function extractImageFromBus(busMessages: BusMessage[]): string | undefined {
     }
   }
   return undefined;
-}
-
-function extractBusPayloadText(msg: BusMessage): string {
-  if (typeof msg.payload === 'string') return msg.payload;
-  if (msg.payload && typeof msg.payload === 'object') {
-    const p = msg.payload as Record<string, unknown>;
-    return (p.text as string) ?? (p.value as string) ?? JSON.stringify(msg.payload);
-  }
-  return String(msg.payload ?? '');
 }

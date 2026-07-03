@@ -1,4 +1,5 @@
 import type { NodePayload, BusMessage, EdgeSubscription } from '@qwenweaver/types';
+import { extractPayloadText } from './shared.js';
 
 /**
  * Build or augment the system prompt for a node.
@@ -38,18 +39,6 @@ export function buildSystemPrompt(node: NodePayload): string {
 }
 
 /**
- * Extract readable text from a BusMessage payload.
- */
-function extractPayloadText(msg: BusMessage): string {
-  if (typeof msg.payload === 'string') return msg.payload;
-  if (msg.payload && typeof msg.payload === 'object') {
-    const p = msg.payload as Record<string, unknown>;
-    return (p.text as string) ?? (p.value as string) ?? JSON.stringify(msg.payload);
-  }
-  return String(msg.payload ?? '');
-}
-
-/**
  * Build a user message from DataBus messages for a node.
  *
  * @param node - The target node
@@ -73,7 +62,7 @@ export function buildUserMessageFromBus(
 
   // 1. Upstream outputs from regular edges
   for (const msg of upstreamMessages) {
-    const textContent = extractPayloadText(msg);
+    const textContent = extractPayloadText(msg) ?? '';
     parts.push(
       `## Output from upstream agent "${msg.sourceNodeId}":\n<upstream_output>\n${textContent}\n</upstream_output>`,
     );

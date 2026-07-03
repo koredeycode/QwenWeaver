@@ -149,7 +149,7 @@ export const WORKER_OPTIONS: WorkerOption[] = [
 ];
 
 export interface TriggerOption {
-  type: 'trigger' | 'input_trigger';
+  type: 'trigger' | 'input_trigger' | 'file_trigger';
   label: string;
   description: string;
   icon: LucideIcon;
