@@ -69,18 +69,45 @@ async function runCopilotGeneration(
   diag: CopilotDiag,
   workflowId?: string,
 ) {
-  const { prompt, canvasState, mode, model: userModel } = params;
+  const { prompt, canvasState, mode, model: userModel, workflowName, workflowDescription } = params;
 
   diag.log(`=== STARTING COPILOT GENERATION ===`);
   diag.logJson('PARAMS', {
     prompt,
     canvasState: canvasState ? '(present)' : '(none)',
+    workflowName: workflowName || '(none)',
     mode,
     userModel,
   });
 
   let systemPrompt: string;
-  let userMessage = prompt;
+  const contextParts: string[] = [];
+
+  // Build context preamble
+  if (workflowName) contextParts.push(`Workflow name: "${workflowName}"`);
+  if (workflowDescription) contextParts.push(`Workflow description: "${workflowDescription}"`);
+
+  if (canvasState) {
+    contextParts.push(`Current canvas state:\n${JSON.stringify(canvasState, null, 2)}`);
+  }
+
+  // Include configured credentials for reference
+  try {
+    const dbProvider = getQueryProvider();
+    const creds = await dbProvider.listCredentials(userId);
+    if (creds.length > 0) {
+      const credSummary = creds.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        type: c.type,
+        description: c.description,
+      }));
+      contextParts.push(`Available credentials:\n${JSON.stringify(credSummary, null, 2)}`);
+      diag.log(`Included ${creds.length} credentials in context`);
+    }
+  } catch {
+    // credentials are non-critical context
+  }
 
   if (mode === 'explain') {
     if (!canvasState) {
@@ -93,15 +120,14 @@ async function runCopilotGeneration(
       return;
     }
     systemPrompt = COPILOT_EXPLAIN_SYSTEM_PROMPT;
-    userMessage = `Workflow state:\n${JSON.stringify(canvasState, null, 2)}\n\nUser request/focus: ${prompt}`;
   } else if (mode === 'modify') {
     systemPrompt = COPILOT_MODIFY_SYSTEM_PROMPT;
-    if (canvasState) {
-      userMessage = `Current canvas state:\n${JSON.stringify(canvasState, null, 2)}\n\nUser request: ${prompt}`;
-    }
   } else {
     systemPrompt = COPILOT_GENERATE_SYSTEM_PROMPT;
   }
+
+  const userMessage =
+    contextParts.length > 0 ? `${contextParts.join('\n\n')}\n\nUser request: ${prompt}` : prompt;
 
   diag.log(`Mode: ${mode} | Using system prompt for ${mode}`);
   diag.logJson('SYSTEM PROMPT', systemPrompt);
@@ -151,6 +177,8 @@ async function runCopilotGeneration(
   let fullThinking = '';
   let proposalObj: any = null;
   let toolCallCount = 0;
+  let proposalReceived = false;
+  let textAfterProposal = '';
 
   const toolPropose = tool({
     description:
@@ -175,6 +203,7 @@ async function runCopilotGeneration(
         actions = rawActions;
       }
       proposalObj = { id: proposalId, actions, status: 'pending' };
+      proposalReceived = true;
       diag.logJson('PROPOSAL EXECUTED', { proposalId, actionCount: actions.length, actions });
       await stream.writeSSE({
         event: 'proposal',
@@ -279,6 +308,9 @@ async function runCopilotGeneration(
       const textChunk = (part as any).textDelta || (part as any).text || '';
       if (textChunk) {
         fullText += textChunk;
+        if (proposalReceived) {
+          textAfterProposal += textChunk;
+        }
         diag.log(`TOKEN chunk (${textChunk.length} chars): ${textChunk.substring(0, 200)}`);
         await stream.writeSSE({
           event: 'token',
@@ -335,6 +367,7 @@ async function runCopilotGeneration(
           role: 'assistant',
           content: fullText,
           thinking: fullThinking || undefined,
+          textAfterProposal: textAfterProposal || undefined,
           proposal: proposalObj || undefined,
         },
       ];

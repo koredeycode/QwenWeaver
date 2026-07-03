@@ -259,5 +259,23 @@ export const sqliteWorkspaceEntries = sqliteTable(
   ],
 );
 
+export const sqliteExecutionMessages = sqliteTable(
+  'execution_messages',
+  {
+    id: text('id').primaryKey(),
+    executionId: text('execution_id')
+      .notNull()
+      .references(() => sqliteExecutions.id, { onDelete: 'cascade' }),
+    topic: text('topic').notNull(),
+    sourceNodeId: text('source_node_id').notNull(),
+    messageType: text('message_type').notNull().default('output'),
+    payload: text('payload', { mode: 'json' }).notNull(),
+    contentType: text('content_type'),
+    round: integer('round').default(0).notNull(),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [index('msg_exec_topic_idx').on(table.executionId, table.topic)],
+);
+
 export type SqliteMcpServer = typeof sqliteMcpServers.$inferSelect;
 export type NewSqliteMcpServer = typeof sqliteMcpServers.$inferInsert;

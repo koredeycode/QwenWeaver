@@ -71,13 +71,34 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
     };
 
     try {
-      const nodes = get().nodes;
-      const edges = get().edges;
-      const copilotModel = get().copilotModel;
+      const { nodes, edges, workflowName, workflowDescription, workflowId, copilotModel } = get();
 
       const canvasState = {
-        nodes: nodes.map((n) => ({ id: n.id, type: n.type, data: n.data })),
-        edges: edges.map((e) => ({ id: e.id, source: e.source, target: e.target })),
+        nodes: nodes.map((n) => ({
+          id: n.id,
+          type: n.type,
+          position: n.position,
+          data: {
+            label: n.data?.label,
+            workerType: n.data?.workerType,
+            model: n.data?.model,
+            outputFormat: n.data?.outputFormat,
+            mcpServerUrl: n.data?.mcpServerUrl,
+            mcpServerId: n.data?.mcpServerId,
+            enableThinking: n.data?.enableThinking,
+            systemPrompt: n.data?.systemPrompt,
+            debateArenaConfig: n.data?.debateArenaConfig,
+            iconUrl: n.data?.iconUrl,
+          },
+        })),
+        edges: edges.map((e) => ({
+          id: e.id,
+          source: e.source,
+          target: e.target,
+          sourceHandle: e.sourceHandle ?? undefined,
+          targetHandle: e.targetHandle ?? undefined,
+          type: e.type,
+        })),
       };
 
       const mode = text.toLowerCase().includes('explain')
@@ -85,8 +106,6 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
         : nodes.length > 0
           ? 'modify'
           : 'generate';
-
-      const workflowId = get().workflowId;
 
       // Step 1: POST to create a session
       const initRes = await fetch(`${API_BASE}/api/copilot/init`, {
@@ -96,6 +115,8 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
         body: JSON.stringify({
           prompt: text,
           canvasState,
+          workflowName: workflowName || undefined,
+          workflowDescription: workflowDescription || undefined,
           mode,
           model: copilotModel,
           workflowId: workflowId || undefined,
@@ -145,10 +166,12 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
           try {
             const { chunk } = JSON.parse(e.data);
             if (chunk) {
-              updateLastAssistantMessage((msg) => ({
-                ...msg,
-                text: (msg.text || '') + chunk,
-              }));
+              updateLastAssistantMessage((msg) => {
+                if (msg.proposal) {
+                  return { ...msg, textAfterProposal: (msg.textAfterProposal || '') + chunk };
+                }
+                return { ...msg, text: (msg.text || '') + chunk };
+              });
             }
           } catch {
             /* ignore malformed event */
@@ -236,6 +259,7 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
       role: msg.role === 'user' ? ('user' as const) : ('assistant' as const),
       text: msg.content,
       thinking: msg.thinking || '',
+      textAfterProposal: msg.textAfterProposal || '',
       proposal: msg.proposal
         ? {
             id: msg.proposal.id,

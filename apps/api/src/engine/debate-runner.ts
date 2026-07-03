@@ -1,5 +1,5 @@
-import type { NodePayload, DebateArenaConfig } from '@qwenweaver/types';
-import type { AgentResult, StreamEmitter, UpstreamOutputs } from './types.js';
+import type { NodePayload, DebateArenaConfig, BusMessage } from '@qwenweaver/types';
+import type { AgentResult, StreamEmitter } from './types.js';
 import { getModelForNode, getProvider } from './model-router.js';
 import { streamText } from 'ai';
 import { createModuleLogger } from '../logger.js';
@@ -19,7 +19,7 @@ interface DebateStatement {
 export async function runDebate(
   arena: NodePayload,
   participantNodes: NodePayload[],
-  upstreamOutputs: UpstreamOutputs,
+  busMessages: BusMessage[],
   emitter: StreamEmitter,
   executionId: string,
   userId?: string,
@@ -51,13 +51,14 @@ export async function runDebate(
   const allStatements: DebateStatement[] = [];
   let totalTokens = 0;
 
-  // Round 1: Opening statements from participant upstream outputs
+  // Round 1: Opening statements from participant bus messages (their published outputs)
   // Fall back to participant's label or systemPrompt if no upstream output
   const round1Statements: DebateStatement[] = [];
   for (const participant of participantNodes) {
-    const output = upstreamOutputs.get(participant.id);
+    const participantMsgs = busMessages.filter((m) => m.sourceNodeId === participant.id);
+    const lastMsg = participantMsgs[participantMsgs.length - 1];
     const content =
-      output?.text ??
+      extractBusPayloadText(lastMsg) ??
       participant.data.systemPrompt ??
       participant.data.label ??
       `${participant.data.label ?? participant.id} has no initial position.`;
@@ -293,6 +294,16 @@ function formatTranscript(statements: DebateStatement[]): string {
   return statements
     .map((s) => `[Round ${s.round}] ${s.participantLabel}:\n${s.content}\n`)
     .join('\n');
+}
+
+function extractBusPayloadText(msg?: BusMessage): string | undefined {
+  if (!msg) return undefined;
+  if (typeof msg.payload === 'string') return msg.payload;
+  if (msg.payload && typeof msg.payload === 'object') {
+    const p = msg.payload as Record<string, unknown>;
+    return (p.text as string) ?? (p.value as string) ?? JSON.stringify(msg.payload);
+  }
+  return String(msg.payload ?? '');
 }
 
 function escapeRegex(s: string): string {

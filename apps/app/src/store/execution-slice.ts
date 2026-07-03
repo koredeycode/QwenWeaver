@@ -1,5 +1,5 @@
 import { StateCreator } from 'zustand';
-import type { NodeTiming, OutputPart, WorkspaceEntry } from '@qwenweaver/types';
+import type { NodeTiming, OutputPart, WorkspaceEntry, BusMessage } from '@qwenweaver/types';
 import { StoreState, ExecutionSlice } from './types.js';
 import { toast } from 'sonner';
 import { getAccessToken, client } from '../lib/api-client.js';
@@ -22,6 +22,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
   historyLoading: false,
   workspaceEntries: [],
   workspaceLoading: false,
+  busMessages: [],
   channelMessages: [],
   debateRounds: [],
   debateVerdicts: [],
@@ -77,6 +78,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
       nodeOutputUrls: {},
       nodeOutputParts: {},
       workspaceEntries: [],
+      busMessages: [],
       channelMessages: [],
       debateRounds: [],
       debateVerdicts: [],
@@ -348,6 +350,18 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
               break;
             }
 
+            case 'bus_message': {
+              const busMsg = payload as {
+                message: BusMessage;
+              };
+              if (busMsg.message) {
+                set((s) => ({
+                  busMessages: [...s.busMessages, busMsg.message],
+                }));
+              }
+              break;
+            }
+
             case 'workspace_write': {
               const activeExecutionId = get().activeExecutionId;
               if (activeExecutionId) {
@@ -413,6 +427,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
         'complete',
         'error',
         'workspace_write',
+        'bus_message',
         'message',
         'debate_round',
         'debate_verdict',

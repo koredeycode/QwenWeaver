@@ -398,8 +398,9 @@ export const sqliteProvider: QueryProvider = {
     const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
     const workflowId = workflow.id || crypto.randomUUID();
 
+    const { copilotHistory, ...rest } = workflow;
     const payload: WorkflowPayload = {
-      ...workflow,
+      ...rest,
       nodes: workflow.nodes.map((n) => ({ ...n, id: n.id })),
       edges: workflow.edges.map((e) => ({ ...e, id: e.id })),
     };
@@ -411,6 +412,7 @@ export const sqliteProvider: QueryProvider = {
       description: workflow.description || null,
       isActive: 1,
       nodesEdges: payload,
+      copilotHistory: copilotHistory || [],
       createdAt: Date.now(),
     });
 
@@ -425,19 +427,25 @@ export const sqliteProvider: QueryProvider = {
     const { db } = getConnection();
     const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
 
+    const { copilotHistory, ...rest } = workflow;
     const payload: WorkflowPayload = {
-      ...workflow,
+      ...rest,
       nodes: workflow.nodes.map((n) => ({ ...n, id: n.id })),
       edges: workflow.edges.map((e) => ({ ...e, id: e.id })),
     };
 
+    const updateData: Record<string, any> = {
+      name: workflow.name,
+      description: workflow.description || null,
+      nodesEdges: payload,
+    };
+    if (copilotHistory) {
+      updateData.copilotHistory = copilotHistory;
+    }
+
     await sqliteDb
       .update(sqliteSchema.sqliteWorkflows)
-      .set({
-        name: workflow.name,
-        description: workflow.description || null,
-        nodesEdges: payload,
-      })
+      .set(updateData)
       .where(
         and(
           eq(sqliteSchema.sqliteWorkflows.id, workflowId),
@@ -978,14 +986,23 @@ export const sqliteProvider: QueryProvider = {
   async reserveCredits(userId: string, amount: number): Promise<boolean> {
     const { db } = getConnection();
     const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
-    const result = await sqliteDb.run(
-      sql`UPDATE ${sqliteSchema.sqliteUserCredits}
-          SET balance = balance - ${amount},
-              lifetime_spent = lifetime_spent + ${amount},
-              updated_at = ${Date.now()}
-          WHERE user_id = ${userId} AND balance >= ${amount}`,
-    );
-    return (result as any).changes > 0;
+    const s = sqliteSchema;
+    const result = await sqliteDb
+      .update(s.sqliteUserCredits)
+      .set({
+        balance: sql`${s.sqliteUserCredits.balance} - ${amount}`,
+        lifetimeSpent: sql`${s.sqliteUserCredits.lifetimeSpent} + ${amount}`,
+        updatedAt: Date.now(),
+      })
+      .where(
+        and(
+          eq(s.sqliteUserCredits.userId, userId),
+          sql`${s.sqliteUserCredits.balance} >= ${amount}`,
+        ),
+      );
+    const r = result as any;
+    const changes = r.changes ?? r.meta?.changes ?? 0;
+    return changes > 0;
   },
 
   async deductCredits(userId: string, amount: number, description?: string, executionId?: string) {
@@ -1179,5 +1196,56 @@ export const sqliteProvider: QueryProvider = {
     await sqliteDb
       .delete(sqliteSchema.sqliteWorkspaceEntries)
       .where(eq(sqliteSchema.sqliteWorkspaceEntries.executionId, executionId));
+  },
+
+  // ─── Execution Messages (DataBus) ─────────────────────────────────────────
+
+  async writeExecutionMessage(data) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    await sqliteDb.insert(sqliteSchema.sqliteExecutionMessages).values({
+      id: data.id,
+      executionId: data.executionId,
+      topic: data.topic,
+      sourceNodeId: data.sourceNodeId,
+      messageType: data.messageType,
+      payload: data.payload,
+      contentType: data.contentType ?? null,
+      round: data.round,
+      createdAt: data.createdAt,
+    });
+  },
+
+  async listExecutionMessages(executionId: string, topic?: string) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const conditions = [eq(sqliteSchema.sqliteExecutionMessages.executionId, executionId)];
+    if (topic) {
+      conditions.push(eq(sqliteSchema.sqliteExecutionMessages.topic, topic));
+    }
+    const rows = await sqliteDb
+      .select()
+      .from(sqliteSchema.sqliteExecutionMessages)
+      .where(and(...conditions))
+      .orderBy(sqliteSchema.sqliteExecutionMessages.createdAt);
+    return rows.map((r) => ({
+      id: r.id,
+      executionId: r.executionId ?? '',
+      topic: r.topic,
+      sourceNodeId: r.sourceNodeId,
+      messageType: r.messageType,
+      payload: r.payload,
+      contentType: r.contentType ?? null,
+      round: r.round,
+      createdAt: new Date(r.createdAt).toISOString(),
+    }));
+  },
+
+  async clearExecutionMessages(executionId: string) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    await sqliteDb
+      .delete(sqliteSchema.sqliteExecutionMessages)
+      .where(eq(sqliteSchema.sqliteExecutionMessages.executionId, executionId));
   },
 };

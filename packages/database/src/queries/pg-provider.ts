@@ -372,8 +372,9 @@ export const pgProvider: QueryProvider = {
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
     const workflowId = workflow.id || crypto.randomUUID();
 
+    const { copilotHistory, ...rest } = workflow;
     const payload: WorkflowPayload = {
-      ...workflow,
+      ...rest,
       nodes: workflow.nodes.map((n) => ({ ...n, id: n.id })),
       edges: workflow.edges.map((e) => ({ ...e, id: e.id })),
     };
@@ -385,6 +386,7 @@ export const pgProvider: QueryProvider = {
       description: workflow.description || null,
       isActive: 1,
       nodesEdges: payload,
+      copilotHistory: copilotHistory || [],
       createdAt: new Date(),
     });
 
@@ -399,19 +401,25 @@ export const pgProvider: QueryProvider = {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
 
+    const { copilotHistory, ...rest } = workflow;
     const payload: WorkflowPayload = {
-      ...workflow,
+      ...rest,
       nodes: workflow.nodes.map((n) => ({ ...n, id: n.id })),
       edges: workflow.edges.map((e) => ({ ...e, id: e.id })),
     };
 
+    const updateData: Record<string, any> = {
+      name: workflow.name,
+      description: workflow.description || null,
+      nodesEdges: payload,
+    };
+    if (copilotHistory) {
+      updateData.copilotHistory = copilotHistory;
+    }
+
     await pgDb
       .update(pgSchema.pgWorkflows)
-      .set({
-        name: workflow.name,
-        description: workflow.description || null,
-        nodesEdges: payload,
-      })
+      .set(updateData)
       .where(and(eq(pgSchema.pgWorkflows.id, workflowId), eq(pgSchema.pgWorkflows.userId, userId)));
 
     return workflowId;
@@ -922,14 +930,17 @@ export const pgProvider: QueryProvider = {
   async reserveCredits(userId: string, amount: number): Promise<boolean> {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
-    const result = await pgDb.execute(
-      sql`UPDATE ${pgSchema.pgUserCredits}
-          SET balance = balance - ${amount},
-              lifetime_spent = lifetime_spent + ${amount},
-              updated_at = NOW()
-          WHERE user_id = ${userId} AND balance >= ${amount}`,
-    );
-    return (result as any).rowCount > 0;
+    const s = pgSchema;
+    const result = await pgDb
+      .update(s.pgUserCredits)
+      .set({
+        balance: sql`${s.pgUserCredits.balance} - ${amount}`,
+        lifetimeSpent: sql`${s.pgUserCredits.lifetimeSpent} + ${amount}`,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(s.pgUserCredits.userId, userId), sql`${s.pgUserCredits.balance} >= ${amount}`));
+    const r = result as any;
+    return (r.rowCount ?? r.meta?.rowCount ?? 0) > 0;
   },
 
   async deductCredits(userId: string, amount: number, description?: string, executionId?: string) {
@@ -1118,5 +1129,56 @@ export const pgProvider: QueryProvider = {
     await pgDb
       .delete(pgSchema.pgWorkspaceEntries)
       .where(eq(pgSchema.pgWorkspaceEntries.executionId, executionId));
+  },
+
+  // ─── Execution Messages (DataBus) ─────────────────────────────────────────
+
+  async writeExecutionMessage(data) {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    await pgDb.insert(pgSchema.pgExecutionMessages).values({
+      id: data.id,
+      executionId: data.executionId,
+      topic: data.topic,
+      sourceNodeId: data.sourceNodeId,
+      messageType: data.messageType,
+      payload: data.payload as any,
+      contentType: data.contentType ?? null,
+      round: data.round,
+      createdAt: new Date(data.createdAt),
+    });
+  },
+
+  async listExecutionMessages(executionId: string, topic?: string) {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const conditions = [eq(pgSchema.pgExecutionMessages.executionId, executionId)];
+    if (topic) {
+      conditions.push(eq(pgSchema.pgExecutionMessages.topic, topic));
+    }
+    const rows = await pgDb
+      .select()
+      .from(pgSchema.pgExecutionMessages)
+      .where(and(...conditions))
+      .orderBy(pgSchema.pgExecutionMessages.createdAt);
+    return rows.map((r) => ({
+      id: r.id,
+      executionId: r.executionId ?? '',
+      topic: r.topic,
+      sourceNodeId: r.sourceNodeId,
+      messageType: r.messageType,
+      payload: r.payload,
+      contentType: r.contentType ?? null,
+      round: r.round,
+      createdAt: r.createdAt.toISOString(),
+    }));
+  },
+
+  async clearExecutionMessages(executionId: string) {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    await pgDb
+      .delete(pgSchema.pgExecutionMessages)
+      .where(eq(pgSchema.pgExecutionMessages.executionId, executionId));
   },
 };

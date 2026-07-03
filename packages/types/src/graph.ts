@@ -9,6 +9,29 @@ export const NodeType = z.enum([
   'input_trigger',
   'debate_arena',
 ]);
+
+export const BusMessageType = z.enum([
+  'output',
+  'error',
+  'status',
+  'tool_call',
+  'tool_result',
+  'conversation',
+]);
+export type BusMessageType = z.infer<typeof BusMessageType>;
+
+export const BusMessage = z.object({
+  id: z.string(),
+  executionId: z.string(),
+  topic: z.string(),
+  sourceNodeId: z.string(),
+  messageType: BusMessageType,
+  payload: z.unknown(),
+  contentType: z.string().optional(),
+  round: z.number().int().optional(),
+  timestamp: z.number(),
+});
+export type BusMessage = z.infer<typeof BusMessage>;
 export type NodeType = z.infer<typeof NodeType>;
 
 export const OutputFormat = z.enum([
@@ -97,11 +120,11 @@ export const NodePayload = z.object({
 });
 export type NodePayload = z.infer<typeof NodePayload>;
 
-export const ChannelConfig = z.object({
-  maxRounds: z.number().int().min(1).max(50).optional().default(5),
-  turnBased: z.boolean().optional().default(true),
+export const EdgeSubscription = z.object({
+  conversationMode: z.boolean().optional(),
+  maxRounds: z.number().int().min(1).max(50).optional(),
 });
-export type ChannelConfig = z.infer<typeof ChannelConfig>;
+export type EdgeSubscription = z.infer<typeof EdgeSubscription>;
 
 export const EdgePayload = z.object({
   id: z.string(),
@@ -112,12 +135,25 @@ export const EdgePayload = z.object({
   targetHandle: z.string().optional(),
   data: z
     .object({
-      messageChannel: z.boolean().optional().default(false),
-      channelConfig: ChannelConfig.optional(),
+      subscription: EdgeSubscription.optional(),
     })
     .optional(),
 });
 export type EdgePayload = z.infer<typeof EdgePayload>;
+
+export const CopilotHistoryEntrySchema = z.object({
+  role: z.enum(['user', 'assistant']),
+  content: z.string(),
+  thinking: z.string().optional(),
+  textAfterProposal: z.string().optional(),
+  proposal: z
+    .object({
+      id: z.string(),
+      actions: z.array(z.any()),
+      status: z.enum(['pending', 'approved', 'rejected']).optional(),
+    })
+    .optional(),
+});
 
 export const WorkflowPayloadBase = z.object({
   id: z.string().optional(),
@@ -125,6 +161,7 @@ export const WorkflowPayloadBase = z.object({
   description: z.string().optional(),
   nodes: z.array(NodePayload),
   edges: z.array(EdgePayload),
+  copilotHistory: z.array(CopilotHistoryEntrySchema).optional(),
 });
 
 export const WorkflowPayload = WorkflowPayloadBase.refine(
@@ -136,12 +173,10 @@ export const WorkflowPayload = WorkflowPayloadBase.refine(
       const targetNode = nodeMap.get(edge.target);
       if (!sourceNode || !targetNode) continue;
 
-      // Tool→Tool blocked
       if (sourceNode.type === 'mcp_tool' && targetNode.type === 'mcp_tool') {
         return false;
       }
 
-      // Tool can only receive from agent or supervisor
       if (
         targetNode.type === 'mcp_tool' &&
         sourceNode.type !== 'agent' &&
@@ -150,7 +185,6 @@ export const WorkflowPayload = WorkflowPayloadBase.refine(
         return false;
       }
 
-      // Tool can only connect to agent or supervisor
       if (
         sourceNode.type === 'mcp_tool' &&
         targetNode.type !== 'agent' &&
@@ -159,13 +193,11 @@ export const WorkflowPayload = WorkflowPayloadBase.refine(
         return false;
       }
 
-      // Track incoming edges to tools
       if (targetNode.type === 'mcp_tool') {
         incomingToolEdges.set(edge.target, (incomingToolEdges.get(edge.target) || 0) + 1);
       }
     }
 
-    // Each tool can have at most one incoming connection
     for (const [toolId, count] of incomingToolEdges) {
       if (count > 1) return false;
     }
@@ -237,6 +269,7 @@ export const SSEEventType = z.enum([
   'error',
   'ping',
   'workspace_write',
+  'bus_message',
   'message',
   'debate_round',
   'debate_verdict',

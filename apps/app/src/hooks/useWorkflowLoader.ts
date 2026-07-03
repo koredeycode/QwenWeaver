@@ -82,7 +82,9 @@ export function useWorkflowLoader(id: string | undefined): void {
               workflowName: wf.name,
               workflowDescription: wf.description ?? '',
             });
-            useStore.getState().loadCopilotHistory(wf.copilotHistory || []);
+            if (wf.copilotHistory && wf.copilotHistory.length > 0) {
+              useStore.getState().loadCopilotHistory(wf.copilotHistory);
+            }
           } catch {
             clearGraph();
             const pendingRaw = sessionStorage.getItem(`pending_wf_${id}`);

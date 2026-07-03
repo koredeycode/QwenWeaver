@@ -44,3 +44,25 @@ export async function getExecution(executionId: string) {
 export async function getAgentLogs(executionId: string) {
   return getQueryProvider().getAgentLogs(executionId);
 }
+
+export async function writeExecutionMessage(data: {
+  id: string;
+  executionId: string;
+  topic: string;
+  sourceNodeId: string;
+  messageType: string;
+  payload: unknown;
+  contentType?: string | null;
+  round: number;
+  createdAt: number;
+}): Promise<void> {
+  return getQueryProvider().writeExecutionMessage(data);
+}
+
+export async function listExecutionMessages(executionId: string, topic?: string) {
+  return getQueryProvider().listExecutionMessages(executionId, topic);
+}
+
+export async function clearExecutionMessages(executionId: string): Promise<void> {
+  return getQueryProvider().clearExecutionMessages(executionId);
+}

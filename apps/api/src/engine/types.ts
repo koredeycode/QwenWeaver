@@ -1,4 +1,10 @@
-import type { NodePayload, ExecutionMetrics, SSEEventType, OutputPart } from '@qwenweaver/types';
+import type {
+  NodePayload,
+  ExecutionMetrics,
+  SSEEventType,
+  OutputPart,
+  BusMessage,
+} from '@qwenweaver/types';
 
 // ─── Agent execution result ────────────────────────────────────────────────────
 
@@ -14,10 +20,6 @@ export interface AgentResult {
   status: 'completed' | 'failed';
   error?: string;
 }
-
-// ─── Upstream context passed to each agent ──────────────────────────────────────
-
-export type UpstreamOutputs = Map<string, AgentResult>;
 
 // ─── SSE stream emitter interface ───────────────────────────────────────────────
 
@@ -36,6 +38,9 @@ export interface SSEPayloadMap {
   error: { message: string; nodeId?: string; timestamp: number };
   ping: { data: string };
   workspace_write: { nodeId: string; key: string; valueType: string; timestamp: number };
+  bus_message: {
+    message: BusMessage;
+  };
   message: {
     fromNodeId: string;
     toNodeId: string;
@@ -86,7 +91,7 @@ export interface ExecutionResult {
   executionId: string;
   status: 'completed' | 'failed';
   metrics: ExecutionMetrics;
-  outputs: UpstreamOutputs;
+  outputs: Map<string, AgentResult>;
   error?: string;
 }
 

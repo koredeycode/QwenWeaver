@@ -1,16 +1,10 @@
-import type { WorkflowPayload, ExecutionMetrics, NodeTiming } from '@qwenweaver/types';
-import type {
-  AgentResult,
-  UpstreamOutputs,
-  ExecutionResult,
-  ExecutionOptions,
-  StreamEmitter,
-} from './types.js';
+import type { WorkflowPayload, ExecutionMetrics, NodeTiming, BusMessage } from '@qwenweaver/types';
+import type { AgentResult, ExecutionResult, ExecutionOptions, StreamEmitter } from './types.js';
 import { compileDag } from './dag-compiler.js';
 import { runAgent } from './agent-runner.js';
 import { runDebate } from './debate-runner.js';
-import { MessageBus } from './message-bus.js';
-import { buildMessagePrompt } from './prompt-builder.js';
+import { DataBus, type BusMessagePersistFn } from './message-bus.js';
+import { buildUserMessageFromBus } from './prompt-builder.js';
 import { getQueryProvider } from '@qwenweaver/database';
 import { createModuleLogger } from '../logger.js';
 import { createDiagnosticLogger, type CopilotDiag } from '../diagnostic-logger.js';
@@ -28,7 +22,6 @@ export async function executeWorkflow(
   const executionStart = performance.now();
   const provider = getQueryProvider();
 
-  // Create diagnostic logger for this execution
   const diag = createDiagnosticLogger(`exec-${executionId}`);
   diag.log(`╔══ WORKFLOW EXECUTION START ══╗`);
   diag.log(`Execution ID: ${executionId}`);
@@ -39,7 +32,6 @@ export async function executeWorkflow(
     `Options: persistLogs=${options.persistLogs}, maxRounds=${options.maxNegotiationRounds}`,
   );
 
-  // Try fetching to verify execution exists
   const existing = await provider.getExecution(executionId).catch(() => null);
   if (existing) {
     if (options.persistLogs) {
@@ -99,7 +91,6 @@ export async function executeWorkflow(
   }
 
   // Reset workspace blackboard for a fresh execution
-  // Must await to prevent race with agents writing new entries
   try {
     await provider.clearWorkspace(executionId);
     diag.log('Workspace blackboard cleared');
@@ -108,23 +99,32 @@ export async function executeWorkflow(
     diag.log('WARN: Failed to clear workspace');
   }
 
-  // Create message bus for agent-to-agent messaging channels
-  const messageBus = new MessageBus();
-  const messageChannelEdges = workflow.edges.filter((e) => e.data?.messageChannel);
-  diag.log(`Message channel edges: ${messageChannelEdges.length}`);
-
-  // Register all message channels
-  for (const edge of messageChannelEdges) {
-    const channelId = [edge.source, edge.target].sort().join('|');
-    const maxRounds = edge.data?.channelConfig?.maxRounds ?? 5;
-    messageBus.createChannel(channelId, [edge.source, edge.target], { maxRounds });
-    log.info(
-      { channelId, source: edge.source, target: edge.target, maxRounds },
-      'Message channel registered',
-    );
+  // Clear any previous execution messages
+  try {
+    await provider.clearExecutionMessages(executionId);
+    diag.log('Execution messages cleared');
+  } catch (err) {
+    log.warn({ executionId, error: (err as Error).message }, 'Failed to clear execution messages');
   }
 
-  const allOutputs: UpstreamOutputs = new Map();
+  // Create DataBus — the unified message bus for all inter-agent communication.
+  // Bus messages are persisted to DB asynchronously.
+  const persistFn: BusMessagePersistFn = async (msg: BusMessage) => {
+    await provider.writeExecutionMessage({
+      id: msg.id,
+      executionId: msg.executionId,
+      topic: msg.topic,
+      sourceNodeId: msg.sourceNodeId,
+      messageType: msg.messageType,
+      payload: msg.payload,
+      contentType: msg.contentType ?? null,
+      round: msg.round ?? 0,
+      createdAt: msg.timestamp,
+    });
+  };
+  const dataBus = new DataBus(executionId, options.persistLogs ? persistFn : undefined);
+
+  const nodeResults = new Map<string, AgentResult>();
   const nodeTimings: NodeTiming[] = [];
   let totalTokens = 0;
   let sequentialTime = 0;
@@ -139,14 +139,9 @@ export async function executeWorkflow(
     }
   }
 
-  // Only data-flow edges, exclude message channels
-  const incomingEdges = new Map<string, string[]>();
-  for (const edge of workflow.edges) {
-    if (edge.data?.messageChannel) continue;
-    const sources = incomingEdges.get(edge.target) ?? [];
-    sources.push(edge.source);
-    incomingEdges.set(edge.target, sources);
-  }
+  // Identify conversation-mode edges
+  const conversationEdges = workflow.edges.filter((e) => e.data?.subscription?.conversationMode);
+  diag.log(`Conversation-mode edges: ${conversationEdges.length}`);
 
   const backgroundTasks: Promise<void>[] = [];
 
@@ -171,27 +166,32 @@ export async function executeWorkflow(
       });
     }
 
-    // Use Promise.allSettled to not discard sibling results on failure
+    // Execute all nodes in this batch in parallel
     const batchSettledResults = await Promise.allSettled(
       batch.map(async (node) => {
-        const upstreamSources = incomingEdges.get(node.id) ?? [];
-        const upstream: UpstreamOutputs = new Map();
+        // Collect messages from DataBus for this node
+        const upstreamMessages = dataBus.getMessagesForNode(node.id, workflow.edges);
+        const conversationMsgs = dataBus.getConversationMessages(node.id, conversationEdges);
+        const nodeConversationEdges = workflow.edges.filter(
+          (e) =>
+            (e.target === node.id || e.source === node.id) &&
+            e.data?.subscription?.conversationMode,
+        );
 
-        for (const sourceId of upstreamSources) {
-          const sourceResult = allOutputs.get(sourceId);
-          if (sourceResult) {
-            upstream.set(sourceId, sourceResult);
-
-            if (sourceResult.status === 'failed') {
-              throw new Error(`Upstream dependency ${sourceId} failed`);
-            }
-
-            await emitter.emit('edge_active', {
-              sourceId,
-              targetId: node.id,
-              timestamp: Date.now(),
-            });
+        // Check for upstream failures
+        for (const msg of upstreamMessages) {
+          if (msg.messageType === 'error') {
+            throw new Error(`Upstream dependency ${msg.sourceNodeId} failed`);
           }
+        }
+
+        // Fire edge_active events for upstream edges that produced output
+        for (const msg of upstreamMessages) {
+          await emitter.emit('edge_active', {
+            sourceId: msg.sourceNodeId,
+            targetId: node.id,
+            timestamp: Date.now(),
+          });
         }
 
         let nodeToRun = node;
@@ -207,15 +207,20 @@ export async function executeWorkflow(
           diag.log(`  Feedback injected for ${node.id}: "${feedback.substring(0, 200)}..."`);
         }
 
+        // Create the bus message context for this node
+        const busMessages: BusMessage[] = [...upstreamMessages, ...conversationMsgs];
+
         let result: AgentResult;
         if (node.type === 'debate_arena') {
-          const participantIds = incomingEdges.get(node.id) ?? [];
+          const participantIds = workflow.edges
+            .filter((e) => e.target === node.id)
+            .map((e) => e.source);
           const participantNodes = workflow.nodes.filter((n) => participantIds.includes(n.id));
           diag.log(`  DEBATE ARENA: ${node.id} with ${participantNodes.length} participants`);
           result = await runDebate(
             nodeToRun,
             participantNodes,
-            upstream,
+            busMessages,
             emitter,
             executionId,
             userId,
@@ -226,7 +231,7 @@ export async function executeWorkflow(
           diag.log(`  RUN AGENT: ${node.id} (${node.type}) — diag attached: ${!!diag}`);
           result = await runAgent(
             nodeToRun,
-            upstream,
+            busMessages,
             emitter,
             executionId,
             userId,
@@ -246,12 +251,15 @@ export async function executeWorkflow(
               {
                 prompt: nodeToRun.data.label || 'Agent Execution',
                 systemPrompt: nodeToRun.data.systemPrompt || undefined,
-                upstreamOutputs: Object.fromEntries(
-                  Array.from(upstream.entries()).map(([k, v]) => [
-                    k,
-                    { text: v.text, status: v.status },
-                  ]),
-                ),
+                upstreamOutputs:
+                  upstreamMessages.length > 0
+                    ? Object.fromEntries(
+                        upstreamMessages.map((m) => [
+                          m.sourceNodeId,
+                          { text: extractPayloadText(m), status: m.messageType },
+                        ]),
+                      )
+                    : undefined,
               },
               {
                 text: result.text,
@@ -272,6 +280,29 @@ export async function executeWorkflow(
 
           backgroundTasks.push(logPromise);
         }
+
+        // Publish result to DataBus
+        dataBus.publish({
+          topic: `node:${node.id}.output`,
+          sourceNodeId: node.id,
+          messageType: result.status === 'completed' ? 'output' : 'error',
+          payload: { text: result.text, outputs: result.outputs },
+          contentType: 'text',
+        });
+
+        // Emit bus_message event to frontend
+        await emitter.emit('bus_message', {
+          message: {
+            id: crypto.randomUUID(),
+            executionId,
+            topic: `node:${node.id}.output`,
+            sourceNodeId: node.id,
+            messageType: result.status === 'completed' ? 'output' : 'error',
+            payload: { text: result.text, outputs: result.outputs },
+            contentType: 'text',
+            timestamp: Date.now(),
+          },
+        });
 
         return result;
       }),
@@ -294,7 +325,7 @@ export async function executeWorkflow(
     });
 
     for (const result of batchResults) {
-      allOutputs.set(result.nodeId, result);
+      nodeResults.set(result.nodeId, result);
       totalTokens += result.tokensUsed;
       sequentialTime += result.durationMs;
 
@@ -338,6 +369,7 @@ export async function executeWorkflow(
       }
     }
 
+    // ─── Supervisor rejection detection ────────────────────────────────────────
     let rejectionDetected = false;
     let supervisorFeedback = '';
     const upstreamWorkerIdsToReset: string[] = [];
@@ -396,14 +428,16 @@ export async function executeWorkflow(
         );
       }
 
+      // Remove DataBus messages and node results for backtracked nodes
       for (let i = minBatchIdx; i <= batchIdx; i++) {
         for (const node of dagResult.batches[i]) {
-          const previous = allOutputs.get(node.id);
+          const previous = nodeResults.get(node.id);
           if (previous) {
             totalTokens -= previous.tokensUsed;
             sequentialTime -= previous.durationMs;
           }
-          allOutputs.delete(node.id);
+          nodeResults.delete(node.id);
+          dataBus.removeNodeOutputs(node.id);
           await emitter.emit('status_update', {
             nodeId: node.id,
             status: 'pending',
@@ -415,85 +449,106 @@ export async function executeWorkflow(
       batchIdx = minBatchIdx - 1;
       continue;
     }
-    // ─── Message channel exchange ───────────────────────────────────────────
+
+    // ─── Conversation exchange (multi-round) ──────────────────────────────────
+    // For edges with conversationMode enabled, run multi-round exchanges
+    // between participants within the current batch.
     const batchNodeIds = new Set(batch.map((n) => n.id));
-    const relevantChannelEdges = messageChannelEdges.filter(
+    const relevantConversationEdges = conversationEdges.filter(
       (e) => batchNodeIds.has(e.source) || batchNodeIds.has(e.target),
     );
 
-    if (relevantChannelEdges.length > 0) {
+    if (relevantConversationEdges.length > 0) {
       diag.log(
-        `MESSAGE CHANNEL EXCHANGE: ${relevantChannelEdges.length} edges in batch ${batchIdx}`,
+        `CONVERSATION EXCHANGE: ${relevantConversationEdges.length} edges in batch ${batchIdx}`,
       );
       log.info(
-        { executionId, batchIdx, channelCount: relevantChannelEdges.length },
-        'Running message channel exchange',
+        { executionId, batchIdx, conversationEdgeCount: relevantConversationEdges.length },
+        'Running conversation exchange',
       );
 
-      for (const edge of relevantChannelEdges) {
+      for (const edge of relevantConversationEdges) {
         const channelId = [edge.source, edge.target].sort().join('|');
-        const maxRounds = edge.data?.channelConfig?.maxRounds ?? 5;
+        const maxRounds = edge.data?.subscription?.maxRounds ?? 5;
         const participants = [edge.source, edge.target];
+        const topic = `conversation:${channelId}`;
 
-        // Run message exchange rounds — alternate turns between participants
-        for (let round = 1; round <= maxRounds && !messageBus.isComplete(channelId); round++) {
+        for (let round = 1; round <= maxRounds; round++) {
           for (const agentId of participants) {
             const agentBatchIdx = nodeToBatchIdx.get(agentId);
             if (agentBatchIdx === undefined || agentBatchIdx > batchIdx) continue;
 
-            // Skip if agent already sent a message this round
-            const transcriptMessages = messageBus.getTranscript(channelId);
+            const transcriptMessages = dataBus.getConversationChannelMessages(channelId);
             const alreadyResponded = transcriptMessages.some(
-              (m) => m.fromNodeId === agentId && m.round === round,
+              (m) => m.sourceNodeId === agentId && m.round === round,
             );
             if (alreadyResponded) continue;
 
-            const agentNode = batch.find((n) => n.id === agentId);
+            // Count how many messages this agent has sent in this round across all channels
+            const allConvMsgs = dataBus.getConversationMessages(agentId, conversationEdges);
+            const alreadyRespondedGeneral = allConvMsgs.some(
+              (m) => m.sourceNodeId === agentId && m.round === round,
+            );
+            if (alreadyRespondedGeneral) continue;
+
+            const agentNode = workflow.nodes.find((n) => n.id === agentId);
             if (!agentNode) continue;
 
-            // Build upstream context
-            const upstreamSources = incomingEdges.get(agentId) ?? [];
-            const upstream: UpstreamOutputs = new Map();
-            for (const sourceId of upstreamSources) {
-              const sourceResult = allOutputs.get(sourceId);
-              if (sourceResult) {
-                upstream.set(sourceId, sourceResult);
-              }
-            }
+            // Collect upstream + conversation messages for this agent
+            const upstreamMessages = dataBus.getMessagesForNode(agentId, workflow.edges);
+            const conversationMsgs = dataBus.getConversationMessages(agentId, conversationEdges);
 
-            // Build conversation prompt from transcript
-            const transcript = transcriptMessages.map((m) => ({
-              sender: m.fromNodeId,
-              text: m.content,
-              round: m.round,
-            }));
-            const conversationPrompt = buildMessagePrompt(
-              agentId,
-              transcript,
-              channelId,
-              round,
-              maxRounds,
+            const busMessages: BusMessage[] = [...upstreamMessages, ...conversationMsgs];
+
+            // Build conversation prompt via bus message context
+            const conversationContextMessage = buildUserMessageFromBus(
+              agentNode,
+              upstreamMessages,
+              conversationMsgs,
+              conversationEdges,
             );
 
-            // Run agent with conversation context
             diag.log(
-              `  MESSAGE CHANNEL: agent=${agentNode.id}, round=${round}/${maxRounds}, channel=${channelId}`,
+              `  CONVERSATION: agent=${agentNode.id}, round=${round}/${maxRounds}, channel=${channelId}`,
             );
+
             const msgResult = await runAgent(
               agentNode,
-              upstream,
+              busMessages,
               emitter,
               executionId,
               userId,
-              conversationPrompt,
+              conversationContextMessage,
               options.signal,
               diag,
             );
 
-            // Send the agent's response through the message bus
             if (msgResult.text) {
-              await messageBus.send(agentId, channelId, msgResult.text);
+              // Publish conversation message to DataBus
+              dataBus.publish({
+                topic,
+                sourceNodeId: agentId,
+                messageType: 'conversation',
+                payload: { text: msgResult.text },
+                contentType: 'text',
+                round,
+              });
 
+              await emitter.emit('bus_message', {
+                message: {
+                  id: crypto.randomUUID(),
+                  executionId,
+                  topic,
+                  sourceNodeId: agentId,
+                  messageType: 'conversation',
+                  payload: { text: msgResult.text },
+                  contentType: 'text',
+                  round,
+                  timestamp: Date.now(),
+                },
+              });
+
+              // Also emit the legacy 'message' event for backward compat
               await emitter.emit('message', {
                 fromNodeId: agentId,
                 toNodeId: edge.source === agentId ? edge.target : edge.source,
@@ -503,7 +558,10 @@ export async function executeWorkflow(
                 timestamp: Date.now(),
               });
 
-              log.info({ executionId, channelId, agentId, round }, 'Message exchanged on channel');
+              log.info(
+                { executionId, channelId, agentId, round },
+                'Conversation message exchanged',
+              );
             }
           }
         }
@@ -519,11 +577,8 @@ export async function executeWorkflow(
   const speedupS =
     totalLatencyMs > 0 ? Math.round((sequentialTime / totalLatencyMs) * 100) / 100 : 1;
 
-  // Average parallelism across batches: mean of each batch's node count
   const avgBatchSize =
     dagResult.batches.length > 0 ? workflow.nodes.length / dagResult.batches.length : 1;
-  // Parallel efficiency = actual speedup / theoretical max speedup
-  // Theoretical max = avgBatchSize (if all batches ran perfectly in parallel)
   const parallelEfficiency =
     avgBatchSize > 0 ? Math.round((speedupS / avgBatchSize) * 100) / 100 : 1;
 
@@ -570,6 +625,15 @@ export async function executeWorkflow(
     executionId,
     status,
     metrics,
-    outputs: allOutputs,
+    outputs: nodeResults,
   };
+}
+
+function extractPayloadText(msg: BusMessage): string {
+  if (typeof msg.payload === 'string') return msg.payload;
+  if (msg.payload && typeof msg.payload === 'object') {
+    const p = msg.payload as Record<string, unknown>;
+    return (p.text as string) ?? (p.value as string) ?? JSON.stringify(msg.payload);
+  }
+  return String(msg.payload ?? '');
 }

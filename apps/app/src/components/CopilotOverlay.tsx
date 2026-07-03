@@ -1,5 +1,15 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, X, Sparkles, Check, ChevronDown, ChevronRight } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import {
+  Send,
+  Loader2,
+  X,
+  Sparkles,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  CheckCheck,
+} from 'lucide-react';
 import { useStore } from '../store/index.js';
 import { renderMarkdown } from '../utils/markdown.js';
 import { toast } from 'sonner';
@@ -171,6 +181,44 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
   const [input, setInput] = useState('');
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const [thinkingCollapsed, setThinkingCollapsed] = useState<Record<number, boolean>>({});
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const [statusVerb, setStatusVerb] = useState('creating');
+
+  const VERBS = useMemo(
+    () => ['creating', 'weaving', 'designing', 'analyzing', 'crafting', 'building', 'architecting'],
+    [],
+  );
+
+  useEffect(() => {
+    if (!isTyping) return;
+    const interval = setInterval(() => {
+      setStatusVerb((prev) => {
+        const currentIdx = VERBS.indexOf(prev);
+        return VERBS[(currentIdx + 1) % VERBS.length];
+      });
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [isTyping, VERBS]);
+
+  const latestPendingProposal = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      if (msg.role === 'assistant' && msg.proposal && msg.proposal.status === 'pending') {
+        return { msgIdx: i, proposal: msg.proposal };
+      }
+    }
+    return null;
+  }, [messages]);
+
+  const copyToClipboard = async (text: string, idx: number) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIdx(idx);
+      setTimeout(() => setCopiedIdx(null), 1500);
+    } catch {
+      /* clipboard not available */
+    }
+  };
 
   const toggleThinking = (idx: number) => {
     setThinkingCollapsed((prev) => ({ ...prev, [idx]: !prev[idx] }));
@@ -278,12 +326,27 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
         {messages.map((msg, idx) => (
           <div
             key={idx}
-            className={`flex flex-col space-y-1 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
+            className={`group flex flex-col space-y-1 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
           >
             {/* Sender Label */}
-            <span className="text-[8px] font-bold text-slate-400 tracking-wider uppercase font-sans">
-              {msg.role === 'user' ? 'You' : 'Copilot'}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[8px] font-bold text-slate-400 tracking-wider uppercase font-sans">
+                {msg.role === 'user' ? 'You' : 'Copilot'}
+              </span>
+              <button
+                onClick={() =>
+                  copyToClipboard(msg.text || (typeof msg === 'string' ? msg : ''), idx)
+                }
+                className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-slate-500 transition-all cursor-pointer"
+                title="Copy message"
+              >
+                {copiedIdx === idx ? (
+                  <CheckCheck className="w-3 h-3 text-emerald-500" />
+                ) : (
+                  <Copy className="w-3 h-3" />
+                )}
+              </button>
+            </div>
 
             {/* Bubble */}
             <div
@@ -328,9 +391,9 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
               <div className="select-text space-y-1">
                 {msg.text ? (
                   renderMarkdown(msg.text)
-                ) : (
+                ) : !msg.proposal ? (
                   <p className="text-slate-400 font-mono italic animate-pulse">Generating...</p>
-                )}
+                ) : null}
               </div>
 
               {/* Proposal actions block (if any) */}
@@ -444,23 +507,13 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
                       });
                     })()}
                   </div>
+                </div>
+              )}
 
-                  {msg.proposal.status === 'pending' && (
-                    <div className="flex gap-2 pt-1">
-                      <button
-                        onClick={() => handleApproveProposal(idx, msg.proposal)}
-                        className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[9px] tracking-wide uppercase flex items-center justify-center gap-1 rounded-none transition-colors cursor-pointer"
-                      >
-                        <Check className="w-3 h-3" /> Approve
-                      </button>
-                      <button
-                        onClick={() => updateProposalStatus(idx, 'rejected')}
-                        className="flex-1 py-1.5 bg-slate-200 hover:bg-slate-350 text-slate-700 font-bold text-[9px] tracking-wide uppercase flex items-center justify-center gap-1 rounded-none transition-colors cursor-pointer"
-                      >
-                        <X className="w-3 h-3" /> Reject
-                      </button>
-                    </div>
-                  )}
+              {/* Text received after the proposal was emitted */}
+              {msg.textAfterProposal && (
+                <div className="mt-2 select-text space-y-1">
+                  {renderMarkdown(msg.textAfterProposal)}
                 </div>
               )}
             </div>
@@ -469,19 +522,59 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
         <div ref={chatBottomRef} />
       </div>
 
+      {/* Floating Proposal Bar — latest pending proposal always visible above input */}
+      {latestPendingProposal && (
+        <div className="px-3 py-2 border-t border-emerald-200 bg-emerald-50 flex-shrink-0">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[9px] font-bold text-emerald-700 uppercase font-sans tracking-wide truncate">
+              Pending Proposal
+            </span>
+            <span className="text-[9px] font-extrabold text-amber-700 uppercase font-mono bg-amber-50 px-1 py-0.5 flex-shrink-0">
+              {latestPendingProposal.proposal.actions.length} change
+              {latestPendingProposal.proposal.actions.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <div className="flex gap-2 mt-1.5">
+            <button
+              onClick={() =>
+                handleApproveProposal(latestPendingProposal.msgIdx, latestPendingProposal.proposal)
+              }
+              className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[9px] tracking-wide uppercase flex items-center justify-center gap-1 rounded-none transition-colors cursor-pointer"
+            >
+              <Check className="w-3 h-3" /> Approve
+            </button>
+            <button
+              onClick={() => updateProposalStatus(latestPendingProposal.msgIdx, 'rejected')}
+              className="flex-1 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-[9px] tracking-wide uppercase flex items-center justify-center gap-1 rounded-none transition-colors cursor-pointer"
+            >
+              <X className="w-3 h-3" /> Reject
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Input Form */}
       <div className="p-3 border-t border-[#cbd5e1] bg-white flex-shrink-0">
-        <div className="relative flex items-end border border-slate-200 focus-within:border-slate-400 bg-white">
+        <div
+          className={`relative flex items-end border transition-colors ${
+            isTyping
+              ? 'border-orange-300 bg-orange-50/30'
+              : 'border-slate-200 focus-within:border-slate-400 bg-white'
+          }`}
+        >
+          {isTyping && (
+            <div className="absolute -top-2.5 left-3 px-1.5 bg-orange-50/80 text-[8px] font-extrabold text-orange-600 uppercase font-sans tracking-widest animate-pulse">
+              Copilot is {statusVerb}...
+            </div>
+          )}
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyPress}
-            placeholder={
-              isTyping ? 'Copilot is writing...' : 'Ask the copilot to build workflows...'
-            }
+            placeholder={isTyping ? '' : 'Ask the copilot to build workflows...'}
             disabled={isTyping}
             rows={2}
-            className="flex-1 bg-transparent px-3 py-2 text-xs outline-none text-slate-800 placeholder-slate-400 resize-none font-sans leading-relaxed"
+            className="flex-1 bg-transparent px-3 py-2 text-xs outline-none text-slate-800 placeholder-slate-400 resize-none font-sans leading-relaxed disabled:cursor-wait"
           />
           <div className="p-1 flex items-center">
             <button

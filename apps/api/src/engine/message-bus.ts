@@ -1,196 +1,158 @@
+import type { BusMessage } from '@qwenweaver/types';
 import { createModuleLogger } from '../logger.js';
 
-const log = createModuleLogger('engine/message-bus');
+const log = createModuleLogger('engine/data-bus');
 
-export interface Message {
-  id: string;
-  channelId: string;
-  fromNodeId: string;
-  toNodeId: string;
-  content: string;
-  round: number;
-  timestamp: number;
-}
+export type BusMessagePersistFn = (msg: BusMessage) => Promise<void>;
 
-interface Channel {
-  id: string;
-  participantIds: string[];
-  maxRounds: number;
-  turnBased: boolean;
-  messages: Message[];
-  currentRound: number;
-  roundHistory: Map<number, Set<string>>; // round -> set of nodeIds that have responded
-}
+/**
+ * Topic-based DataBus for inter-agent communication.
+ *
+ * Topics follow the convention:
+ *   - `node:<nodeId>.output`  — agent output (default subscription target)
+ *   - `node:<nodeId>.error`   — agent error
+ *   - `conversation:<channelId>` — conversation exchange (multi-round)
+ *
+ * Regular (non-conversation) edges subscribe to `node:<sourceId>.output`.
+ * Conversation edges publish to `conversation:<channelId>` for multi-round exchange.
+ */
+export class DataBus {
+  private readonly messagesByTopic = new Map<string, BusMessage[]>();
+  private readonly allMessages: BusMessage[] = [];
+  private readonly persistFn?: BusMessagePersistFn;
+  private readonly executionId: string;
 
-export interface MessageBusConfig {
-  maxRounds?: number;
-  turnBased?: boolean;
-}
-
-export class MessageBus {
-  private channels = new Map<string, Channel>();
-  private waitingResolvers = new Map<string, Array<() => void>>();
-
-  /**
-   * Create a message channel between participants.
-   * Channel ID is typically `${nodeA}|${nodeB}` (sorted).
-   */
-  createChannel(channelId: string, participantIds: string[], config?: MessageBusConfig): void {
-    if (this.channels.has(channelId)) return;
-    this.channels.set(channelId, {
-      id: channelId,
-      participantIds: [...participantIds],
-      maxRounds: config?.maxRounds ?? 5,
-      turnBased: config?.turnBased ?? true,
-      messages: [],
-      currentRound: 1,
-      roundHistory: new Map(),
-    });
-    log.info({ channelId, participantIds }, 'Message channel created');
+  constructor(executionId: string, persistFn?: BusMessagePersistFn) {
+    this.executionId = executionId;
+    this.persistFn = persistFn;
   }
 
   /**
-   * Send a message from one participant to another on a channel.
+   * Publish a message to a topic.
    */
-  async send(senderId: string, channelId: string, content: string): Promise<Message> {
-    const channel = this.channels.get(channelId);
-    if (!channel) {
-      throw new Error(`Channel ${channelId} not found`);
-    }
-    if (!channel.participantIds.includes(senderId)) {
-      throw new Error(`Sender ${senderId} is not a participant of channel ${channelId}`);
-    }
-
-    // Determine recipients (everyone except the sender)
-    const recipients = channel.participantIds.filter((id) => id !== senderId);
-
-    const message: Message = {
-      id: crypto.randomUUID(),
-      channelId,
-      fromNodeId: senderId,
-      toNodeId: recipients[0] ?? senderId,
-      content,
-      round: channel.currentRound,
-      timestamp: Date.now(),
+  publish(
+    msg: Omit<BusMessage, 'id' | 'timestamp' | 'executionId'> & {
+      id?: string;
+      timestamp?: number;
+    },
+  ): BusMessage {
+    const full: BusMessage = {
+      id: msg.id ?? crypto.randomUUID(),
+      executionId: this.executionId,
+      timestamp: msg.timestamp ?? Date.now(),
+      ...msg,
     };
 
-    channel.messages.push(message);
+    const existing = this.messagesByTopic.get(full.topic) ?? [];
+    existing.push(full);
+    this.messagesByTopic.set(full.topic, existing);
+    this.allMessages.push(full);
 
-    // Track who has responded this round
-    const roundSet = channel.roundHistory.get(channel.currentRound) ?? new Set();
-    roundSet.add(senderId);
-    channel.roundHistory.set(channel.currentRound, roundSet);
-
-    // If all participants have responded this round, advance to next round
-    if (
-      roundSet.size >= channel.participantIds.length &&
-      channel.currentRound <= channel.maxRounds
-    ) {
-      channel.currentRound++;
+    if (this.persistFn) {
+      this.persistFn(full).catch((err: unknown) => {
+        log.warn(
+          { executionId: this.executionId, topic: full.topic, error: (err as Error).message },
+          'Failed to persist bus message',
+        );
+      });
     }
 
-    log.info(
-      { channelId, senderId, round: message.round, channelCurrentRound: channel.currentRound },
-      'Message sent on channel',
+    log.debug(
+      { executionId: this.executionId, topic: full.topic, sourceNodeId: full.sourceNodeId },
+      'Bus message published',
     );
 
-    // Resolve any waiting promises for the recipients
-    for (const recipientId of recipients) {
-      const key = `${channelId}:${recipientId}`;
-      const resolvers = this.waitingResolvers.get(key);
-      if (resolvers) {
-        for (const resolve of resolvers) {
-          resolve();
-        }
-        this.waitingResolvers.delete(key);
-      }
-    }
-
-    return message;
+    return full;
   }
 
   /**
-   * Get all messages addressed to a specific agent on a channel, optionally filtered by round.
+   * Get all messages for a specific topic.
    */
-  receive(agentId: string, channelId: string, sinceRound?: number): Message[] {
-    const channel = this.channels.get(channelId);
-    if (!channel) return [];
-
-    return channel.messages.filter(
-      (m) => m.toNodeId === agentId && (sinceRound === undefined || m.round >= sinceRound),
-    );
+  getMessages(topic: string): BusMessage[] {
+    return this.messagesByTopic.get(topic) ?? [];
   }
 
   /**
-   * Get all channels a node participates in.
+   * Get all messages published on topics subscribed to by a node via incoming edges.
+   * Default subscription topic: `node:<sourceId>.output`
    */
-  getChannelsForNode(nodeId: string): string[] {
-    const result: string[] = [];
-    for (const [channelId, channel] of this.channels) {
-      if (channel.participantIds.includes(nodeId)) {
-        result.push(channelId);
-      }
+  getMessagesForNode(
+    nodeId: string,
+    edges: Array<{ source: string; target: string }>,
+  ): BusMessage[] {
+    const incomingTopics = edges
+      .filter((e) => e.target === nodeId)
+      .map((e) => `node:${e.source}.output`);
+
+    const result: BusMessage[] = [];
+    for (const topic of incomingTopics) {
+      const msgs = this.messagesByTopic.get(topic);
+      if (msgs) result.push(...msgs);
     }
     return result;
   }
 
   /**
-   * Wait for new messages on a channel, with timeout.
+   * Get conversation messages involving a node — reads from conversation topics.
+   * Used for multi-round message exchanges.
    */
-  async waitForMessages(agentId: string, channelId: string, timeoutMs = 30000): Promise<Message[]> {
-    const key = `${channelId}:${agentId}`;
-    const channel = this.channels.get(channelId);
-    if (!channel) return [];
+  getConversationMessages(
+    nodeId: string,
+    edges: Array<{ source: string; target: string }>,
+  ): BusMessage[] {
+    const topics = new Set<string>();
+    for (const edge of edges) {
+      if (edge.source === nodeId || edge.target === nodeId) {
+        const channelId = [edge.source, edge.target].sort().join('|');
+        topics.add(`conversation:${channelId}`);
+      }
+    }
 
-    return new Promise<Message[]>((resolve) => {
-      const timeout = setTimeout(() => {
-        const resolvers = this.waitingResolvers.get(key);
-        if (resolvers) {
-          const idx = resolvers.indexOf(resolveFn);
-          if (idx !== -1) resolvers.splice(idx, 1);
-        }
-        resolve(this.receive(agentId, channelId));
-      }, timeoutMs);
-
-      const resolveFn = () => {
-        clearTimeout(timeout);
-        resolve(this.receive(agentId, channelId));
-      };
-
-      const existing = this.waitingResolvers.get(key) ?? [];
-      existing.push(resolveFn);
-      this.waitingResolvers.set(key, existing);
-    });
+    const result: BusMessage[] = [];
+    for (const topic of topics) {
+      const msgs = this.messagesByTopic.get(topic);
+      if (msgs) result.push(...msgs);
+    }
+    return result.sort((a, b) => a.timestamp - b.timestamp);
   }
 
   /**
-   * Get the full transcript of a channel.
+   * Get messages for a specific conversation channel.
    */
-  getTranscript(channelId: string): Message[] {
-    return this.channels.get(channelId)?.messages ?? [];
+  getConversationChannelMessages(channelId: string): BusMessage[] {
+    return this.messagesByTopic.get(`conversation:${channelId}`) ?? [];
   }
 
   /**
-   * Get current round for a channel.
+   * Get all messages on this bus (for persistence, debugging).
    */
-  getCurrentRound(channelId: string): number {
-    return this.channels.get(channelId)?.currentRound ?? 0;
+  getAllMessages(): BusMessage[] {
+    return [...this.allMessages];
   }
 
   /**
-   * Check if a channel has reached its max rounds.
+   * Remove all messages for a given topic.
    */
-  isComplete(channelId: string): boolean {
-    const channel = this.channels.get(channelId);
-    if (!channel) return true;
-    return channel.currentRound > channel.maxRounds;
+  removeTopic(topic: string): void {
+    this.messagesByTopic.delete(topic);
+    const remaining = this.allMessages.filter((m) => m.topic !== topic);
+    this.allMessages.length = 0;
+    this.allMessages.push(...remaining);
   }
 
   /**
-   * Clean up all channels.
+   * Remove all messages published by a specific node on its output topic.
    */
-  destroy(): void {
-    this.channels.clear();
-    this.waitingResolvers.clear();
+  removeNodeOutputs(nodeId: string): void {
+    this.removeTopic(`node:${nodeId}.output`);
+    this.removeTopic(`node:${nodeId}.error`);
+  }
+
+  /**
+   * Clear the entire bus.
+   */
+  clear(): void {
+    this.messagesByTopic.clear();
+    this.allMessages.length = 0;
   }
 }

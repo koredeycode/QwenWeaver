@@ -7,6 +7,7 @@ import type {
   GraphAction,
   CopilotHistoryMessage,
   WorkspaceEntry,
+  BusMessage,
 } from '@qwenweaver/types';
 import type {
   TemplateSummary,
@@ -25,6 +26,7 @@ export interface CopilotMessage {
     status: 'pending' | 'approved' | 'rejected';
     actions: GraphAction[];
   };
+  textAfterProposal?: string;
 }
 
 export interface CanvasSnapshot {
@@ -133,6 +135,7 @@ export interface ExecutionSlice {
   historyLoading: boolean;
   workspaceEntries: WorkspaceEntry[];
   workspaceLoading: boolean;
+  busMessages: BusMessage[];
   channelMessages: Array<{
     fromNodeId: string;
     toNodeId: string;

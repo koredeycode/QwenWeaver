@@ -16,6 +16,7 @@ export function useAutoSave(id: string | undefined, navigate: NavigateFunction) 
   const status = useStore((s) => s.executionStatus);
   const isDirty = useStore((s) => s.isDirty);
   const markClean = useStore((s) => s.markClean);
+  const copilotMessages = useStore((s) => s.copilotMessages);
 
   // Debounced auto-save to local draft + backend
   useEffect(() => {
@@ -31,9 +32,20 @@ export function useAutoSave(id: string | undefined, navigate: NavigateFunction) 
         workflowId: state.workflowId,
       });
 
-      // Also persist to backend if user is authenticated and has nodes
-      if (state.user && state.nodes.length > 0) {
+      // Also persist to backend if user is authenticated and has nodes or copilot messages
+      if (state.user && (state.nodes.length > 0 || state.copilotMessages.length > 1)) {
         setIsSaving(true);
+
+        const copilotHistory = state.copilotMessages
+          .filter((m: any) => m.role === 'user' || (m.role === 'assistant' && m.text))
+          .map((m: any) => ({
+            role: m.role as 'user' | 'assistant',
+            content: m.text || '',
+            thinking: m.thinking || undefined,
+            textAfterProposal: m.textAfterProposal || undefined,
+            proposal: m.proposal || undefined,
+          }));
+
         const payload = {
           name: state.workflowName || 'Untitled Workflow',
           description: state.workflowDescription || '',
@@ -57,7 +69,7 @@ export function useAutoSave(id: string | undefined, navigate: NavigateFunction) 
           (client.api.workflow.detail[':workflowId'] as any)
             .$put({
               param: { workflowId: state.workflowId! },
-              json: { ...payload, id: state.workflowId } as any,
+              json: { ...payload, id: state.workflowId, copilotHistory } as any,
             })
             .then(() => {
               setIsSaving(false);
@@ -69,7 +81,11 @@ export function useAutoSave(id: string | undefined, navigate: NavigateFunction) 
               console.warn('Auto-save to backend failed:', err);
             });
         } else {
-          (client.api.workflow.$post({ json: payload as any }) as Promise<any>)
+          (
+            client.api.workflow.$post({
+              json: { ...payload, copilotHistory } as any,
+            }) as Promise<any>
+          )
             .then(async (res: any) => {
               if (!res.ok) throw new Error('Failed to auto-create workflow');
               const data = await res.json();
@@ -89,7 +105,16 @@ export function useAutoSave(id: string | undefined, navigate: NavigateFunction) 
       }
     }, 5000);
     return () => clearTimeout(timer);
-  }, [nodes, edges, workflowName, workflowDescription, status, navigate, markClean]);
+  }, [
+    nodes,
+    edges,
+    workflowName,
+    workflowDescription,
+    status,
+    navigate,
+    markClean,
+    copilotMessages,
+  ]);
 
   // Draft restoration on mount
   useEffect(() => {

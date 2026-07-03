@@ -22,6 +22,7 @@ export const MaximizedNodeOverlay = () => {
   const setMaximizedNodeId = useStore((s) => s.setMaximizedNodeId);
 
   const storeOutput = useStore((s) => s.nodeOutputs[maximizedNodeId || ''] || '');
+  const storeOutputUrl = useStore((s) => s.nodeOutputUrls[maximizedNodeId || ''] || '');
   const storeThinking = useStore((s) => s.nodeThinking[maximizedNodeId || ''] || '');
   const storeStatus = useStore((s) => s.nodeStatuses[maximizedNodeId || ''] || 'pending');
   const storeOutputParts = useStore((s) => s.nodeOutputParts[maximizedNodeId || '']);
@@ -32,6 +33,7 @@ export const MaximizedNodeOverlay = () => {
     'output',
   );
   const channelMessages = useStore((s) => s.channelMessages);
+  const busMessages = useStore((s) => s.busMessages);
   const debateRounds = useStore((s) => s.debateRounds);
   const debateVerdicts = useStore((s) => s.debateVerdicts);
   const workspaceEntries = useStore((s) => s.workspaceEntries);
@@ -51,7 +53,7 @@ export const MaximizedNodeOverlay = () => {
     return () => {
       if (rafId) cancelAnimationFrame(rafId);
     };
-  }, [storeOutput, storeThinking, channelMessages]);
+  }, [storeOutput, storeThinking, channelMessages, busMessages]);
 
   if (!maximizedNodeId) return null;
 
@@ -275,11 +277,7 @@ export const MaximizedNodeOverlay = () => {
                   storeThinking ||
                   (storeStatus || maximizedNode?.data?._executionStatus) !== 'running') && (
                   <OutputRenderer
-                    outputUrl={
-                      (maximizedNodeId
-                        ? useStore.getState().nodeOutputUrls[maximizedNodeId]
-                        : undefined) || maximizedNode?.data?._outputUrl
-                    }
+                    outputUrl={storeOutputUrl || maximizedNode?.data?._outputUrl}
                     streamingText={storeOutput || maximizedNode?.data?._output}
                     thinkingText={storeThinking}
                     outputParts={storeOutputParts}
@@ -304,45 +302,72 @@ export const MaximizedNodeOverlay = () => {
             ) : overlayTab === 'messages' ? (
               <div ref={scrollRef} className="flex-1 p-6 overflow-y-auto">
                 <div className="text-[10px] font-mono text-slate-400 mb-3 tracking-wider">
-                  CHANNEL MESSAGES
+                  MESSAGES
                 </div>
-                {channelMessages.length === 0 ? (
-                  <div className="font-mono text-[11px] text-slate-400 italic">
-                    Agent-to-agent messages appear here during execution. Configure message channels
-                    on edges to enable agent communication.
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {channelMessages.map((m, i) => (
+                {(() => {
+                  const nodeBusMessages = busMessages.filter(
+                    (m) => m.sourceNodeId === maximizedNodeId || m.topic.includes(maximizedNodeId),
+                  );
+                  const hasMessages = nodeBusMessages.length > 0 || channelMessages.length > 0;
+
+                  if (!hasMessages) {
+                    return (
+                      <div className="font-mono text-[11px] text-slate-400 italic">
+                        Agent-to-agent messages appear here during execution. Enable conversation
+                        mode on edges for multi-round exchanges.
+                      </div>
+                    );
+                  }
+
+                  const displayMessages = (
+                    nodeBusMessages.length > 0 ? nodeBusMessages : channelMessages
+                  ).map((m, i) => {
+                    const msg = m as any;
+                    const fromNodeId = msg.sourceNodeId ?? msg.fromNodeId;
+                    const toNodeId = msg.toNodeId;
+                    const payload = msg.payload;
+                    const content =
+                      payload && typeof payload === 'object'
+                        ? (payload.text ?? JSON.stringify(payload))
+                        : (msg.content ?? String(payload ?? ''));
+                    const round = msg.round;
+                    const channelOrTopic = msg.topic
+                      ? (msg.topic.split(':').pop() ?? msg.topic)
+                      : (msg.channelId ?? '');
+
+                    return (
                       <div
                         key={i}
                         className={`border p-3 font-mono text-xs ${
-                          m.fromNodeId === maximizedNodeId
+                          fromNodeId === maximizedNodeId
                             ? 'bg-orange-50 border-orange-200 ml-6'
-                            : m.toNodeId === maximizedNodeId
+                            : toNodeId === maximizedNodeId
                               ? 'bg-blue-50 border-blue-200 mr-6'
                               : 'bg-white border-slate-200'
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1 text-[10px] text-slate-500">
                           <span className="font-bold">
-                            {m.fromNodeId === maximizedNodeId
+                            {fromNodeId === maximizedNodeId
                               ? 'SENT'
-                              : m.toNodeId === maximizedNodeId
+                              : toNodeId === maximizedNodeId
                                 ? 'RECEIVED'
-                                : `${m.fromNodeId} → ${m.toNodeId}`}
+                                : `${fromNodeId}${toNodeId ? ` → ${toNodeId}` : ''}`}
                           </span>
                           <span>
-                            round {m.round} &middot; channel {m.channelId}
+                            {round ? `round ${round} · ` : ''}
+                            {channelOrTopic}
                           </span>
                         </div>
                         <div className="text-slate-800 whitespace-pre-wrap leading-relaxed">
-                          {m.content}
+                          {content}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
+                    );
+                  });
+
+                  return <div className="space-y-3">{displayMessages}</div>;
+                })()}
               </div>
             ) : overlayTab === 'transcript' && maximizedNode.type === 'debate_arena' ? (
               <div className="flex-1 p-6 overflow-y-auto">

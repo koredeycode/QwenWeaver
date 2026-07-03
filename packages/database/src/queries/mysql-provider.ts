@@ -377,8 +377,9 @@ export const mysqlProvider: QueryProvider = {
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
     const workflowId = workflow.id || crypto.randomUUID();
 
+    const { copilotHistory, ...rest } = workflow;
     const payload: WorkflowPayload = {
-      ...workflow,
+      ...rest,
       nodes: workflow.nodes.map((n) => ({ ...n, id: n.id })),
       edges: workflow.edges.map((e) => ({ ...e, id: e.id })),
     };
@@ -390,6 +391,7 @@ export const mysqlProvider: QueryProvider = {
       description: workflow.description || null,
       isActive: 1,
       nodesEdges: payload,
+      copilotHistory: copilotHistory || [],
       createdAt: new Date(),
     });
 
@@ -404,19 +406,25 @@ export const mysqlProvider: QueryProvider = {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
 
+    const { copilotHistory, ...rest } = workflow;
     const payload: WorkflowPayload = {
-      ...workflow,
+      ...rest,
       nodes: workflow.nodes.map((n) => ({ ...n, id: n.id })),
       edges: workflow.edges.map((e) => ({ ...e, id: e.id })),
     };
 
+    const updateData: Record<string, any> = {
+      name: workflow.name,
+      description: workflow.description || null,
+      nodesEdges: payload,
+    };
+    if (copilotHistory) {
+      updateData.copilotHistory = copilotHistory;
+    }
+
     await mysqlDb
       .update(mysqlSchema.mysqlWorkflows)
-      .set({
-        name: workflow.name,
-        description: workflow.description || null,
-        nodesEdges: payload,
-      })
+      .set(updateData)
       .where(
         and(
           eq(mysqlSchema.mysqlWorkflows.id, workflowId),
@@ -946,14 +954,19 @@ export const mysqlProvider: QueryProvider = {
   async reserveCredits(userId: string, amount: number): Promise<boolean> {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
-    const result = await mysqlDb.execute(
-      sql`UPDATE ${mysqlSchema.mysqlUserCredits}
-          SET balance = balance - ${amount},
-              lifetime_spent = lifetime_spent + ${amount},
-              updated_at = NOW()
-          WHERE user_id = ${userId} AND balance >= ${amount}`,
-    );
-    return (result as any).affectedRows > 0;
+    const s = mysqlSchema;
+    const result = await mysqlDb
+      .update(s.mysqlUserCredits)
+      .set({
+        balance: sql`${s.mysqlUserCredits.balance} - ${amount}`,
+        lifetimeSpent: sql`${s.mysqlUserCredits.lifetimeSpent} + ${amount}`,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(s.mysqlUserCredits.userId, userId), sql`${s.mysqlUserCredits.balance} >= ${amount}`),
+      );
+    const r = result as any;
+    return (r.affectedRows ?? r.meta?.affectedRows ?? 0) > 0;
   },
 
   async deductCredits(userId: string, amount: number, description?: string, executionId?: string) {
@@ -1147,5 +1160,56 @@ export const mysqlProvider: QueryProvider = {
     await mysqlDb
       .delete(mysqlSchema.mysqlWorkspaceEntries)
       .where(eq(mysqlSchema.mysqlWorkspaceEntries.executionId, executionId));
+  },
+
+  // ─── Execution Messages (DataBus) ─────────────────────────────────────────
+
+  async writeExecutionMessage(data) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    await mysqlDb.insert(mysqlSchema.mysqlExecutionMessages).values({
+      id: data.id,
+      executionId: data.executionId,
+      topic: data.topic,
+      sourceNodeId: data.sourceNodeId,
+      messageType: data.messageType,
+      payload: data.payload as any,
+      contentType: data.contentType ?? null,
+      round: data.round,
+      createdAt: new Date(data.createdAt),
+    });
+  },
+
+  async listExecutionMessages(executionId: string, topic?: string) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const conditions = [eq(mysqlSchema.mysqlExecutionMessages.executionId, executionId)];
+    if (topic) {
+      conditions.push(eq(mysqlSchema.mysqlExecutionMessages.topic, topic));
+    }
+    const rows = await mysqlDb
+      .select()
+      .from(mysqlSchema.mysqlExecutionMessages)
+      .where(and(...conditions))
+      .orderBy(mysqlSchema.mysqlExecutionMessages.createdAt);
+    return rows.map((r) => ({
+      id: r.id,
+      executionId: r.executionId ?? '',
+      topic: r.topic,
+      sourceNodeId: r.sourceNodeId,
+      messageType: r.messageType,
+      payload: r.payload,
+      contentType: r.contentType ?? null,
+      round: r.round,
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+    }));
+  },
+
+  async clearExecutionMessages(executionId: string) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    await mysqlDb
+      .delete(mysqlSchema.mysqlExecutionMessages)
+      .where(eq(mysqlSchema.mysqlExecutionMessages.executionId, executionId));
   },
 };
