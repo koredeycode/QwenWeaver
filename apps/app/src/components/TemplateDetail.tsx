@@ -12,7 +12,8 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
-import { client } from '../lib/api-client.js';
+import { client, withRefresh } from '../lib/api-client.js';
+import { toast } from 'sonner';
 import { StarRating } from './StarRating.js';
 import type { TemplateDetail, TemplateReview } from '../lib/templates-client.js';
 
@@ -53,7 +54,35 @@ export const TemplateDetailPage = () => {
     const ok = await forkTemplate(id);
     setForking(false);
     if (ok) {
-      navigate('/workflows/unsaved');
+      // Create a new empty workflow to get a proper workflow ID
+      const payload = {
+        name: template.name || 'Forked Template',
+        description: template.description || 'Workflow created from a template',
+        nodes: [],
+        edges: []
+      };
+      
+      try {
+        const res = (await withRefresh(() =>
+          client.api.workflow.$post({ json: payload as any }),
+        )) as any;
+        
+        if (!res.ok) {
+          if (res.status === 403) {
+            const errBody: Record<string, unknown> = await res.json().catch(() => ({}));
+            toast.error(String(errBody.error || 'Workflow limit reached'));
+            return;
+          }
+          throw new Error('Failed to create workflow');
+        }
+        
+        const result = await res.json();
+        navigate(`/workflows/${result.workflowId}`);
+      } catch (err) {
+        console.error('Failed to create workflow from template', err);
+        // Fallback to original behavior if API call fails
+        navigate('/workflows/unsaved');
+      }
     }
   }, [id, template, forkTemplate, navigate]);
 

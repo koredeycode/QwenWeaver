@@ -13,6 +13,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
+import { client, withRefresh } from '../lib/api-client.js';
 import { CreateWorkflowDialog } from './CreateWorkflowDialog.js';
 import { ExecutionHistoryPanel } from './ExecutionHistoryPanel.js';
 
@@ -30,11 +31,39 @@ export const Sidebar = ({
     setIsCreateOpen(true);
   };
 
-  const handleCreateConfirm = (name: string, description: string) => {
-    const newId = `workflow-${Date.now().toString().slice(-4)}`;
-    sessionStorage.setItem(`pending_wf_${newId}`, JSON.stringify({ name, description }));
-    window.open(`/workflows/${newId}`, '_blank');
-    setIsCreateOpen(false);
+  const handleCreateConfirm = async (name: string, description: string) => {
+    try {
+      // Create a proper workflow record in the database
+      const payload = {
+        name: name,
+        description: description,
+        nodes: [],
+        edges: []
+      };
+      
+      const res = (await withRefresh(() =>
+        client.api.workflow.$post({ json: payload as any }),
+      )) as any;
+      
+      if (!res.ok) {
+        if (res.status === 403) {
+          const errBody: Record<string, unknown> = await res.json().catch(() => ({}));
+          throw new Error(String(errBody.error || 'Workflow limit reached'));
+        }
+        throw new Error('Failed to create workflow');
+      }
+      
+      const result = await res.json();
+      window.open(`/workflows/${result.workflowId}`, '_blank');
+      setIsCreateOpen(false);
+    } catch (err) {
+      console.error('Failed to create workflow', err);
+      // Fallback to original behavior if API call fails
+      const newId = `workflow-${Date.now().toString().slice(-4)}`;
+      sessionStorage.setItem(`pending_wf_${newId}`, JSON.stringify({ name, description }));
+      window.open(`/workflows/${newId}`, '_blank');
+      setIsCreateOpen(false);
+    }
   };
 
   const [historyPanelOpen, setHistoryPanelOpen] = useState(false);

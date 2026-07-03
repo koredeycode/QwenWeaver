@@ -3,6 +3,8 @@ import { useStore } from '../store/index.js';
 import { client } from '../lib/api-client.js';
 import { EXAMPLE_WORKFLOWS } from '../lib/example-workflows.js';
 
+import { createEmptyWorkflow } from '../services/workflow-service.js';
+
 export function useWorkflowLoader(id: string | undefined): void {
   const loadWorkflow = useStore((s) => s.loadWorkflow);
   const clearGraph = useStore((s) => s.clearGraph);
@@ -11,7 +13,25 @@ export function useWorkflowLoader(id: string | undefined): void {
 
   useEffect(() => {
     if (id) {
-      if (id === 'unsaved') return;
+      if (id === 'unsaved') {
+        // Create a new empty workflow with a stable ID when visiting /unsaved
+        (async () => {
+          try {
+            // Dynamically import the function to avoid circular dependencies
+            const { createEmptyWorkflow } = await import('../services/workflow-service.js');
+            const result = await createEmptyWorkflow('Untitled Workflow', '');
+            if (result) {
+              // Redirect to the newly created workflow
+              window.location.hash = `#/workflows/${result.workflowId}`;
+            } else {
+              console.error('Failed to create empty workflow');
+            }
+          } catch (error) {
+            console.error('Error creating empty workflow:', error);
+          }
+        })();
+        return;
+      }
 
       const isMock = EXAMPLE_WORKFLOWS.some((w) => w.id === id);
       if (isMock) {

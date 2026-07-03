@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, X, ArrowLeft, Loader2 } from 'lucide-react';
 import { useStore } from '../store/index.js';
+import { client, withRefresh } from '../lib/api-client.js';
+import { toast } from 'sonner';
 import { TemplateCard } from './TemplateCard.js';
 
 const ALL_CATEGORIES = { id: '', name: 'All', slug: '', icon: undefined, sortOrder: -1 };
@@ -46,7 +48,35 @@ export const TemplateGallery = () => {
     async (id: string) => {
       const ok = await forkTemplate(id);
       if (ok) {
-        navigate('/workflows/unsaved');
+        // Create a new empty workflow to get a proper workflow ID
+        const payload = {
+          name: 'Forked Template',
+          description: 'Workflow created from a template',
+          nodes: [],
+          edges: []
+        };
+        
+        try {
+          const res = (await withRefresh(() =>
+            client.api.workflow.$post({ json: payload as any }),
+          )) as any;
+          
+          if (!res.ok) {
+            if (res.status === 403) {
+              const errBody: Record<string, unknown> = await res.json().catch(() => ({}));
+              toast.error(String(errBody.error || 'Workflow limit reached'));
+              return;
+            }
+            throw new Error('Failed to create workflow');
+          }
+          
+          const result = await res.json();
+          navigate(`/workflows/${result.workflowId}`);
+        } catch (err) {
+          console.error('Failed to create workflow from template', err);
+          // Fallback to original behavior if API call fails
+          navigate('/workflows/unsaved');
+        }
       }
     },
     [forkTemplate, navigate],

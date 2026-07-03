@@ -40,6 +40,36 @@ export async function createWorkflow(
   }
 }
 
+// Create a new workflow with a guaranteed database record
+export async function createEmptyWorkflow(
+  name: string,
+  description?: string
+): Promise<{ workflowId: string } | null> {
+  try {
+    const payload: WorkflowPayload = {
+      name: name,
+      description: description || '',
+      nodes: [],
+      edges: []
+    };
+    
+    const res = (await withRefresh(() =>
+      client.api.workflow.$post({ json: payload as any }),
+    )) as any;
+    if (!res.ok) {
+      if (res.status === 403) {
+        const errBody: Record<string, unknown> = await res.json().catch(() => ({}));
+        throw new Error(String(errBody.error || 'Workflow limit reached'));
+      }
+      throw new Error('Failed to create empty workflow');
+    }
+    return await res.json();
+  } catch (err) {
+    console.error('workflow-service: createEmptyWorkflow failed', err);
+    return null;
+  }
+}
+
 export async function updateWorkflow(
   workflowId: string,
   payload: WorkflowPayload & { id: string },
