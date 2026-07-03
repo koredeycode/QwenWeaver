@@ -22,6 +22,7 @@ export const MaximizedNodeOverlay = () => {
   const setMaximizedNodeId = useStore((s) => s.setMaximizedNodeId);
 
   const storeOutput = useStore((s) => s.nodeOutputs[maximizedNodeId || ''] || '');
+  const storeOutputUrl = useStore((s) => s.nodeOutputUrls[maximizedNodeId || ''] || '');
   const storeThinking = useStore((s) => s.nodeThinking[maximizedNodeId || ''] || '');
   const storeStatus = useStore((s) => s.nodeStatuses[maximizedNodeId || ''] || 'pending');
   const storeOutputParts = useStore((s) => s.nodeOutputParts[maximizedNodeId || '']);
@@ -276,11 +277,7 @@ export const MaximizedNodeOverlay = () => {
                   storeThinking ||
                   (storeStatus || maximizedNode?.data?._executionStatus) !== 'running') && (
                   <OutputRenderer
-                    outputUrl={
-                      (maximizedNodeId
-                        ? useStore.getState().nodeOutputUrls[maximizedNodeId]
-                        : undefined) || maximizedNode?.data?._outputUrl
-                    }
+                    outputUrl={storeOutputUrl || maximizedNode?.data?._outputUrl}
                     streamingText={storeOutput || maximizedNode?.data?._output}
                     thinkingText={storeThinking}
                     outputParts={storeOutputParts}
