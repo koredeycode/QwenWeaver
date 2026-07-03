@@ -938,9 +938,9 @@ export const pgProvider: QueryProvider = {
         lifetimeSpent: sql`${s.pgUserCredits.lifetimeSpent} + ${amount}`,
         updatedAt: new Date(),
       })
-      .where(and(eq(s.pgUserCredits.userId, userId), sql`${s.pgUserCredits.balance} >= ${amount}`));
-    const r = result as any;
-    return (r.rowCount ?? r.meta?.rowCount ?? 0) > 0;
+      .where(and(eq(s.pgUserCredits.userId, userId), sql`${s.pgUserCredits.balance} >= ${amount}`))
+      .returning({ userId: s.pgUserCredits.userId });
+    return result.length > 0;
   },
 
   async deductCredits(userId: string, amount: number, description?: string, executionId?: string) {
