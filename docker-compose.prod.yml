@@ -23,6 +23,8 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:3001:3001"
+    volumes:
+      - storage-data:/app/public/storage
     environment:
       NODE_ENV: production
       PORT: 3001
@@ -56,3 +58,4 @@ services:
 
 volumes:
   redis-data:
+  storage-data:

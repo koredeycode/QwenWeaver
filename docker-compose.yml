@@ -24,6 +24,8 @@ services:
       # DASHSCOPE_API_KEY: your-key-here
     volumes:
       - qwenweaver-data:/data
+      - storage-data:/app/public/storage
 
 volumes:
   qwenweaver-data:
+  storage-data:

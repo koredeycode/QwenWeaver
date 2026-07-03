@@ -147,6 +147,18 @@ export const OutputRenderer = React.memo(
 
     // If structured OutputPart[] is provided, render parts directly
     if (outputParts && outputParts.length > 0) {
+      const mediaParts = outputParts.filter(
+        (p) => p.type !== 'text' && !p.contentType?.startsWith('text/'),
+      );
+      const hasText = outputParts.some(
+        (p) => p.type === 'text' || p.contentType?.startsWith('text/'),
+      );
+      const textContent =
+        displayText ||
+        (hasText
+          ? outputParts.find((p) => p.type === 'text' || p.contentType?.startsWith('text/'))?.value
+          : '');
+
       return (
         <div className="mt-2.5 bg-white border border-slate-200 p-4 font-sans text-sm text-slate-800 overflow-y-auto leading-relaxed shadow-sm">
           <div className="text-slate-400 border-b border-slate-100 pb-2 mb-3 flex items-center justify-between font-mono">
@@ -174,7 +186,14 @@ export const OutputRenderer = React.memo(
               )}
             </div>
           )}
-          <div className="space-y-2">{renderOutputParts(outputParts)}</div>
+          <div className="space-y-2">
+            {hasText && textContent && (
+              <div className="font-sans text-[13px] text-slate-800">
+                {renderMarkdown(textContent)}
+              </div>
+            )}
+            {mediaParts.length > 0 && renderOutputParts(mediaParts)}
+          </div>
         </div>
       );
     }
