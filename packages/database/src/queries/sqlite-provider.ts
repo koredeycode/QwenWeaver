@@ -398,8 +398,9 @@ export const sqliteProvider: QueryProvider = {
     const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
     const workflowId = workflow.id || crypto.randomUUID();
 
+    const { copilotHistory, ...rest } = workflow;
     const payload: WorkflowPayload = {
-      ...workflow,
+      ...rest,
       nodes: workflow.nodes.map((n) => ({ ...n, id: n.id })),
       edges: workflow.edges.map((e) => ({ ...e, id: e.id })),
     };
@@ -411,6 +412,7 @@ export const sqliteProvider: QueryProvider = {
       description: workflow.description || null,
       isActive: 1,
       nodesEdges: payload,
+      copilotHistory: copilotHistory || [],
       createdAt: Date.now(),
     });
 
@@ -425,19 +427,25 @@ export const sqliteProvider: QueryProvider = {
     const { db } = getConnection();
     const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
 
+    const { copilotHistory, ...rest } = workflow;
     const payload: WorkflowPayload = {
-      ...workflow,
+      ...rest,
       nodes: workflow.nodes.map((n) => ({ ...n, id: n.id })),
       edges: workflow.edges.map((e) => ({ ...e, id: e.id })),
     };
 
+    const updateData: Record<string, any> = {
+      name: workflow.name,
+      description: workflow.description || null,
+      nodesEdges: payload,
+    };
+    if (copilotHistory) {
+      updateData.copilotHistory = copilotHistory;
+    }
+
     await sqliteDb
       .update(sqliteSchema.sqliteWorkflows)
-      .set({
-        name: workflow.name,
-        description: workflow.description || null,
-        nodesEdges: payload,
-      })
+      .set(updateData)
       .where(
         and(
           eq(sqliteSchema.sqliteWorkflows.id, workflowId),

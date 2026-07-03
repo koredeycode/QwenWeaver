@@ -130,8 +130,8 @@ export function executeGraphActions(
       const targetNode = currentNodes.find((n) => n.id === target);
       if (sourceNode && targetNode) {
         const detected = autoDetectHandles(sourceNode.type as string, targetNode.type as string);
-        const sourceHandle = connSourceHandle || detected.sourceHandle;
-        const targetHandle = connTargetHandle || detected.targetHandle;
+        const sourceHandle = detected.sourceHandle || connSourceHandle;
+        const targetHandle = detected.targetHandle || connTargetHandle;
 
         const newEdgeId = id || `e-${source}-${target}`;
         const exists = currentEdges.some((e) => e.id === newEdgeId);
@@ -160,8 +160,8 @@ export function executeGraphActions(
         const targetNode = currentNodes.find((n) => n.id === target);
         if (sourceNode && targetNode) {
           const detected = autoDetectHandles(sourceNode.type as string, targetNode.type as string);
-          const sourceHandle = connSourceHandle || detected.sourceHandle;
-          const targetHandle = connTargetHandle || detected.targetHandle;
+          const sourceHandle = detected.sourceHandle || connSourceHandle;
+          const targetHandle = detected.targetHandle || connTargetHandle;
 
           const newEdgeId = id || `e-${source}-${target}`;
           const exists = currentEdges.some((edge) => edge.id === newEdgeId);

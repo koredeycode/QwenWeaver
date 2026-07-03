@@ -141,12 +141,27 @@ export const EdgePayload = z.object({
 });
 export type EdgePayload = z.infer<typeof EdgePayload>;
 
+export const CopilotHistoryEntrySchema = z.object({
+  role: z.enum(['user', 'assistant']),
+  content: z.string(),
+  thinking: z.string().optional(),
+  textAfterProposal: z.string().optional(),
+  proposal: z
+    .object({
+      id: z.string(),
+      actions: z.array(z.any()),
+      status: z.enum(['pending', 'approved', 'rejected']).optional(),
+    })
+    .optional(),
+});
+
 export const WorkflowPayloadBase = z.object({
   id: z.string().optional(),
   name: z.string(),
   description: z.string().optional(),
   nodes: z.array(NodePayload),
   edges: z.array(EdgePayload),
+  copilotHistory: z.array(CopilotHistoryEntrySchema).optional(),
 });
 
 export const WorkflowPayload = WorkflowPayloadBase.refine(

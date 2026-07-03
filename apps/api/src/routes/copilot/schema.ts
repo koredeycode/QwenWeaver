@@ -90,7 +90,7 @@ Design principles:
 
 CRITICAL: You MUST provide the actual action objects in the "propose_canvas_changes" tool call. Example actions:
   add_node:    {"type":"add_node","payload":{"type":"agent","id":"node-videographer","data":{"label":"Videographer","workerType":"video","model":"qwen3.7-plus"},"position":{"x":300,"y":200}}}
-  add_edge:    {"type":"add_edge","payload":{"source":"node-trigger","target":"node-videographer","sourceHandle":"output","targetHandle":"input"}}
+  add_edge:    {"type":"add_edge","payload":{"source":"node-trigger","target":"node-videographer","sourceHandle":"source","targetHandle":"target-left"}}
   update_node: {"type":"update_node","payload":{"id":"node-photo-editor","data":{"label":"Photo & Video Editor"}}}
   delete_node: {"type":"delete_node","payload":{"id":"node-old"}}
 Place ALL your changes in the "actions" array. At least one action is required. If you describe changes in text without providing them as structured actions, nothing will be applied.`;
@@ -110,7 +110,7 @@ Modification instructions:
 
 CRITICAL: You MUST provide the actual action objects in the "propose_canvas_changes" tool call. Example actions:
   add_node:    {"type":"add_node","payload":{"type":"agent","id":"node-videographer","data":{"label":"Videographer","workerType":"video","model":"qwen3.7-plus"},"position":{"x":300,"y":200}}}
-  add_edge:    {"type":"add_edge","payload":{"source":"node-trigger","target":"node-videographer","sourceHandle":"output","targetHandle":"input"}}
+  add_edge:    {"type":"add_edge","payload":{"source":"node-trigger","target":"node-videographer","sourceHandle":"source","targetHandle":"target-left"}}
   update_node: {"type":"update_node","payload":{"id":"node-photo-editor","data":{"label":"Photo & Video Editor"}}}
   delete_node: {"type":"delete_node","payload":{"id":"node-old"}}
 Place ALL your changes in the "actions" array. At least one action is required. If you describe changes in text without providing them as structured actions, nothing will be applied.`;

@@ -328,7 +328,7 @@ export const WorkflowDashboard = () => {
           {/* Workflows Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Create Blank Card */}
-            <button
+            {/* <button
               onClick={handleCreateNew}
               className="border-2 border-dashed border-slate-300 hover:border-[#f97316] bg-white p-6 flex flex-col items-center justify-center text-center group transition-all rounded-none min-h-[220px] cursor-pointer"
             >
@@ -341,7 +341,7 @@ export const WorkflowDashboard = () => {
               <p className="text-[11px] text-slate-400 mt-1 max-w-[200px] leading-relaxed">
                 Initialize an empty canvas workspace and build a workflow DAG from scratch.
               </p>
-            </button>
+            </button> */}
 
             {/* ── USER WORKFLOWS SECTION ── */}
             <div className="col-span-full">

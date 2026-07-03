@@ -377,8 +377,9 @@ export const mysqlProvider: QueryProvider = {
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
     const workflowId = workflow.id || crypto.randomUUID();
 
+    const { copilotHistory, ...rest } = workflow;
     const payload: WorkflowPayload = {
-      ...workflow,
+      ...rest,
       nodes: workflow.nodes.map((n) => ({ ...n, id: n.id })),
       edges: workflow.edges.map((e) => ({ ...e, id: e.id })),
     };
@@ -390,6 +391,7 @@ export const mysqlProvider: QueryProvider = {
       description: workflow.description || null,
       isActive: 1,
       nodesEdges: payload,
+      copilotHistory: copilotHistory || [],
       createdAt: new Date(),
     });
 
@@ -404,19 +406,25 @@ export const mysqlProvider: QueryProvider = {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
 
+    const { copilotHistory, ...rest } = workflow;
     const payload: WorkflowPayload = {
-      ...workflow,
+      ...rest,
       nodes: workflow.nodes.map((n) => ({ ...n, id: n.id })),
       edges: workflow.edges.map((e) => ({ ...e, id: e.id })),
     };
 
+    const updateData: Record<string, any> = {
+      name: workflow.name,
+      description: workflow.description || null,
+      nodesEdges: payload,
+    };
+    if (copilotHistory) {
+      updateData.copilotHistory = copilotHistory;
+    }
+
     await mysqlDb
       .update(mysqlSchema.mysqlWorkflows)
-      .set({
-        name: workflow.name,
-        description: workflow.description || null,
-        nodesEdges: payload,
-      })
+      .set(updateData)
       .where(
         and(
           eq(mysqlSchema.mysqlWorkflows.id, workflowId),
