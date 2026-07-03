@@ -138,12 +138,42 @@ export const WorkflowDashboard = () => {
     setIsCreateOpen(true);
   };
 
-  const handleCreateConfirm = (name: string, description: string) => {
-    clearGraph();
-    const newId = `workflow-${Date.now().toString().slice(-4)}`;
-    sessionStorage.setItem(`pending_wf_${newId}`, JSON.stringify({ name, description }));
-    navigate(`/workflows/${newId}`);
-    setIsCreateOpen(false);
+  const handleCreateConfirm = async (name: string, description: string) => {
+    try {
+      clearGraph();
+
+      // Create a proper workflow record in the database
+      const payload = {
+        name: name,
+        description: description,
+        nodes: [],
+        edges: [],
+      };
+
+      const res = (await withRefresh(() =>
+        client.api.workflow.$post({ json: payload as any }),
+      )) as any;
+
+      if (!res.ok) {
+        if (res.status === 403) {
+          const errBody: Record<string, unknown> = await res.json().catch(() => ({}));
+          throw new Error(String(errBody.error || 'Workflow limit reached'));
+        }
+        throw new Error('Failed to create workflow');
+      }
+
+      const result = await res.json();
+      navigate(`/workflows/${result.workflowId}`);
+      setIsCreateOpen(false);
+    } catch (err) {
+      console.error('Failed to create workflow', err);
+      // Fallback to original behavior if API call fails
+      clearGraph();
+      const newId = `workflow-${Date.now().toString().slice(-4)}`;
+      sessionStorage.setItem(`pending_wf_${newId}`, JSON.stringify({ name, description }));
+      navigate(`/workflows/${newId}`);
+      setIsCreateOpen(false);
+    }
   };
 
   const handleDelete = async (wf: UserWorkflow) => {
@@ -161,9 +191,38 @@ export const WorkflowDashboard = () => {
     }
   };
 
-  const handleOpenExample = (wf: ExampleWorkflow) => {
-    loadUnsavedWorkflow(wf.nodes as any, wf.edges as any, wf.name, wf.description);
-    navigate('/workflows/unsaved');
+  const handleOpenExample = async (wf: ExampleWorkflow) => {
+    // Create a new workflow with the example data
+    try {
+      const payload = {
+        name: wf.name,
+        description: wf.description || '',
+        nodes: wf.nodes as any,
+        edges: wf.edges as any,
+      };
+
+      const res = (await withRefresh(() =>
+        client.api.workflow.$post({ json: payload as any }),
+      )) as any;
+
+      if (!res.ok) {
+        if (res.status === 403) {
+          const errBody: Record<string, unknown> = await res.json().catch(() => ({}));
+          throw new Error(String(errBody.error || 'Workflow limit reached'));
+        }
+        throw new Error('Failed to create workflow from example');
+      }
+
+      const result = await res.json();
+      // Now load the example data into the store after creating the workflow record
+      loadUnsavedWorkflow(wf.nodes as any, wf.edges as any, wf.name, wf.description);
+      navigate(`/workflows/${result.workflowId}`);
+    } catch (err) {
+      console.error('Failed to create workflow from example', err);
+      // Fallback to original behavior if API call fails
+      loadUnsavedWorkflow(wf.nodes as any, wf.edges as any, wf.name, wf.description);
+      navigate('/workflows/unsaved');
+    }
   };
 
   const getNodeCount = (workflow: ExampleWorkflow, type: string) => {
