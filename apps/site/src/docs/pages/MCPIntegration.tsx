@@ -40,7 +40,24 @@ export function MCPIntegration() {
             </li>
           </ul>
         </li>
-        <li>Configure auth if needed (API key, Bearer token, or Basic auth)</li>
+        <li>
+          Configure auth if needed:
+          <ul>
+            <li>
+              <strong>API Key</strong> — sent as <code>X-API-Key</code> header
+            </li>
+            <li>
+              <strong>Bearer Token</strong> — sent as <code>Authorization: Bearer</code> header
+            </li>
+            <li>
+              <strong>Basic Auth</strong> — username + password
+            </li>
+          </ul>
+        </li>
+        <li>
+          Auth credentials can be saved as encrypted <strong>credentials</strong> in the database
+          and resolved at runtime
+        </li>
         <li>
           Click <strong>Discover Tools</strong> to verify the connection
         </li>
@@ -50,6 +67,10 @@ export function MCPIntegration() {
       <p>
         After registering a server, you attach its tools to individual Agent nodes via the inspector
         panel. Multiple tools from multiple servers can be attached to a single agent.
+      </p>
+      <p>
+        You can also use an <strong>MCP Tool Node</strong> on the canvas, which connects directly to
+        an MCP server and makes its tools available to the downstream agent.
       </p>
 
       <h2>MCP Server Lifecycle</h2>
@@ -64,8 +85,11 @@ export function MCPIntegration() {
       <h2>Security Notes</h2>
       <ul>
         <li>MCP servers have access to whatever the agent's prompt context includes</li>
-
         <li>Auth credentials are stored encrypted in the database</li>
+        <li>
+          Credentials are resolved at runtime via <code>credential-resolver.ts</code> using the
+          stored encrypted values
+        </li>
       </ul>
 
       <h2>Next Steps</h2>

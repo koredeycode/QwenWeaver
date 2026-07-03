@@ -12,16 +12,12 @@ export function StreamingSection() {
           <h2 className="mt-6 text-3xl font-bold tracking-tight sm:text-4xl">
             Watch it <span className="text-secondary">execute live</span>
           </h2>
-          <p className="mt-4 text-lg leading-relaxed text-on-surface-variant">
-            See every step of your workflow as it happens. SSE streaming delivers token-by-token
-            output, status updates, and animated edge highlights — in real time.
-          </p>
           <ul className="mt-6 space-y-3">
             {[
-              'Live token streaming from every agent',
-              'Edge animations show active data flow',
-              'Supervisor decisions displayed in real time',
-              'Pause, resume, and inspect any node',
+              'Token-by-token streaming',
+              'Animated data flow on edges',
+              'Live status updates',
+              'Inspect any node mid-execution',
             ].map((item) => (
               <li key={item} className="flex items-start gap-3 text-sm text-on-surface-variant">
                 <svg

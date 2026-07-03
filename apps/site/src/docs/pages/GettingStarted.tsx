@@ -27,7 +27,8 @@ export function GettingStarted() {
         </li>
         <li>Configure the agent's system prompt and model (defaults to qwen3-max)</li>
         <li>
-          Optionally add a <strong>Supervisor Node</strong> to review outputs
+          Optionally add a <strong>Supervisor Node</strong> to review outputs, or a{' '}
+          <strong>Debate Arena</strong> for multi-agent debate
         </li>
       </ul>
 
@@ -40,19 +41,30 @@ export function GettingStarted() {
           <strong>Token streaming</strong> — see output appear token-by-token
         </li>
         <li>
+          <strong>Thinking streaming</strong> — view chain-of-thought reasoning for models with
+          thinking enabled
+        </li>
+        <li>
           <strong>Status updates</strong> — nodes glow orange while running, green on completion
         </li>
         <li>
           <strong>Edge animations</strong> — data flow visualized between nodes
+        </li>
+        <li>
+          <strong>Workspace writes</strong> — see agents collaborate on the shared blackboard
+        </li>
+        <li>
+          <strong>Debate rounds</strong> — watch agents debate in real time
         </li>
       </ul>
 
       <h2>4. View Results</h2>
       <p>After execution completes, you can:</p>
       <ul>
-        <li>Click any node to see its full output and token usage</li>
+        <li>Click any node to see its full output, reasoning, and token usage</li>
         <li>View execution metrics (speedup, parallel efficiency, total tokens)</li>
         <li>Export the workflow as JSON</li>
+        <li>Browse the execution history and agent logs</li>
       </ul>
 
       <h2>Next Steps</h2>

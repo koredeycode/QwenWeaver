@@ -13,16 +13,12 @@ export function VisualBuilderSection() {
           <h2 className="mt-6 text-3xl font-bold tracking-tight sm:text-4xl">
             Drag, drop, <span className="text-secondary">connect.</span>
           </h2>
-          <p className="mt-4 text-lg leading-relaxed text-on-surface-variant">
-            Build complex agent pipelines on an interactive graph. Add trigger nodes, AI agents,
-            supervisors, and MCP tools — then wire them together in seconds.
-          </p>
           <ul className="mt-6 space-y-3">
             {[
-              'Trigger nodes — webhook, cron, or manual input',
-              'Agent nodes — assign models, prompts, and tools',
-              'Supervisor nodes — review, reject, and delegate',
-              'MCP Tool nodes — connect databases, APIs, files',
+              'All node types — trigger, agent, supervisor',
+              'MCP tools — databases, APIs, files',
+              'Conversation-mode edges',
+              'Shared workspace blackboard',
             ].map((item) => (
               <li key={item} className="flex items-start gap-3 text-sm text-on-surface-variant">
                 <svg
@@ -80,7 +76,7 @@ export function VisualBuilderSection() {
               </div>
 
               <div className="absolute left-28 top-4 right-4 bottom-4">
-                <div className="absolute top-0 left-0 w-24 h-9 rounded border-2 border-emerald-300 bg-white shadow-sm flex items-center justify-center">
+                <div className="absolute top-0 left-0 w-24 h-9 rounded border border-emerald-300 bg-white shadow-sm flex items-center justify-center">
                   <span className="text-[8px] font-mono text-emerald-600 font-bold">TRIGGER</span>
                 </div>
                 <svg
@@ -92,7 +88,7 @@ export function VisualBuilderSection() {
                   <circle cx="38" cy="4" r="3" fill="#10b981" />
                 </svg>
 
-                <div className="absolute top-0 right-0 w-28 h-9 rounded border-2 border-blue-300 bg-white shadow-sm flex items-center justify-center">
+                <div className="absolute top-0 right-0 w-28 h-9 rounded border border-blue-300 bg-white shadow-sm flex items-center justify-center">
                   <span className="text-[8px] font-mono text-blue-600 font-bold">SUPERVISOR</span>
                 </div>
 
@@ -105,7 +101,7 @@ export function VisualBuilderSection() {
                   <circle cx="38" cy="4" r="3" fill="#2563eb" />
                 </svg>
 
-                <div className="absolute bottom-0 left-0 w-24 h-9 rounded border-2 border-orange-300 bg-white shadow-sm flex items-center justify-center">
+                <div className="absolute bottom-0 left-0 w-24 h-9 rounded border border-orange-300 bg-white shadow-sm flex items-center justify-center">
                   <span className="text-[8px] font-mono text-orange-600 font-bold">AGENT</span>
                 </div>
 
@@ -123,7 +119,7 @@ export function VisualBuilderSection() {
                   <circle cx="2" cy="4" r="3" fill="#f97316" />
                 </svg>
 
-                <div className="absolute bottom-0 right-8 w-16 h-7 rounded border-2 border-purple-200 bg-white shadow-sm flex items-center justify-center">
+                <div className="absolute bottom-0 right-8 w-16 h-7 rounded border border-purple-200 bg-white shadow-sm flex items-center justify-center">
                   <span className="text-[7px] font-mono text-purple-600 font-bold">MCP</span>
                 </div>
               </div>

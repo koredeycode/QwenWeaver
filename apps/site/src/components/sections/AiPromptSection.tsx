@@ -12,10 +12,6 @@ export function AiPromptSection() {
           <h2 className="mt-6 text-3xl font-bold tracking-tight sm:text-4xl">
             Describe. <span className="text-primary">Watch it build.</span>
           </h2>
-          <p className="mt-4 text-lg leading-relaxed text-on-surface-variant">
-            Just type what you want in plain English. QwenWeaver's AI interprets your intent and
-            generates a complete multi-agent workflow — no dragging required.
-          </p>
           <div className="mt-6 rounded-lg border border-outline/40 bg-surface-dim/60 p-4 font-mono text-sm">
             <div className="flex items-center gap-2 text-orange-500 mb-2">
               <span className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />

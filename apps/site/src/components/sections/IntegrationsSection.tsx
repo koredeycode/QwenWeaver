@@ -13,10 +13,10 @@ export function IntegrationsSection() {
           Connect anything with <span className="text-primary">MCP</span>
         </h2>
         <p
-          className="mt-4 text-lg text-on-surface-variant animate-fade-in"
+          className="mt-4 text-sm text-on-surface-variant animate-fade-in"
           style={{ animationDelay: '0.1s' }}
         >
-          The Model Context Protocol lets your agents connect to any tool, database, or API.
+          Model Context Protocol — connect any tool or API.
         </p>
       </div>
 

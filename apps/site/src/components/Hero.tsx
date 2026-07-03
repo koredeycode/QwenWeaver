@@ -55,7 +55,9 @@ export function Hero() {
           </p>
         </div>
 
-        <CanvasDemo />
+        <div className="hidden lg:block">
+          <CanvasDemo />
+        </div>
       </div>
     </section>
   );

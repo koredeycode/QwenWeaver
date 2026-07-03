@@ -21,22 +21,32 @@ const nodeTypes = [
     description:
       'An LLM-powered agent with a system prompt. Processes upstream data and generates output.',
     model: 'qwen3-max (default), qwen-plus, or custom',
-    config: 'System prompt, model selection, temperature, output format, MCP tools',
+    config:
+      'System prompt, model selection, temperature, thinking budget, output format, MCP tools',
   },
   {
     name: 'Supervisor Node',
     type: 'supervisor',
     description:
-      'Reviews agent outputs and can reject them with feedback. Supports multi-round negotiation.',
+      'Reviews agent outputs and can reject them with feedback. Supports multi-round backtracking.',
     model: 'qwen3-max with thinking enabled',
     config: 'System prompt, thinking budget, max negotiation rounds',
+  },
+  {
+    name: 'Debate Arena Node',
+    type: 'debate_arena',
+    description:
+      'Multi-agent debate with configurable modes (debate, negotiation, consensus). Supports optional AI arbitrator with scoring.',
+    model: 'qwen3-max (arbitrator)',
+    config:
+      'Mode (debate/negotiation/consensus), max rounds, has arbitrator, arbitrator model, scoring criteria, output format (verdict/transcript/score)',
   },
   {
     name: 'MCP Tool Node',
     type: 'mcp_tool',
     description: 'Connects to an MCP server and exposes its tools to the workflow.',
     model: 'None (tool execution)',
-    config: 'MCP server URL or ID, tool selection, auth config',
+    config: 'MCP server URL or ID, tool selection, auth config (api_key, bearer, basic)',
   },
   {
     name: 'Logic Node',
@@ -94,7 +104,8 @@ export function NodeTypes() {
           <strong>Thinking Budget</strong> — max tokens allocated to reasoning (default: 4096)
         </li>
         <li>
-          <strong>Output Format</strong> — markdown, html, json, csv, xml, yaml, or plain text
+          <strong>Output Format</strong> — markdown, html, json, csv, xml, yaml, plain text, image,
+          audio, or video
         </li>
         <li>
           <strong>MCP Tools</strong> — attach tools from connected MCP servers
@@ -115,6 +126,39 @@ export function NodeTypes() {
         This negotiation process continues up to <code>maxNegotiationRounds</code> (default: 3).
       </p>
 
+      <h2>Debate Arena Details</h2>
+      <p>
+        Debate Arena nodes facilitate structured multi-agent debate. Upstream agents are
+        participants. The arena supports three modes:
+      </p>
+      <ul>
+        <li>
+          <strong>Debate</strong> — participants argue their positions and address counterpoints
+        </li>
+        <li>
+          <strong>Negotiation</strong> — participants find common ground and propose compromises
+        </li>
+        <li>
+          <strong>Consensus</strong> — participants work toward a unified conclusion
+        </li>
+      </ul>
+      <p>
+        When <strong>hasArbitrator</strong> is enabled, the arena uses an impartial AI model to
+        evaluate the debate and produce a verdict with optional scoring.
+      </p>
+      <p>Output format options:</p>
+      <ul>
+        <li>
+          <strong>verdict</strong> — full transcript + arbitrator verdict + scores (default)
+        </li>
+        <li>
+          <strong>transcript</strong> — raw debate transcript only
+        </li>
+        <li>
+          <strong>score</strong> — numeric scores only
+        </li>
+      </ul>
+
       <h2>MCP Tool Node Details</h2>
       <p>
         MCP Tool nodes connect to a registered MCP server. Once connected, the server's tools are
@@ -128,7 +172,7 @@ export function NodeTypes() {
           <strong>Stdio</strong> — local processes (e.g., npx-based MCP servers)
         </li>
         <li>
-          <strong>Auth</strong> — API key, Bearer token, or Basic auth
+          <strong>Auth</strong> — API key, Bearer token, or Basic auth (stored encrypted)
         </li>
       </ul>
 

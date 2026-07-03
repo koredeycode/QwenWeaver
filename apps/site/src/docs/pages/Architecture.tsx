@@ -10,26 +10,6 @@ export function Architecture() {
         pieces fit together.
       </p>
 
-      <h2>High-Level Overview</h2>
-      <pre>
-        <code>{`┌─────────────┐     ┌──────────────┐     ┌──────────────┐
-│  Site        │     │  App         │     │  API Server   │
-│  (site)      │────►│  (app)       │────►│  (api)        │
-│  Vite+React  │     │  ReactFlow   │     │  Hono.js      │
-└─────────────┘     │  Zustand      │     │  Drizzle ORM  │
-                    │  React Router │     │  Vercel AI SDK│
-                    └──────────────┘     └──────┬───────┘
-                                               │
-                    ┌──────────────────────────┼──────────┐
-                    │                          │          │
-               ┌────▼────┐            ┌────────▼───┐ ┌────▼────┐
-               │ Database │            │ MCP Client │ │ Engine  │
-               │ SQLite/  │            │ @model-    │ │ Kahn's  │
-               │ Postgres │            │ context-   │ │ Algo    │
-               └─────────┘            │ protocol   │ │ + Batch │
-                                       └────────────┘ └─────────┘`}</code>
-      </pre>
-
       <h2>Workspace Breakdown</h2>
       <table>
         <thead>
@@ -61,7 +41,7 @@ export function Architecture() {
             <td>
               <code>packages/database</code>
             </td>
-            <td>Drizzle ORM with triple-dialect support (SQLite, PostgreSQL, MySQL).</td>
+            <td>Drizzle ORM with dual-dialect support (SQLite for dev, PostgreSQL for prod).</td>
           </tr>
           <tr>
             <td>
@@ -75,20 +55,12 @@ export function Architecture() {
             </td>
             <td>MCP transport layer — HTTP Streamable and Stdio clients.</td>
           </tr>
-          <tr>
-            <td>
-              <code>packages/cli</code>
-            </td>
-            <td>
-              Self-hosted CLI. Bundles API + Web for <code>qwenweaver start</code>.
-            </td>
-          </tr>
         </tbody>
       </table>
 
       <h2>Execution Engine</h2>
       <p>
-        The engine (<code>apps/api/src/engine/</code>) is the core of {SITE.name}:
+        The core of {SITE.name} lives in <code>apps/api/src/engine/</code>:
       </p>
       <ol>
         <li>
@@ -97,19 +69,41 @@ export function Architecture() {
         </li>
         <li>
           <strong>agent-runner.ts</strong> — Executes a single node via Vercel AI SDK{' '}
-          <code>streamText</code>, handles tool calls, captures token usage
+          <code>streamText</code>, handles tool calls (MCP + workspace), captures token usage,
+          supports media generation (image, audio, video)
         </li>
         <li>
           <strong>executor.ts</strong> — Main loop: iterates batches, handles supervisor
-          backtracking with negotiation rounds
+          backtracking with negotiation rounds, runs conversation exchanges on conversation-mode
+          edges
+        </li>
+        <li>
+          <strong>debate-runner.ts</strong> — Multi-agent debate arena with configurable modes
+          (debate, negotiation, consensus) and optional AI arbitrator
+        </li>
+        <li>
+          <strong>message-bus.ts</strong> — Topic-based DataBus for inter-agent communication.
+          Supports output topics and conversation-mode channels
         </li>
         <li>
           <strong>model-router.ts</strong> — Maps node types to default models, lazily initializes
-          Alibaba provider
+          Alibaba provider (DashScope)
         </li>
         <li>
           <strong>mcp-bridge.ts</strong> — Manages MCP client pool, tool discovery, and tool
           execution
+        </li>
+        <li>
+          <strong>workspace-tools.ts</strong> — Injects workspace blackboard tools (read, write,
+          append, list) with optimistic concurrency
+        </li>
+        <li>
+          <strong>prompt-builder.ts</strong> — Assembles system prompts and user messages from
+          DataBus context
+        </li>
+        <li>
+          <strong>credential-resolver.ts</strong> — Resolves encrypted credentials from the database
+          for MCP auth and DashScope API keys
         </li>
       </ol>
 
@@ -128,13 +122,18 @@ Frontend opens GET /api/workflow/{id}/stream (SSE)
   │
   ▼
 Engine:
-  1. compileDag() — topological sort
-  2. For each batch (Promise.all):
+  1. compileDag() — topological sort, detect cycles
+  2. Clear workspace blackboard and execution messages
+  3. For each batch (Promise.all):
      a. runAgent() — streamText via Vercel AI SDK
-     b. Stream token/status/edge events via SSE
+        - MCP tool discovery + injection
+        - Workspace tool injection
+        - Token/thinking streaming via SSE
+     b. Edge activation events emitted
      c. If supervisor rejects → backtrack with feedback
-  3. Save logs, update execution record
-  4. Emit "complete" event with metrics`}</code>
+     d. Conversation exchange on conversation-mode edges
+  4. Save logs, update execution record
+  5. Emit "complete" event with metrics`}</code>
       </pre>
 
       <h2>Database Strategy</h2>
@@ -143,19 +142,16 @@ Engine:
       </p>
       <ul>
         <li>
-          <strong>SQLite</strong> — local dev (zero config)
+          <strong>SQLite</strong> — local dev (zero config, better-sqlite3)
         </li>
         <li>
           <strong>PostgreSQL</strong> — cloud production (UUID PKs, JSONB, timestamps)
-        </li>
-        <li>
-          <strong>MySQL</strong> — alternative production dialect
         </li>
       </ul>
       <p>
         The connection factory auto-detects the dialect from <code>DATABASE_URL</code>. Queries use
         a provider pattern: <code>getQueryProvider()</code> returns the correct dialect-specific
-        implementation.
+        implementation. All migrations are additive-only.
       </p>
 
       <h2>Next Steps</h2>
@@ -163,7 +159,6 @@ Engine:
         <li>
           <Link to="/docs/getting-started">Get started with the cloud version</Link>
         </li>
-
         <li>
           <Link to="/docs/api">Browse the API</Link>
         </li>
