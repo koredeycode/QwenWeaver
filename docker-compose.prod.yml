@@ -3,7 +3,7 @@
 # Requires: .env file with DATABASE_URL, API_SECRET, etc.
 services:
   redis:
-    image: redis:7
+    image: redis:7-alpine
     container_name: qw-redis
     restart: unless-stopped
     ports:
