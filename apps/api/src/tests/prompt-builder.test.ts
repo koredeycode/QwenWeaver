@@ -1,13 +1,27 @@
 import { describe, it, expect } from 'vitest';
-import {
-  buildSystemPrompt,
-  buildUserMessage,
-  buildMessagePrompt,
-} from '../engine/prompt-builder.js';
-import type { NodePayload } from '@qwenweaver/types';
+import { buildSystemPrompt, buildUserMessageFromBus } from '../engine/prompt-builder.js';
+import type { NodePayload, BusMessage } from '@qwenweaver/types';
 
 function node(id: string, type: string, data: Record<string, unknown> = {}): NodePayload {
   return { id, type: type as any, position: { x: 0, y: 0 }, data };
+}
+
+function busMsg(
+  sourceNodeId: string,
+  messageType: 'output' | 'error' | 'conversation' | 'status' | 'tool_call' | 'tool_result',
+  payload: string | Record<string, unknown>,
+  overrides: Partial<BusMessage> = {},
+): BusMessage {
+  return {
+    id: overrides.id ?? `msg-${sourceNodeId}-${Date.now()}`,
+    executionId: 'test-exec',
+    topic: `node:${sourceNodeId}.output`,
+    sourceNodeId,
+    messageType,
+    payload,
+    timestamp: Date.now(),
+    ...overrides,
+  } as BusMessage;
 }
 
 describe('prompt-builder', () => {
@@ -38,89 +52,76 @@ describe('prompt-builder', () => {
     });
   });
 
-  describe('buildUserMessage', () => {
-    it('returns label when no upstream outputs and no revision feedback', () => {
+  describe('buildUserMessageFromBus', () => {
+    it('returns label when no messages and no revision feedback', () => {
       const n = node('a1', 'agent', { label: 'Analyze the data.' });
-      const result = buildUserMessage(n, new Map());
+      const result = buildUserMessageFromBus(n, [], [], []);
       expect(result).toBe('Analyze the data.');
     });
 
-    it('returns label fallback when no upstream, no revision feedback, no label', () => {
+    it('returns label fallback when no messages and no label', () => {
       const n = node('a1', 'agent', {});
-      const result = buildUserMessage(n, new Map());
+      const result = buildUserMessageFromBus(n, [], [], []);
       expect(result).toBe('Begin your task.');
     });
 
-    it('includes upstream outputs in the message', () => {
+    it('includes upstream output messages in the result', () => {
       const n = node('a1', 'agent', { label: 'Summarize.' });
-      const upstream = new Map();
-      upstream.set('src1', {
-        nodeId: 'src1',
-        outputs: [],
-        text: 'Raw upstream text',
-        tokensUsed: 10,
-        durationMs: 5,
-        status: 'completed',
-      });
-      const result = buildUserMessage(n, upstream);
+      const upstreamMessages = [busMsg('src1', 'output', 'Raw upstream text')];
+      const result = buildUserMessageFromBus(n, upstreamMessages, [], []);
       expect(result).toContain('Raw upstream text');
       expect(result).toContain('src1');
       expect(result).toContain('Summarize.');
     });
 
-    it('includes _revisionFeedback as a dedicated revision section', () => {
+    it('includes revision feedback as a dedicated section', () => {
       const n = node('a1', 'agent', {
         label: 'Write code.',
         _revisionFeedback: 'Your code lacks error handling. Please add try-catch blocks.',
       });
-      const upstream = new Map();
-      upstream.set('src1', {
-        nodeId: 'src1',
-        outputs: [],
-        text: 'Some context',
-        tokensUsed: 5,
-        durationMs: 3,
-        status: 'completed',
-      });
-      const result = buildUserMessage(n, upstream);
+      const upstreamMessages = [busMsg('src1', 'output', 'Some context')];
+      const result = buildUserMessageFromBus(
+        n,
+        upstreamMessages,
+        [],
+        [],
+        'Your code lacks error handling. Please add try-catch blocks.',
+      );
       expect(result).toContain('REVISION REQUESTED BY SUPERVISOR');
       expect(result).toContain('error handling');
       expect(result).toContain('revise your previous response');
       expect(result).toContain('Some context');
     });
 
-    it('includes revision section even when no upstream outputs', () => {
-      const n = node('a1', 'agent', {
-        _revisionFeedback: 'Please add more detail.',
-      });
-      const result = buildUserMessage(n, new Map());
+    it('includes revision section even when no upstream messages', () => {
+      const n = node('a1', 'agent', { _revisionFeedback: 'Please add more detail.' });
+      const result = buildUserMessageFromBus(n, [], [], [], 'Please add more detail.');
       expect(result).toContain('REVISION REQUESTED BY SUPERVISOR');
       expect(result).toContain('Please add more detail');
     });
-  });
 
-  describe('buildMessagePrompt', () => {
-    it('generates initial message prompt for empty transcript', () => {
-      const result = buildMessagePrompt('a1', [], 'ch1', 1, 5);
-      expect(result).toContain('ch1');
-      expect(result).toContain('initial message');
-    });
-
-    it('includes transcript history for non-empty transcript', () => {
-      const transcript = [
-        { sender: 'a1', text: 'Hello', round: 1 },
-        { sender: 'a2', text: 'Hi back', round: 1 },
+    it('includes conversation messages in the result', () => {
+      const n = node('a1', 'agent', { label: 'Respond.' });
+      const conversationMessages = [
+        busMsg('a1', 'conversation', 'Hello', {
+          topic: 'conversation:a1|a2',
+          round: 1,
+        }),
+        busMsg('a2', 'conversation', 'Hi there', {
+          topic: 'conversation:a1|a2',
+          round: 1,
+        }),
       ];
-      const result = buildMessagePrompt('a1', transcript, 'ch1', 2, 5);
+      const result = buildUserMessageFromBus(n, [], conversationMessages, [
+        {
+          source: 'a1',
+          target: 'a2',
+          data: { subscription: { conversationMode: true, maxRounds: 5 } },
+        },
+      ]);
       expect(result).toContain('Hello');
-      expect(result).toContain('Hi back');
-      expect(result).not.toContain('FINAL');
-    });
-
-    it('marks final round', () => {
-      const transcript = [{ sender: 'a1', text: 'Hello', round: 1 }];
-      const result = buildMessagePrompt('a1', transcript, 'ch1', 5, 5);
-      expect(result).toContain('FINAL');
+      expect(result).toContain('Hi there');
+      expect(result).toContain('Conversation transcript');
     });
   });
 });

@@ -278,11 +278,11 @@ export const CanvasWorkspace = () => {
         if (sameServerExists) return false;
       }
       // Block reverse connections (prevents cycles: A→B blocks B→A)
-      // Allow reverse if the existing edge is a message channel (bidirectional conversation)
+      // Allow reverse if the existing edge is a conversation mode (bidirectional exchange)
       const reverseEdge = edges.find(
         (e: any) => e.source === connection.target && e.target === connection.source,
       );
-      if (reverseEdge && !reverseEdge.data?.messageChannel) return false;
+      if (reverseEdge && !(reverseEdge.data as any)?.subscription?.conversationMode) return false;
       if (reverseEdge) return true;
       return true;
     },
@@ -460,10 +460,12 @@ export const CanvasWorkspace = () => {
   const handleEdgeClick = useCallback(
     (_: any, edge: any) => {
       if (isLocked || status === 'running') return;
-      const isChannel = edge.data?.messageChannel === true;
-      setEdgeData(edge.id, { messageChannel: !isChannel });
+      const isConversation = edge.data?.subscription?.conversationMode === true;
+      setEdgeData(edge.id, {
+        subscription: { conversationMode: !isConversation },
+      });
       toast(
-        `Message channel ${isChannel ? 'disabled' : 'enabled'} on ${edge.source} ↔ ${edge.target}`,
+        `Conversation mode ${isConversation ? 'disabled' : 'enabled'} on ${edge.source} ↔ ${edge.target}`,
         { duration: 1500 },
       );
     },

@@ -235,6 +235,36 @@ export interface QueryProvider {
   deleteWorkspaceEntry(id: string): Promise<void>;
   clearWorkspace(executionId: string): Promise<void>;
 
+  // Execution messages (DataBus persistence)
+  writeExecutionMessage(data: {
+    id: string;
+    executionId: string;
+    topic: string;
+    sourceNodeId: string;
+    messageType: string;
+    payload: unknown;
+    contentType?: string | null;
+    round: number;
+    createdAt: number;
+  }): Promise<void>;
+  listExecutionMessages(
+    executionId: string,
+    topic?: string,
+  ): Promise<
+    Array<{
+      id: string;
+      executionId: string;
+      topic: string;
+      sourceNodeId: string;
+      messageType: string;
+      payload: unknown;
+      contentType: string | null;
+      round: number;
+      createdAt: string;
+    }>
+  >;
+  clearExecutionMessages(executionId: string): Promise<void>;
+
   // Workflow limits
   countUserWorkflows(userId: string): Promise<number>;
 }

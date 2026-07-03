@@ -268,5 +268,23 @@ export const pgWorkspaceEntries = pgTable(
   ],
 );
 
+export const pgExecutionMessages = pgTable(
+  'execution_messages',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    executionId: uuid('execution_id')
+      .notNull()
+      .references(() => pgExecutions.id, { onDelete: 'cascade' }),
+    topic: text('topic').notNull(),
+    sourceNodeId: text('source_node_id').notNull(),
+    messageType: text('message_type').notNull().default('output'),
+    payload: jsonb('payload').notNull(),
+    contentType: text('content_type'),
+    round: integer('round').default(0).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [index('msg_exec_topic_idx').on(table.executionId, table.topic)],
+);
+
 export type PgMcpServer = typeof pgMcpServers.$inferSelect;
 export type NewPgMcpServer = typeof pgMcpServers.$inferInsert;

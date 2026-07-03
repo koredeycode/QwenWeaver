@@ -36,8 +36,8 @@ export function compileDag(nodes: NodePayload[], edges: EdgePayload[]): DagCompi
     inDegree.set(node.id, 0);
   }
 
-  // Filter out message-channel edges — they carry conversation not data-flow dependencies
-  const dataEdges = edges.filter((e) => !e.data?.messageChannel);
+  // Filter out conversation-mode edges — they carry multi-round exchanges not data-flow dependencies
+  const dataEdges = edges.filter((e) => !e.data?.subscription?.conversationMode);
 
   // Populate from edges
   for (const edge of dataEdges) {

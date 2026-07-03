@@ -1180,4 +1180,55 @@ export const sqliteProvider: QueryProvider = {
       .delete(sqliteSchema.sqliteWorkspaceEntries)
       .where(eq(sqliteSchema.sqliteWorkspaceEntries.executionId, executionId));
   },
+
+  // ─── Execution Messages (DataBus) ─────────────────────────────────────────
+
+  async writeExecutionMessage(data) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    await sqliteDb.insert(sqliteSchema.sqliteExecutionMessages).values({
+      id: data.id,
+      executionId: data.executionId,
+      topic: data.topic,
+      sourceNodeId: data.sourceNodeId,
+      messageType: data.messageType,
+      payload: data.payload,
+      contentType: data.contentType ?? null,
+      round: data.round,
+      createdAt: data.createdAt,
+    });
+  },
+
+  async listExecutionMessages(executionId: string, topic?: string) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const conditions = [eq(sqliteSchema.sqliteExecutionMessages.executionId, executionId)];
+    if (topic) {
+      conditions.push(eq(sqliteSchema.sqliteExecutionMessages.topic, topic));
+    }
+    const rows = await sqliteDb
+      .select()
+      .from(sqliteSchema.sqliteExecutionMessages)
+      .where(and(...conditions))
+      .orderBy(sqliteSchema.sqliteExecutionMessages.createdAt);
+    return rows.map((r) => ({
+      id: r.id,
+      executionId: r.executionId ?? '',
+      topic: r.topic,
+      sourceNodeId: r.sourceNodeId,
+      messageType: r.messageType,
+      payload: r.payload,
+      contentType: r.contentType ?? null,
+      round: r.round,
+      createdAt: new Date(r.createdAt).toISOString(),
+    }));
+  },
+
+  async clearExecutionMessages(executionId: string) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    await sqliteDb
+      .delete(sqliteSchema.sqliteExecutionMessages)
+      .where(eq(sqliteSchema.sqliteExecutionMessages.executionId, executionId));
+  },
 };

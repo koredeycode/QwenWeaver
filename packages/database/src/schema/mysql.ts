@@ -253,6 +253,24 @@ export const mysqlCreditTransactions = mysqlTable(
   (table) => [index('credit_transactions_user_id_idx').on(table.userId)],
 );
 
+export const mysqlExecutionMessages = mysqlTable(
+  'execution_messages',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    executionId: varchar('execution_id', { length: 36 })
+      .notNull()
+      .references(() => mysqlExecutions.id, { onDelete: 'cascade' }),
+    topic: text('topic').notNull(),
+    sourceNodeId: text('source_node_id').notNull(),
+    messageType: text('message_type').notNull().default('output'),
+    payload: json('payload').notNull(),
+    contentType: text('content_type'),
+    round: int('round').default(0).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [index('msg_exec_topic_idx').on(table.executionId, table.topic)],
+);
+
 export const mysqlWorkspaceEntries = mysqlTable(
   'workspace_entries',
   {

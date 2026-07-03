@@ -1,5 +1,5 @@
 import { getQueryProvider } from '@qwenweaver/database';
-import type { NodePayload } from '@qwenweaver/types';
+import type { NodePayload, BusMessage } from '@qwenweaver/types';
 import { jsonSchema, streamText, tool, type Tool } from 'ai';
 import { z } from 'zod';
 import { createModuleLogger } from '../logger.js';
@@ -8,10 +8,10 @@ import { agent_duration_ms, llm_tokens_total } from '../metrics.js';
 import { buildHeadersFromAuthConfig, callMCPTool, discoverMCPTools } from './mcp-bridge.js';
 import { getModelForNode, getModelIdForNode } from './model-router.js';
 import { createWorkspaceTools } from './workspace-tools.js';
-import type { AgentResult, StreamEmitter, UpstreamOutputs } from './types.js';
+import type { AgentResult, StreamEmitter } from './types.js';
 import { EXTENSION_MAP, CONTENT_TYPE_MAP } from './constants.js';
 import { writeBinaryAsset } from './file-asset.js';
-import { buildSystemPrompt, buildUserMessage } from './prompt-builder.js';
+import { buildSystemPrompt, buildUserMessageFromBus } from './prompt-builder.js';
 import { resolveCredentialAuth } from './credential-resolver.js';
 import { generateWanxImage } from './generators/wanx-image.js';
 import { generateWanxVideo } from './generators/wanx-video.js';
@@ -21,7 +21,7 @@ const log = createModuleLogger('engine/agent-runner');
 
 export async function runAgent(
   node: NodePayload,
-  upstreamOutputs: UpstreamOutputs,
+  busMessages: BusMessage[],
   emitter?: StreamEmitter,
   executionId?: string,
   userId?: string,
@@ -147,13 +147,12 @@ export async function runAgent(
 
     // Handle Audio Generation (CosyVoice)
     if (node.data.outputFormat === 'audio') {
-      // Use upstream output text as the script to narrate, not the system prompt
+      // Use upstream bus messages as the text to narrate
       let ttsText = '';
-      for (const [, result] of upstreamOutputs) {
-        if (result.text) {
-          ttsText += (ttsText ? '\n\n' : '') + result.text;
-        } else if (result.outputs) {
-          ttsText += (ttsText ? '\n\n' : '') + result.outputs.map((o) => o.value).join('\n\n');
+      for (const msg of busMessages) {
+        const textContent = extractBusPayloadText(msg);
+        if (textContent) {
+          ttsText += (ttsText ? '\n\n' : '') + textContent;
         }
       }
       if (!ttsText) {
@@ -217,7 +216,13 @@ export async function runAgent(
 
     const { model, enableThinking, thinkingBudget } = getModelForNode(node);
     const systemPrompt = buildSystemPrompt(node);
-    const userMessage = buildUserMessage(node, upstreamOutputs);
+    const userMessage = buildUserMessageFromBus(
+      node,
+      busMessages,
+      busMessages.filter((m) => m.messageType === 'conversation'),
+      [],
+      node.data._revisionFeedback,
+    );
     const finalPrompt = conversationContext
       ? `${userMessage}\n\n---\n\n[CONVERSATION CONTEXT]:\n${conversationContext}`
       : userMessage;
@@ -449,4 +454,13 @@ export async function runAgent(
     clearTimeout(timeoutId);
     if (pollInterval) clearInterval(pollInterval);
   }
+}
+
+function extractBusPayloadText(msg: BusMessage): string {
+  if (typeof msg.payload === 'string') return msg.payload;
+  if (msg.payload && typeof msg.payload === 'object') {
+    const p = msg.payload as Record<string, unknown>;
+    return (p.text as string) ?? (p.value as string) ?? JSON.stringify(msg.payload);
+  }
+  return String(msg.payload ?? '');
 }

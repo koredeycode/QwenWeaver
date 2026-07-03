@@ -1119,4 +1119,55 @@ export const pgProvider: QueryProvider = {
       .delete(pgSchema.pgWorkspaceEntries)
       .where(eq(pgSchema.pgWorkspaceEntries.executionId, executionId));
   },
+
+  // ─── Execution Messages (DataBus) ─────────────────────────────────────────
+
+  async writeExecutionMessage(data) {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    await pgDb.insert(pgSchema.pgExecutionMessages).values({
+      id: data.id,
+      executionId: data.executionId,
+      topic: data.topic,
+      sourceNodeId: data.sourceNodeId,
+      messageType: data.messageType,
+      payload: data.payload as any,
+      contentType: data.contentType ?? null,
+      round: data.round,
+      createdAt: new Date(data.createdAt),
+    });
+  },
+
+  async listExecutionMessages(executionId: string, topic?: string) {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const conditions = [eq(pgSchema.pgExecutionMessages.executionId, executionId)];
+    if (topic) {
+      conditions.push(eq(pgSchema.pgExecutionMessages.topic, topic));
+    }
+    const rows = await pgDb
+      .select()
+      .from(pgSchema.pgExecutionMessages)
+      .where(and(...conditions))
+      .orderBy(pgSchema.pgExecutionMessages.createdAt);
+    return rows.map((r) => ({
+      id: r.id,
+      executionId: r.executionId ?? '',
+      topic: r.topic,
+      sourceNodeId: r.sourceNodeId,
+      messageType: r.messageType,
+      payload: r.payload,
+      contentType: r.contentType ?? null,
+      round: r.round,
+      createdAt: r.createdAt.toISOString(),
+    }));
+  },
+
+  async clearExecutionMessages(executionId: string) {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    await pgDb
+      .delete(pgSchema.pgExecutionMessages)
+      .where(eq(pgSchema.pgExecutionMessages.executionId, executionId));
+  },
 };

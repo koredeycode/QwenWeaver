@@ -23,7 +23,7 @@ describe('agent-runner', () => {
       data: { label: 'Start Trigger' },
     };
 
-    const result = await runAgent(triggerNode, new Map());
+    const result = await runAgent(triggerNode, []);
 
     expect(result.status).toBe('completed');
     expect(result.outputs).toHaveLength(1);
@@ -42,7 +42,7 @@ describe('agent-runner', () => {
       },
     };
 
-    const result = await runAgent(imageNode, new Map(), undefined, 'test-run-id');
+    const result = await runAgent(imageNode, [], undefined, 'test-run-id');
 
     expect(result.status).toBe('failed');
   });
@@ -58,7 +58,7 @@ describe('agent-runner', () => {
       },
     };
 
-    const result = await runAgent(audioNode, new Map(), undefined, 'test-run-id');
+    const result = await runAgent(audioNode, [], undefined, 'test-run-id');
 
     expect(result.status).toBe('failed');
   });
@@ -74,7 +74,7 @@ describe('agent-runner', () => {
       },
     };
 
-    const result = await runAgent(videoNode, new Map(), undefined, 'test-run-id');
+    const result = await runAgent(videoNode, [], undefined, 'test-run-id');
 
     expect(result.status).toBe('failed');
   });

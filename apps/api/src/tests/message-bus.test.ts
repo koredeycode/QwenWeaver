@@ -1,110 +1,167 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { MessageBus } from '../engine/message-bus.js';
+import { DataBus } from '../engine/message-bus.js';
 
-describe('MessageBus', () => {
-  let bus: MessageBus;
+describe('DataBus', () => {
+  let bus: DataBus;
 
   beforeEach(() => {
-    bus = new MessageBus();
+    bus = new DataBus('test-exec');
   });
 
-  it('creates a channel and allows sending messages', async () => {
-    bus.createChannel('a|b', ['a', 'b'], { maxRounds: 5 });
-    const msg = await bus.send('a', 'a|b', 'Hello from a');
-    expect(msg.channelId).toBe('a|b');
-    expect(msg.fromNodeId).toBe('a');
-    expect(msg.toNodeId).toBe('b');
-    expect(msg.content).toBe('Hello from a');
-    expect(msg.round).toBe(1);
+  it('publishes and retrieves messages by topic', () => {
+    const msg = bus.publish({
+      topic: 'node:a.output',
+      sourceNodeId: 'a',
+      messageType: 'output',
+      payload: 'Hello from a',
+    });
+
+    expect(msg.topic).toBe('node:a.output');
+    expect(msg.sourceNodeId).toBe('a');
+    expect(msg.id).toBeDefined();
+    expect(msg.timestamp).toBeGreaterThan(0);
+
+    const messages = bus.getMessages('node:a.output');
+    expect(messages).toHaveLength(1);
+    expect(messages[0].payload).toBe('Hello from a');
   });
 
-  it('throws when sending on non-existent channel', async () => {
-    await expect(bus.send('a', 'nonexistent', 'msg')).rejects.toThrow('not found');
+  it('retrieves messages for a node based on incoming edges', () => {
+    bus.publish({
+      topic: 'node:a.output',
+      sourceNodeId: 'a',
+      messageType: 'output',
+      payload: 'A out',
+    });
+    bus.publish({
+      topic: 'node:b.output',
+      sourceNodeId: 'b',
+      messageType: 'output',
+      payload: 'B out',
+    });
+
+    const edges = [
+      { source: 'a', target: 'c' },
+      { source: 'b', target: 'c' },
+    ];
+
+    const msgsForC = bus.getMessagesForNode('c', edges);
+    expect(msgsForC).toHaveLength(2);
+    expect(msgsForC.map((m) => m.sourceNodeId)).toContain('a');
+    expect(msgsForC.map((m) => m.sourceNodeId)).toContain('b');
   });
 
-  it('throws when non-participant sends on channel', async () => {
-    bus.createChannel('a|b', ['a', 'b']);
-    await expect(bus.send('c', 'a|b', 'msg')).rejects.toThrow('not a participant');
+  it('returns empty for node with no incoming edges', () => {
+    bus.publish({
+      topic: 'node:a.output',
+      sourceNodeId: 'a',
+      messageType: 'output',
+      payload: 'A out',
+    });
+
+    const msgsForOrphan = bus.getMessagesForNode('orphan', []);
+    expect(msgsForOrphan).toHaveLength(0);
   });
 
-  it('advances round when all participants have responded', async () => {
-    bus.createChannel('a|b', ['a', 'b'], { maxRounds: 3 });
-    expect(bus.getCurrentRound('a|b')).toBe(1);
-    await bus.send('a', 'a|b', 'Message from a');
-    expect(bus.getCurrentRound('a|b')).toBe(1);
-    await bus.send('b', 'a|b', 'Message from b');
-    expect(bus.getCurrentRound('a|b')).toBe(2);
+  it('handles conversation messages', () => {
+    bus.publish({
+      topic: 'conversation:a|b',
+      sourceNodeId: 'a',
+      messageType: 'conversation',
+      payload: 'Hi from a',
+      round: 1,
+    });
+    bus.publish({
+      topic: 'conversation:a|b',
+      sourceNodeId: 'b',
+      messageType: 'conversation',
+      payload: 'Hi from b',
+      round: 1,
+    });
+
+    const conversationMsgs = bus.getConversationChannelMessages('a|b');
+    expect(conversationMsgs).toHaveLength(2);
+
+    const edges = [
+      { source: 'a', target: 'b' },
+      { source: 'b', target: 'a' },
+    ];
+    const msgsForA = bus.getConversationMessages('a', edges);
+    expect(msgsForA).toHaveLength(2);
   });
 
-  it('does not advance beyond maxRounds', async () => {
-    bus.createChannel('a|b', ['a', 'b'], { maxRounds: 1 });
-    await bus.send('a', 'a|b', 'Msg a');
-    await bus.send('b', 'a|b', 'Msg b');
-    expect(bus.getCurrentRound('a|b')).toBe(2);
-    expect(bus.isComplete('a|b')).toBe(true);
+  it('publishes messages with custom id and timestamp', () => {
+    const customId = 'my-custom-id';
+    const customTs = 1234567890;
+    const msg = bus.publish({
+      id: customId,
+      timestamp: customTs,
+      topic: 'node:x.output',
+      sourceNodeId: 'x',
+      messageType: 'output',
+      payload: 'test',
+    });
+
+    expect(msg.id).toBe(customId);
+    expect(msg.timestamp).toBe(customTs);
   });
 
-  it('receives messages addressed to a specific agent', async () => {
-    bus.createChannel('a|b', ['a', 'b']);
-    await bus.send('a', 'a|b', 'Hello from a');
-    await bus.send('b', 'a|b', 'Reply from b');
-    const msgsForA = bus.receive('a', 'a|b');
-    expect(msgsForA).toHaveLength(1);
-    expect(msgsForA[0].content).toBe('Reply from b');
+  it('removes topic messages', () => {
+    bus.publish({ topic: 'node:a.output', sourceNodeId: 'a', messageType: 'output', payload: '1' });
+    bus.publish({ topic: 'node:a.output', sourceNodeId: 'a', messageType: 'output', payload: '2' });
+    bus.publish({ topic: 'node:b.output', sourceNodeId: 'b', messageType: 'output', payload: '3' });
+
+    expect(bus.getMessages('node:a.output')).toHaveLength(2);
+    expect(bus.getMessages('node:b.output')).toHaveLength(1);
+
+    bus.removeTopic('node:a.output');
+
+    expect(bus.getMessages('node:a.output')).toHaveLength(0);
+    expect(bus.getMessages('node:b.output')).toHaveLength(1);
   });
 
-  it('receives messages filtered by sinceRound', async () => {
-    bus.createChannel('a|b', ['a', 'b'], { maxRounds: 3 });
-    await bus.send('a', 'a|b', 'R1 a');
-    await bus.send('b', 'a|b', 'R1 b');
-    await bus.send('a', 'a|b', 'R2 a');
-    await bus.send('b', 'a|b', 'R2 b');
-    const msgs = bus.receive('a', 'a|b', 2);
-    expect(msgs.every((m) => m.round >= 2)).toBe(true);
-    expect(msgs.length).toBeGreaterThanOrEqual(1);
+  it('removes node outputs', () => {
+    bus.publish({ topic: 'node:a.output', sourceNodeId: 'a', messageType: 'output', payload: '1' });
+    bus.publish({ topic: 'node:a.output', sourceNodeId: 'a', messageType: 'output', payload: '2' });
+    bus.publish({ topic: 'node:a.error', sourceNodeId: 'a', messageType: 'error', payload: 'err' });
+
+    bus.removeNodeOutputs('a');
+
+    expect(bus.getMessages('node:a.output')).toHaveLength(0);
+    expect(bus.getMessages('node:a.error')).toHaveLength(0);
   });
 
-  it('returns full transcript via getTranscript', async () => {
-    bus.createChannel('a|b', ['a', 'b']);
-    await bus.send('a', 'a|b', 'First');
-    await bus.send('b', 'a|b', 'Second');
-    const transcript = bus.getTranscript('a|b');
-    expect(transcript).toHaveLength(2);
-    expect(transcript[0].content).toBe('First');
-    expect(transcript[1].content).toBe('Second');
+  it('clears all messages', () => {
+    bus.publish({ topic: 'node:a.output', sourceNodeId: 'a', messageType: 'output', payload: '1' });
+    bus.publish({ topic: 'node:b.output', sourceNodeId: 'b', messageType: 'output', payload: '2' });
+
+    expect(bus.getAllMessages()).toHaveLength(2);
+
+    bus.clear();
+
+    expect(bus.getAllMessages()).toHaveLength(0);
+    expect(bus.getMessages('node:a.output')).toHaveLength(0);
   });
 
-  it('gets channels for a node', () => {
-    bus.createChannel('a|b', ['a', 'b']);
-    bus.createChannel('a|c', ['a', 'c']);
-    const channels = bus.getChannelsForNode('a');
-    expect(channels).toContain('a|b');
-    expect(channels).toContain('a|c');
+  it('uses provided executionId in published messages', () => {
+    const msg = bus.publish({
+      topic: 'node:a.output',
+      sourceNodeId: 'a',
+      messageType: 'output',
+      payload: 'test',
+    });
+
+    expect(msg.executionId).toBe('test-exec');
   });
 
-  it('returns isComplete true for non-existent channel', () => {
-    expect(bus.isComplete('nonexistent')).toBe(true);
-  });
+  it('handles multiple topics independently', () => {
+    bus.publish({ topic: 'node:a.output', sourceNodeId: 'a', messageType: 'output', payload: 'a' });
+    bus.publish({ topic: 'node:b.output', sourceNodeId: 'b', messageType: 'output', payload: 'b' });
+    bus.publish({ topic: 'node:c.output', sourceNodeId: 'c', messageType: 'output', payload: 'c' });
 
-  it('waits for new messages with timeout', async () => {
-    bus.createChannel('a|b', ['a', 'b']);
-    const waitPromise = bus.waitForMessages('b', 'a|b', 200);
-    await bus.send('a', 'a|b', 'Async message');
-    const msgs = await waitPromise;
-    expect(msgs.some((m) => m.content === 'Async message')).toBe(true);
-  });
-
-  it('times out when waiting with no messages', async () => {
-    bus.createChannel('a|b', ['a', 'b']);
-    const msgs = await bus.waitForMessages('b', 'a|b', 100);
-    expect(msgs).toEqual([]);
-  });
-
-  it('destroys all channels', () => {
-    bus.createChannel('a|b', ['a', 'b']);
-    bus.createChannel('a|c', ['a', 'c']);
-    bus.destroy();
-    expect(bus.isComplete('a|b')).toBe(true);
-    expect(bus.getChannelsForNode('a')).toEqual([]);
+    expect(bus.getMessages('node:a.output')).toHaveLength(1);
+    expect(bus.getMessages('node:b.output')).toHaveLength(1);
+    expect(bus.getMessages('node:c.output')).toHaveLength(1);
+    expect(bus.getAllMessages()).toHaveLength(3);
   });
 });

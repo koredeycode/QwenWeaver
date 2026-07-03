@@ -1,44 +1,8 @@
-import type { NodePayload } from '@qwenweaver/types';
-import type { UpstreamOutputs } from './types.js';
+import type { NodePayload, BusMessage, EdgeSubscription } from '@qwenweaver/types';
 
 /**
- * Builds a conversation prompt for a message channel exchange round.
- * Informs the agent of the transcript so far and their role in the round.
+ * Build or augment the system prompt for a node.
  */
-export function buildMessagePrompt(
-  agentId: string,
-  transcript: Array<{ sender: string; text: string; round: number }>,
-  channelId: string,
-  currentRound: number,
-  maxRounds: number,
-): string {
-  if (transcript.length === 0) {
-    return `You are participating in a direct message exchange on channel "${channelId}" (round ${currentRound}/${maxRounds}).\n\nProvide your initial message to the other participant(s). Be clear and concise.`;
-  }
-
-  const history = transcript
-    .map((m) => `[${m.sender}] (round ${m.round}):\n${m.text}`)
-    .join('\n\n---\n\n');
-
-  const isFinalRound = currentRound >= maxRounds;
-
-  return `You are participating in a direct message exchange on channel "${channelId}" (round ${currentRound}/${maxRounds}).
-
-## Conversation transcript so far:
-
-${history}
-
-## Instructions:
-- Read the messages from the other participant(s) carefully.
-- Provide your response addressing the points made.
-${
-  isFinalRound
-    ? '- This is the FINAL round. Provide a conclusive synthesis of your position.'
-    : '- This is round ' + currentRound + '. Continue the discussion constructively.'
-}
-`;
-}
-
 export function buildSystemPrompt(node: NodePayload): string {
   let base = node.data.systemPrompt ?? '';
   if (!base && node.type !== 'supervisor') {
@@ -71,27 +35,80 @@ export function buildSystemPrompt(node: NodePayload): string {
   return base;
 }
 
-export function buildUserMessage(node: NodePayload, upstreamOutputs: UpstreamOutputs): string {
+/**
+ * Extract readable text from a BusMessage payload.
+ */
+function extractPayloadText(msg: BusMessage): string {
+  if (typeof msg.payload === 'string') return msg.payload;
+  if (msg.payload && typeof msg.payload === 'object') {
+    const p = msg.payload as Record<string, unknown>;
+    return (p.text as string) ?? (p.value as string) ?? JSON.stringify(msg.payload);
+  }
+  return String(msg.payload ?? '');
+}
+
+/**
+ * Build a user message from DataBus messages for a node.
+ *
+ * @param node - The target node
+ * @param upstreamMessages - Messages from upstream nodes (regular edges)
+ * @param conversationMessages - Messages from conversation-mode edges
+ * @param conversationEdges - Edges with conversationMode enabled
+ * @param revisionFeedback - Supervisor revision feedback (if any)
+ */
+export function buildUserMessageFromBus(
+  node: NodePayload,
+  upstreamMessages: BusMessage[],
+  conversationMessages: BusMessage[],
+  conversationEdges: Array<{
+    source: string;
+    target: string;
+    data?: { subscription?: EdgeSubscription };
+  }>,
+  revisionFeedback?: string,
+): string {
   const parts: string[] = [];
 
-  if (upstreamOutputs.size === 0 && !node.data._revisionFeedback) {
+  // 1. Upstream outputs from regular edges
+  for (const msg of upstreamMessages) {
+    const textContent = extractPayloadText(msg);
+    parts.push(
+      `## Output from upstream agent "${msg.sourceNodeId}":\n<upstream_output>\n${textContent}\n</upstream_output>`,
+    );
+  }
+
+  // 2. Conversation messages (multi-round exchanges)
+  if (conversationMessages.length > 0) {
+    const history = conversationMessages
+      .map((m) => {
+        const roundInfo = m.round ? ` (round ${m.round})` : '';
+        return `[${m.sourceNodeId}]${roundInfo}:\n${extractPayloadText(m)}`;
+      })
+      .join('\n\n---\n\n');
+
+    parts.push(`## Conversation transcript so far:\n\n${history}`);
+  }
+
+  // 3. Determine if there are active conversation edges to inform the agent
+  const activeConversationEdges = conversationEdges.filter(
+    (e) => e.data?.subscription?.conversationMode,
+  );
+  if (activeConversationEdges.length > 0 && conversationMessages.length === 0) {
+    const maxRounds = activeConversationEdges[0].data?.subscription?.maxRounds ?? 5;
+    parts.push(
+      `You are participating in a conversation exchange. Provide your initial message. You have up to ${maxRounds} rounds of exchange.`,
+    );
+  }
+
+  // 4. Supervisor revision feedback
+  if (revisionFeedback) {
+    parts.push(
+      `## REVISION REQUESTED BY SUPERVISOR\n${revisionFeedback}\n\nPlease revise your previous response addressing the above feedback. Do NOT repeat your previous output — produce a new, improved version.`,
+    );
+  }
+
+  if (parts.length === 0) {
     return node.data.label ?? 'Begin your task.';
-  }
-
-  for (const [sourceId, result] of upstreamOutputs) {
-    let textContent = result.text;
-    if (!textContent && result.outputs) {
-      textContent = result.outputs.map((o) => o.value).join('\n\n');
-    }
-    parts.push(
-      `## Output from upstream agent "${sourceId}":\n<upstream_output>\n${textContent}\n</upstream_output>`,
-    );
-  }
-
-  if (node.data._revisionFeedback) {
-    parts.push(
-      `## REVISION REQUESTED BY SUPERVISOR\n${node.data._revisionFeedback}\n\nPlease revise your previous response addressing the above feedback. Do NOT repeat your previous output — produce a new, improved version.`,
-    );
   }
 
   const taskContext = node.data.label ? `\n\n## Your task:\n${node.data.label}` : '';

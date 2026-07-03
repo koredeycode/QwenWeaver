@@ -1148,4 +1148,55 @@ export const mysqlProvider: QueryProvider = {
       .delete(mysqlSchema.mysqlWorkspaceEntries)
       .where(eq(mysqlSchema.mysqlWorkspaceEntries.executionId, executionId));
   },
+
+  // ─── Execution Messages (DataBus) ─────────────────────────────────────────
+
+  async writeExecutionMessage(data) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    await mysqlDb.insert(mysqlSchema.mysqlExecutionMessages).values({
+      id: data.id,
+      executionId: data.executionId,
+      topic: data.topic,
+      sourceNodeId: data.sourceNodeId,
+      messageType: data.messageType,
+      payload: data.payload as any,
+      contentType: data.contentType ?? null,
+      round: data.round,
+      createdAt: new Date(data.createdAt),
+    });
+  },
+
+  async listExecutionMessages(executionId: string, topic?: string) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const conditions = [eq(mysqlSchema.mysqlExecutionMessages.executionId, executionId)];
+    if (topic) {
+      conditions.push(eq(mysqlSchema.mysqlExecutionMessages.topic, topic));
+    }
+    const rows = await mysqlDb
+      .select()
+      .from(mysqlSchema.mysqlExecutionMessages)
+      .where(and(...conditions))
+      .orderBy(mysqlSchema.mysqlExecutionMessages.createdAt);
+    return rows.map((r) => ({
+      id: r.id,
+      executionId: r.executionId ?? '',
+      topic: r.topic,
+      sourceNodeId: r.sourceNodeId,
+      messageType: r.messageType,
+      payload: r.payload,
+      contentType: r.contentType ?? null,
+      round: r.round,
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+    }));
+  },
+
+  async clearExecutionMessages(executionId: string) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    await mysqlDb
+      .delete(mysqlSchema.mysqlExecutionMessages)
+      .where(eq(mysqlSchema.mysqlExecutionMessages.executionId, executionId));
+  },
 };
