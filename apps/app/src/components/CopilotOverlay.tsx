@@ -335,10 +335,7 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
               </span>
               <button
                 onClick={() =>
-                  copyToClipboard(
-                    msg.text || msg.content || (typeof msg === 'string' ? msg : ''),
-                    idx,
-                  )
+                  copyToClipboard(msg.text || (typeof msg === 'string' ? msg : ''), idx)
                 }
                 className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-slate-500 transition-all cursor-pointer"
                 title="Copy message"

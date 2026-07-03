@@ -392,6 +392,14 @@ export async function runAgent(
     const toolCalls = finalResult.toolCalls ? await finalResult.toolCalls : undefined;
     const toolResults = finalResult.toolResults ? await finalResult.toolResults : undefined;
 
+    // Fallback: if no text-delta parts were captured, try finalResult.text
+    if (!fullText) {
+      const finalText = await finalResult.text;
+      if (finalText) {
+        fullText = finalText;
+      }
+    }
+
     diag?.log(
       `[${node.id}] LLM DONE: tokens=${tokensUsed}, textLength=${fullText.length}, reasoningLength=${reasoningText.length}`,
     );

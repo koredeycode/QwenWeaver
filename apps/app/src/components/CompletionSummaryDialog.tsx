@@ -9,6 +9,7 @@ export const CompletionSummaryDialog = () => {
   const nodes = useStore((s) => s.nodes);
   const nodeStatuses = useStore((s) => s.nodeStatuses);
   const nodeOutputs = useStore((s) => s.nodeOutputs);
+  const nodeOutputUrls = useStore((s) => s.nodeOutputUrls);
   const nodeOutputParts = useStore((s) => s.nodeOutputParts);
   const nodeThinking = useStore((s) => s.nodeThinking);
   const metrics = useStore((s) => s.metrics);
@@ -108,6 +109,7 @@ export const CompletionSummaryDialog = () => {
                 const status = nodeStatuses[node.id] || 'pending';
                 const outputParts = nodeOutputParts[node.id];
                 const outputText = nodeOutputs[node.id];
+                const outputUrl = nodeOutputUrls[node.id];
                 const thinking = nodeThinking[node.id];
                 return (
                   <div
@@ -136,6 +138,7 @@ export const CompletionSummaryDialog = () => {
                     <div className="p-3 flex-1 overflow-y-auto max-h-64">
                       <OutputRenderer
                         outputParts={outputParts}
+                        outputUrl={outputUrl}
                         streamingText={outputText}
                         thinkingText={thinking}
                         status={status}
