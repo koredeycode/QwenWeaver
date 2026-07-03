@@ -43,16 +43,16 @@ export async function createWorkflow(
 // Create a new workflow with a guaranteed database record
 export async function createEmptyWorkflow(
   name: string,
-  description?: string
+  description?: string,
 ): Promise<{ workflowId: string } | null> {
   try {
     const payload: WorkflowPayload = {
       name: name,
       description: description || '',
       nodes: [],
-      edges: []
+      edges: [],
     };
-    
+
     const res = (await withRefresh(() =>
       client.api.workflow.$post({ json: payload as any }),
     )) as any;

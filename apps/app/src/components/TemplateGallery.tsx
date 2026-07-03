@@ -53,14 +53,14 @@ export const TemplateGallery = () => {
           name: 'Forked Template',
           description: 'Workflow created from a template',
           nodes: [],
-          edges: []
+          edges: [],
         };
-        
+
         try {
           const res = (await withRefresh(() =>
             client.api.workflow.$post({ json: payload as any }),
           )) as any;
-          
+
           if (!res.ok) {
             if (res.status === 403) {
               const errBody: Record<string, unknown> = await res.json().catch(() => ({}));
@@ -69,7 +69,7 @@ export const TemplateGallery = () => {
             }
             throw new Error('Failed to create workflow');
           }
-          
+
           const result = await res.json();
           navigate(`/workflows/${result.workflowId}`);
         } catch (err) {

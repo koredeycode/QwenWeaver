@@ -38,13 +38,13 @@ export const Sidebar = ({
         name: name,
         description: description,
         nodes: [],
-        edges: []
+        edges: [],
       };
-      
+
       const res = (await withRefresh(() =>
         client.api.workflow.$post({ json: payload as any }),
       )) as any;
-      
+
       if (!res.ok) {
         if (res.status === 403) {
           const errBody: Record<string, unknown> = await res.json().catch(() => ({}));
@@ -52,7 +52,7 @@ export const Sidebar = ({
         }
         throw new Error('Failed to create workflow');
       }
-      
+
       const result = await res.json();
       window.open(`/workflows/${result.workflowId}`, '_blank');
       setIsCreateOpen(false);

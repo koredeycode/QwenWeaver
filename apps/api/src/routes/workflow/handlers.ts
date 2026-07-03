@@ -156,8 +156,6 @@ export const handleExecute = async (c: Context<{ Variables: Variables }>) => {
     workflowId = await provider.saveWorkflow(userId, workflow);
   }
 
-  await provider.createExecution(executionId, workflowId, userId);
-
   // ─── MCP auth validation ──────────────────────────────────────────────
   const mcpNodes = workflow.nodes.filter((n) => n.type === 'mcp_tool');
   for (const node of mcpNodes) {
@@ -185,6 +183,9 @@ export const handleExecute = async (c: Context<{ Variables: Variables }>) => {
     return c.json({ error: 'Insufficient credits', balance, required: estimatedCost }, 402);
   }
   log.info({ executionId, userId, estimatedCost }, 'Credits reserved for execution');
+
+  // Only create execution record after credit reservation succeeds
+  await provider.createExecution(executionId, workflowId, userId);
 
   let resolveExecution: () => void;
   const promise = new Promise<void>((resolve) => {

@@ -141,19 +141,19 @@ export const WorkflowDashboard = () => {
   const handleCreateConfirm = async (name: string, description: string) => {
     try {
       clearGraph();
-      
+
       // Create a proper workflow record in the database
       const payload = {
         name: name,
         description: description,
         nodes: [],
-        edges: []
+        edges: [],
       };
-      
+
       const res = (await withRefresh(() =>
         client.api.workflow.$post({ json: payload as any }),
       )) as any;
-      
+
       if (!res.ok) {
         if (res.status === 403) {
           const errBody: Record<string, unknown> = await res.json().catch(() => ({}));
@@ -161,7 +161,7 @@ export const WorkflowDashboard = () => {
         }
         throw new Error('Failed to create workflow');
       }
-      
+
       const result = await res.json();
       navigate(`/workflows/${result.workflowId}`);
       setIsCreateOpen(false);
@@ -198,13 +198,13 @@ export const WorkflowDashboard = () => {
         name: wf.name,
         description: wf.description || '',
         nodes: wf.nodes as any,
-        edges: wf.edges as any
+        edges: wf.edges as any,
       };
-      
+
       const res = (await withRefresh(() =>
         client.api.workflow.$post({ json: payload as any }),
       )) as any;
-      
+
       if (!res.ok) {
         if (res.status === 403) {
           const errBody: Record<string, unknown> = await res.json().catch(() => ({}));
@@ -212,7 +212,7 @@ export const WorkflowDashboard = () => {
         }
         throw new Error('Failed to create workflow from example');
       }
-      
+
       const result = await res.json();
       // Now load the example data into the store after creating the workflow record
       loadUnsavedWorkflow(wf.nodes as any, wf.edges as any, wf.name, wf.description);
