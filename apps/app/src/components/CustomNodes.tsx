@@ -516,7 +516,74 @@ export const InputTriggerNode = memo(({ id, data }: NodeProps<any>) => {
 });
 InputTriggerNode.displayName = 'InputTriggerNode';
 
-// --- 6. Debate Arena Node Component ---
+// --- 6. File Trigger Node Component ---
+export const FileTriggerNode = memo(({ id, data }: NodeProps<any>) => {
+  const status = useStore((s) => s.nodeStatuses[id] || 'pending');
+  const isSelected = useStore((s) => s.selectedNodeId === id);
+  const setMaximizedNodeId = useStore((s) => s.setMaximizedNodeId);
+
+  return (
+    <div
+      className={`w-72 bg-white border-2 ${isSelected ? 'border-primary shadow-[0_2px_12px_rgba(249,115,22,0.15)]' : getStatusStyles(status)} text-slate-800 p-3 relative font-sans shadow-sm`}
+    >
+      <div className="flex items-center justify-between border-b border-outline-variant pb-2 mb-2">
+        <div className="flex items-center gap-2">
+          <Upload className="w-4 h-4 text-cyan-600" />
+          <span className="text-[10px] font-mono font-bold tracking-wider text-cyan-600">
+            FILE TRIGGER
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          {getStatusBadge(status)}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setMaximizedNodeId(id);
+            }}
+            className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors nodrag cursor-pointer"
+            title="Maximize Output Terminal"
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {data.fileUrl ? (
+        <div className="space-y-2">
+          <div className="w-full aspect-video bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
+            <img
+              src={data.fileUrl}
+              alt={data.fileName || 'Uploaded image'}
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-500">
+            <Upload className="w-3 h-3 text-cyan-500" />
+            <span className="truncate">{data.fileName || 'Image uploaded'}</span>
+          </div>
+        </div>
+      ) : (
+        <div className="py-6 flex flex-col items-center justify-center text-center border border-dashed border-slate-300 bg-slate-50">
+          <Upload className="w-6 h-6 text-slate-300 mb-1" />
+          <p className="text-[10px] font-mono text-slate-400">No image uploaded</p>
+          <p className="text-[9px] text-slate-400 font-mono mt-1">
+            Configure in the Inspector panel
+          </p>
+        </div>
+      )}
+
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="source"
+        className="w-4 h-4 !bg-cyan-500 !border-2 !border-slate-700 hover:scale-125 transition-all shadow-sm"
+      />
+    </div>
+  );
+});
+FileTriggerNode.displayName = 'FileTriggerNode';
+
+// --- 7. Debate Arena Node Component ---
 export const DebateArenaNode = memo(({ id, data }: NodeProps<any>) => {
   const storeStatus = useStore((s) => s.nodeStatuses[id] || 'pending');
   const isSelected = useStore((s) => s.selectedNodeId === id);
@@ -588,6 +655,7 @@ DebateArenaNode.displayName = 'DebateArenaNode';
 export const nodeTypes = {
   trigger: TriggerNode,
   input_trigger: InputTriggerNode,
+  file_trigger: FileTriggerNode,
   agent: AgentNode,
   supervisor: SupervisorNode,
   mcp_tool: MCPToolNode,

@@ -7,6 +7,7 @@ export const NodeType = z.enum([
   'mcp_tool',
   'logic',
   'input_trigger',
+  'file_trigger',
   'debate_arena',
 ]);
 

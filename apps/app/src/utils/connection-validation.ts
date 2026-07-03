@@ -7,7 +7,7 @@ export function isDebateArena(type?: string): boolean {
 }
 
 export function isTrigger(type?: string): boolean {
-  return type === 'trigger' || type === 'input_trigger';
+  return type === 'trigger' || type === 'input_trigger' || type === 'file_trigger';
 }
 
 export function doesNotSupportTools(node: {
@@ -15,7 +15,15 @@ export function doesNotSupportTools(node: {
 }): boolean {
   const model = node.data?.model || '';
   const workerType = node.data?.workerType || '';
-  const mediaModels = ['wan2.7-image-pro', 'wan2.7-t2v', 'cosyvoice-v3-plus', 'qwen3-tts-flash'];
+  const mediaModels = [
+    'wan2.7-image-pro',
+    'wan2.7-t2v',
+    'cosyvoice-v3-plus',
+    'qwen3-tts-flash',
+    'qwen-image-2.0-pro',
+    'happyhorse-1.1-t2v',
+    'happyhorse-1.1-i2v',
+  ];
   const mediaTypes = ['image', 'video', 'audio'];
   return mediaModels.includes(model) || mediaTypes.includes(workerType);
 }

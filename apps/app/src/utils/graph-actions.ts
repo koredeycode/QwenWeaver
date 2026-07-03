@@ -30,7 +30,9 @@ export function executeGraphActions(
         data?.label ||
         (nodeType === 'input_trigger'
           ? 'Initial workflow instruction'
-          : `${nodeType.toUpperCase()} Node`);
+          : nodeType === 'file_trigger'
+            ? 'Upload an image'
+            : `${nodeType.toUpperCase()} Node`);
 
       const newNode: Node<any> = {
         id: finalId,
@@ -65,7 +67,9 @@ export function executeGraphActions(
           n.data?.label ||
           (nodeType === 'input_trigger'
             ? 'Initial workflow instruction'
-            : `${nodeType.toUpperCase()} Node`);
+            : nodeType === 'file_trigger'
+              ? 'Upload an image'
+              : `${nodeType.toUpperCase()} Node`);
 
         const newNode: Node<any> = {
           id: finalId,

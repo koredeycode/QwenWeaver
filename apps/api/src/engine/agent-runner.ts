@@ -14,7 +14,10 @@ import { writeBinaryAsset } from './file-asset.js';
 import { buildSystemPrompt, buildUserMessageFromBus } from './prompt-builder.js';
 import { resolveCredentialAuth } from './credential-resolver.js';
 import { generateWanxImage } from './generators/wanx-image.js';
+import { generateQwenImage } from './generators/qwen-image.js';
 import { generateWanxVideo } from './generators/wanx-video.js';
+import { generateHappyhorseVideo } from './generators/happyhorse-video.js';
+import { generateHappyhorseImageToVideo } from './generators/happyhorse-i2v.js';
 import { generateCosyVoiceAudio } from './generators/cosyvoice.js';
 
 const log = createModuleLogger('engine/agent-runner');
@@ -34,8 +37,26 @@ export async function runAgent(
 
   diag?.log(`=== AGENT START: ${node.id} (${node.type}) "${nodeLabel}" ===`);
 
-  if (node.type === 'trigger' || node.type === 'input_trigger' || node.type === 'logic') {
-    const text = node.data.label ?? `[${node.type}] pass-through`;
+  if (
+    node.type === 'trigger' ||
+    node.type === 'input_trigger' ||
+    node.type === 'file_trigger' ||
+    node.type === 'logic'
+  ) {
+    if (node.type === 'file_trigger' && node.data.fileUrl) {
+      const fileUrl = node.data.fileUrl;
+      const durationMs = Math.round(performance.now() - startTime);
+      diag?.log(`FILE TRIGGER node ${node.id} — fileUrl: ${fileUrl}`);
+      return {
+        nodeId: node.id,
+        outputs: [{ type: 'image', contentType: 'image/png', value: fileUrl }],
+        text: `[File Trigger] ${node.data.fileName || 'Image'}: ${fileUrl}`,
+        tokensUsed: 0,
+        durationMs,
+        status: 'completed',
+      };
+    }
+    const text = node.data.label || '';
     const format = node.data.outputFormat ?? 'text';
     const ext = EXTENSION_MAP[format] ?? 'txt';
     const contentType = CONTENT_TYPE_MAP[format] ?? 'text/plain';
@@ -43,7 +64,7 @@ export async function runAgent(
     const runId = executionId ?? 'local-run';
     const fileUrl = await writeBinaryAsset(runId, node.id, ext, buffer);
     const durationMs = Math.round(performance.now() - startTime);
-    diag?.log(`PASS-THROUGH node ${node.id} (type=${node.type}) — label length: ${text.length}`);
+    diag?.log(`PASS-THROUGH node ${node.id} (type=${node.type}) — text length: ${text.length}`);
     return {
       nodeId: node.id,
       outputs: [{ type: 'text', contentType, value: fileUrl }],
@@ -124,8 +145,13 @@ export async function runAgent(
       let buffer: Buffer;
 
       if (apiKey) {
-        log.info({ nodeId: node.id, prompt }, 'Calling Wanx image generation API');
-        buffer = await generateWanxImage(prompt, apiKey, abortController.signal);
+        if (node.data.model === 'qwen-image-2.0-pro') {
+          log.info({ nodeId: node.id, prompt }, 'Calling Qwen-Image generation API');
+          buffer = await generateQwenImage(prompt, apiKey, abortController.signal);
+        } else {
+          log.info({ nodeId: node.id, prompt }, 'Calling Wanx image generation API');
+          buffer = await generateWanxImage(prompt, apiKey, abortController.signal);
+        }
       } else {
         throw new Error(`Node "${node.id}" has outputFormat "image" but no DASHSCOPE_API_KEY set`);
       }
@@ -193,8 +219,27 @@ export async function runAgent(
       let buffer: Buffer;
 
       if (apiKey) {
-        log.info({ nodeId: node.id, prompt }, 'Calling Wanx video generation API');
-        buffer = await generateWanxVideo(prompt, apiKey, abortController.signal);
+        if (node.data.model === 'happyhorse-1.1-t2v') {
+          log.info({ nodeId: node.id, prompt }, 'Calling HappyVideo generation API');
+          buffer = await generateHappyhorseVideo(prompt, apiKey, abortController.signal);
+        } else if (node.data.model === 'happyhorse-1.1-i2v') {
+          const imageUrl = node.data.imageUrl ?? extractImageFromBus(busMessages);
+          if (!imageUrl) {
+            throw new Error(
+              'happyhorse-1.1-i2v requires an input image (set imageUrl in config or connect an image node upstream)',
+            );
+          }
+          log.info({ nodeId: node.id, prompt, imageUrl }, 'Calling HappyI2V generation API');
+          buffer = await generateHappyhorseImageToVideo(
+            prompt,
+            imageUrl,
+            apiKey,
+            abortController.signal,
+          );
+        } else {
+          log.info({ nodeId: node.id, prompt }, 'Calling Wanx video generation API');
+          buffer = await generateWanxVideo(prompt, apiKey, abortController.signal);
+        }
       } else {
         throw new Error(`Node "${node.id}" has outputFormat "video" but no DASHSCOPE_API_KEY set`);
       }
@@ -462,6 +507,18 @@ export async function runAgent(
     clearTimeout(timeoutId);
     if (pollInterval) clearInterval(pollInterval);
   }
+}
+
+function extractImageFromBus(busMessages: BusMessage[]): string | undefined {
+  for (const msg of busMessages) {
+    const payload = msg.payload as Record<string, unknown> | undefined;
+    const outputs = payload?.outputs as Array<{ type: string; value: string }> | undefined;
+    if (outputs) {
+      const img = outputs.find((o) => o.type === 'image');
+      if (img?.value) return img.value;
+    }
+  }
+  return undefined;
 }
 
 function extractBusPayloadText(msg: BusMessage): string {

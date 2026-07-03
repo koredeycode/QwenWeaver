@@ -23,7 +23,7 @@ export class LocalStorageDriver implements StorageService {
     await fs.mkdir(absoluteDir, { recursive: true });
     await fs.writeFile(absolutePath, data);
 
-    return `/public/storage/runs/${normalizedKey}`;
+    return `${PUBLIC_URL}/public/storage/runs/${normalizedKey}`;
   }
 
   getUrl(key: string): string {

@@ -227,7 +227,8 @@ export const WorkflowDashboard = () => {
 
   const getNodeCount = (workflow: ExampleWorkflow, type: string) => {
     return workflow.nodes.filter((n) => {
-      if (type === 'trigger') return n.type === 'trigger' || n.type === 'input_trigger';
+      if (type === 'trigger')
+        return n.type === 'trigger' || n.type === 'input_trigger' || n.type === 'file_trigger';
       return n.type === type;
     }).length;
   };

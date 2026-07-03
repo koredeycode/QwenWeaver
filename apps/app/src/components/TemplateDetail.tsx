@@ -269,9 +269,11 @@ export const TemplateDetailPage = () => {
                       ? 'trigger'
                       : node.type === 'input_trigger'
                         ? 'input'
-                        : node.type === 'mcp_tool'
-                          ? 'mcp'
-                          : node.type}
+                        : node.type === 'file_trigger'
+                          ? 'file'
+                          : node.type === 'mcp_tool'
+                            ? 'mcp'
+                            : node.type}
                   </span>
                   <span className="text-xs font-semibold text-slate-700">
                     {node.data?.label || node.id}

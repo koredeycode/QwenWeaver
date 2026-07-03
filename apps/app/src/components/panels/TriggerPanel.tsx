@@ -5,7 +5,7 @@ import { setPendingTouchDrag } from '../../lib/touch-drag.js';
 export function TriggerPanel({
   onSelect,
 }: {
-  onSelect: (type: 'trigger' | 'input_trigger') => void;
+  onSelect: (type: 'trigger' | 'input_trigger' | 'file_trigger') => void;
 }) {
   return (
     <div className="p-4 space-y-3">
