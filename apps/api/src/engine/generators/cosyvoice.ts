@@ -91,9 +91,27 @@ export async function generateCosyVoiceAudio(text: string, apiKey: string): Prom
     const data = (await response.json()) as any;
     const resultUrl = data.output?.audio?.url;
     if (!resultUrl) throw new Error(`Qwen-TTS returned no audio URL: ${JSON.stringify(data)}`);
-    const audioRes = await fetch(resultUrl);
-    if (!audioRes.ok) throw new Error(`Failed to download Qwen-TTS result from ${resultUrl}`);
-    return Buffer.from(await audioRes.arrayBuffer());
+    // Retry download up to 3 times — OSS URLs can be flaky
+    let lastError: Error | undefined;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const audioRes = await fetch(resultUrl);
+        if (!audioRes.ok) {
+          throw new Error(`Status ${audioRes.status}: ${await audioRes.text()}`);
+        }
+        return Buffer.from(await audioRes.arrayBuffer());
+      } catch (err) {
+        lastError = err as Error;
+        if (attempt < 3) {
+          log.warn(
+            { attempt, resultUrl: resultUrl.substring(0, 80) },
+            'Retrying TTS audio download',
+          );
+          await new Promise((r) => setTimeout(r, 1000 * attempt));
+        }
+      }
+    }
+    throw new Error(`Failed to download Qwen-TTS result from ${resultUrl}: ${lastError?.message}`);
   }
 
   return Buffer.from(await response.arrayBuffer());

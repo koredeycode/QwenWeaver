@@ -1,4 +1,5 @@
 import type { NodePayload, BusMessage, EdgeSubscription } from '@qwenweaver/types';
+import { extractPayloadText } from './shared.js';
 
 /**
  * Build or augment the system prompt for a node.
@@ -30,23 +31,9 @@ export function buildSystemPrompt(node: NodePayload): string {
     }
   }
 
-  base = `${base}\n\n[WORKSPACE]: You have workspace_read, workspace_write, workspace_list, and workspace_append tools available. Before starting your task, call workspace_list to discover what other agents have already written. After completing your task, call workspace_write("${node.id}.output", <your_output>, "text") to share your result with downstream agents. Downstream agents will look for your output under the key "${node.id}.output".`;
-
-  base = `${base}\n\n[OUTPUT REQUIREMENT]: You MUST include your complete answer as text in your response after using any tools. Do NOT rely solely on tool calls to convey your output — the system reads your text response as your final output. After calling workspace_write, always also output the content in your reply.`;
+  base = `${base}\n\n[OUTPUT REQUIREMENT]: Produce your complete answer as text.`;
 
   return base;
-}
-
-/**
- * Extract readable text from a BusMessage payload.
- */
-function extractPayloadText(msg: BusMessage): string {
-  if (typeof msg.payload === 'string') return msg.payload;
-  if (msg.payload && typeof msg.payload === 'object') {
-    const p = msg.payload as Record<string, unknown>;
-    return (p.text as string) ?? (p.value as string) ?? JSON.stringify(msg.payload);
-  }
-  return String(msg.payload ?? '');
 }
 
 /**
@@ -73,7 +60,7 @@ export function buildUserMessageFromBus(
 
   // 1. Upstream outputs from regular edges
   for (const msg of upstreamMessages) {
-    const textContent = extractPayloadText(msg);
+    const textContent = extractPayloadText(msg) ?? '';
     parts.push(
       `## Output from upstream agent "${msg.sourceNodeId}":\n<upstream_output>\n${textContent}\n</upstream_output>`,
     );

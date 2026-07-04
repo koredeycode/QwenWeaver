@@ -21,7 +21,9 @@ function parseWorkflowData(wf: any): {
     agents: nodes.filter((n: any) => n.type === 'agent').length,
     supervisors: nodes.filter((n: any) => n.type === 'supervisor').length,
     tools: nodes.filter((n: any) => n.type === 'mcp_tool').length,
-    triggers: nodes.filter((n: any) => n.type === 'trigger' || n.type === 'input_trigger').length,
+    triggers: nodes.filter(
+      (n: any) => n.type === 'trigger' || n.type === 'input_trigger' || n.type === 'file_trigger',
+    ).length,
   };
 }
 

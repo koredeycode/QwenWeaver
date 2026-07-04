@@ -1,8 +1,8 @@
 import { createModuleLogger } from '../../logger.js';
 
-const log = createModuleLogger('engine/generators/wanx-image');
+const log = createModuleLogger('engine/generators/qwen-image');
 
-export async function generateWanxImage(
+export async function generateQwenImage(
   prompt: string,
   apiKey: string,
   signal?: AbortSignal,
@@ -18,7 +18,8 @@ export async function generateWanxImage(
       // ignore
     }
   }
-  let submitUrl = `${baseUrl}/api/v1/services/aigc/multimodal-generation/generation`;
+
+  const submitUrl = `${baseUrl}/api/v1/services/aigc/multimodal-generation/generation`;
 
   const headers: Record<string, string> = {
     Authorization: `Bearer ${apiKey}`,
@@ -29,7 +30,7 @@ export async function generateWanxImage(
   }
 
   const body = {
-    model: 'wan2.7-image-pro',
+    model: 'qwen-image-2.0-pro',
     input: {
       messages: [
         {
@@ -39,8 +40,10 @@ export async function generateWanxImage(
       ],
     },
     parameters: {
-      size: '1024*1024',
       n: 1,
+      prompt_extend: true,
+      watermark: false,
+      size: '1024*1024',
     },
   };
 
@@ -54,10 +57,10 @@ export async function generateWanxImage(
     });
   } catch (err) {
     if (baseUrl === 'https://dashscope.aliyuncs.com') {
-      log.info('Network error on domestic endpoint, retrying on international endpoint...');
+      log.info('Network error on domestic endpoint, retrying on international...');
       baseUrl = 'https://dashscope-intl.aliyuncs.com';
-      submitUrl = `${baseUrl}/api/v1/services/aigc/multimodal-generation/generation`;
-      response = await fetch(submitUrl, {
+      const retryUrl = `${baseUrl}/api/v1/services/aigc/multimodal-generation/generation`;
+      response = await fetch(retryUrl, {
         method: 'POST',
         headers,
         body: JSON.stringify(body),
@@ -71,20 +74,20 @@ export async function generateWanxImage(
   if (!response.ok) {
     const errorText = await response.text();
     if (errorText.includes('InvalidApiKey') && baseUrl === 'https://dashscope.aliyuncs.com') {
-      log.info('Key rejected on domestic endpoint, retrying on international endpoint...');
+      log.info('Key rejected on domestic endpoint, retrying on international...');
       baseUrl = 'https://dashscope-intl.aliyuncs.com';
-      submitUrl = `${baseUrl}/api/v1/services/aigc/multimodal-generation/generation`;
-      response = await fetch(submitUrl, {
+      const retryUrl = `${baseUrl}/api/v1/services/aigc/multimodal-generation/generation`;
+      response = await fetch(retryUrl, {
         method: 'POST',
         headers,
         body: JSON.stringify(body),
         signal,
       });
       if (!response.ok) {
-        throw new Error(`Failed to submit Wan2.7 Image task: ${await response.text()}`);
+        throw new Error(`Failed to submit Qwen-Image task: ${await response.text()}`);
       }
     } else {
-      throw new Error(`Failed to submit Wan2.7 Image task: ${errorText}`);
+      throw new Error(`Failed to submit Qwen-Image task: ${errorText}`);
     }
   }
 
@@ -92,7 +95,7 @@ export async function generateWanxImage(
   const imageUrl = data.output?.choices?.[0]?.message?.content?.[0]?.image;
 
   if (!imageUrl) {
-    throw new Error(`Wan2.7 Image task did not return an image url: ${JSON.stringify(data)}`);
+    throw new Error(`Qwen-Image task did not return an image url: ${JSON.stringify(data)}`);
   }
 
   // Retry download up to 3 times — OSS URLs can be flaky
@@ -112,5 +115,5 @@ export async function generateWanxImage(
       }
     }
   }
-  throw new Error(`Failed to download Wan2.7 image from ${imageUrl}: ${lastError?.message}`);
+  throw new Error(`Failed to download Qwen-Image result from ${imageUrl}: ${lastError?.message}`);
 }

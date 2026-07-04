@@ -187,7 +187,11 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
     get().pushHistory();
     const id = `node-${type}-${crypto.randomUUID().slice(0, 8)}`;
     const label =
-      type === 'input_trigger' ? 'Initial workflow instruction' : `${type.toUpperCase()} Node`;
+      type === 'input_trigger'
+        ? 'Initial workflow instruction'
+        : type === 'file_trigger'
+          ? 'Upload an image'
+          : `${type.toUpperCase()} Node`;
     const newNode: Node<any> = {
       id,
       type,

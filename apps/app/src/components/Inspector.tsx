@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Copy, Trash2, X, HelpCircle, Bot, Brain, Wrench, Play } from 'lucide-react';
+import { Eye, Copy, Trash2, X, HelpCircle, Bot, Brain, Wrench, Play, Upload } from 'lucide-react';
 import { useStore } from '../store/index.js';
 import type { OutputFormat } from '@qwenweaver/types';
 
@@ -46,6 +46,8 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
       case 'trigger':
       case 'input_trigger':
         return <Play className="w-4 h-4 text-white fill-white/10" />;
+      case 'file_trigger':
+        return <Upload className="w-4 h-4 text-white" />;
       case 'agent':
         return <Bot className="w-4 h-4 text-white" />;
       case 'supervisor':
@@ -60,6 +62,8 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
       case 'trigger':
       case 'input_trigger':
         return 'bg-emerald-600';
+      case 'file_trigger':
+        return 'bg-cyan-600';
       case 'agent':
         return 'bg-[#f97316]';
       case 'supervisor':
@@ -118,7 +122,9 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                   <h3 className="text-sm font-bold text-slate-900">
                     {selectedNode.type === 'input_trigger'
                       ? 'Input Trigger'
-                      : selectedNode.data.label || 'Research Agent'}
+                      : selectedNode.type === 'file_trigger'
+                        ? 'File Trigger'
+                        : selectedNode.data.label || 'Research Agent'}
                   </h3>
                   <p className="text-[10px] text-slate-400 font-mono">Node Configuration</p>
                 </div>
@@ -135,7 +141,11 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
             <div className="space-y-3">
               <div>
                 <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-1">
-                  {selectedNode.type === 'input_trigger' ? 'Instruction Text' : 'Node Title / Name'}
+                  {selectedNode.type === 'input_trigger'
+                    ? 'Instruction Text'
+                    : selectedNode.type === 'file_trigger'
+                      ? 'Image Upload'
+                      : 'Node Title / Name'}
                 </label>
                 {selectedNode.type === 'input_trigger' ? (
                   <textarea
@@ -145,6 +155,45 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                     className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none resize-y"
                     placeholder="Enter initial instruction text..."
                   />
+                ) : selectedNode.type === 'file_trigger' ? (
+                  <div className="space-y-2">
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg,image/webp"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = async () => {
+                          const base64 = reader.result as string;
+                          try {
+                            const res = await fetch('/api/files/upload', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ data: base64 }),
+                            });
+                            const json = await res.json();
+                            if (json.url && selectedNodeId) {
+                              updateNodeData(selectedNodeId, {
+                                fileUrl: json.url,
+                                fileName: file.name,
+                              });
+                            }
+                          } catch {
+                            // upload failed silently
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                      className="w-full text-xs font-mono text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:border file:border-slate-300 file:text-xs file:font-semibold file:bg-slate-50 hover:file:bg-slate-100 file:cursor-pointer"
+                    />
+                    {selectedNode.data.fileName && (
+                      <div className="flex items-center gap-2 text-[10px] font-mono text-slate-500 bg-slate-50 border border-slate-200 p-2">
+                        <Upload className="w-3 h-3 text-cyan-500" />
+                        <span className="truncate flex-1">{selectedNode.data.fileName}</span>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <input
                     type="text"
@@ -310,6 +359,29 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                 </div>
               </div>
             )}
+
+            {/* Image URL Input (only for happyhorse-1.1-i2v agents/supervisors) */}
+            {(selectedNode.type === 'agent' || selectedNode.type === 'supervisor') &&
+              selectedNode.data.model === 'happyhorse-1.1-i2v' && (
+                <div className="space-y-2 border-t border-slate-100 pt-3">
+                  <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-1">
+                    Input Image URL
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedNode.data.imageUrl || ''}
+                    onChange={(e) => {
+                      if (selectedNodeId)
+                        updateNodeData(selectedNodeId, { imageUrl: e.target.value });
+                    }}
+                    className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
+                    placeholder="Paste image URL or leave empty to auto-detect from upstream"
+                  />
+                  <p className="text-[9px] text-slate-400 font-mono">
+                    Leave empty to use the output image from the upstream node.
+                  </p>
+                </div>
+              )}
 
             {/* Footer CTA Actions (Revert + Save Node/Delete) */}
             <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">

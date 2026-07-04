@@ -6,6 +6,7 @@ import { createModuleLogger } from '../logger.js';
 import type { CopilotDiag } from '../diagnostic-logger.js';
 import { agent_duration_ms, llm_tokens_total } from '../metrics.js';
 import { writeBinaryAsset } from './file-asset.js';
+import { extractPayloadText } from './shared.js';
 
 const log = createModuleLogger('engine/debate-runner');
 
@@ -56,12 +57,15 @@ export async function runDebate(
   const round1Statements: DebateStatement[] = [];
   for (const participant of participantNodes) {
     const participantMsgs = busMessages.filter((m) => m.sourceNodeId === participant.id);
-    const lastMsg = participantMsgs[participantMsgs.length - 1];
     const content =
-      extractBusPayloadText(lastMsg) ??
-      participant.data.systemPrompt ??
-      participant.data.label ??
-      `${participant.data.label ?? participant.id} has no initial position.`;
+      participantMsgs.length > 0
+        ? participantMsgs
+            .map((m) => extractPayloadText(m) ?? '')
+            .filter(Boolean)
+            .join('\n\n---\n\n')
+        : (participant.data.systemPrompt ??
+          participant.data.label ??
+          `${participant.data.label ?? participant.id} has no initial position.`);
     diag?.log(`  Round 1 — ${participant.id}: ${content.substring(0, 100)}...`);
     round1Statements.push({
       participantId: participant.id,
@@ -90,10 +94,24 @@ export async function runDebate(
 
   // Rounds 2..N: Rebuttals — participants respond to the previous round in parallel
   for (let round = 2; round <= maxRounds; round++) {
+    if (signal?.aborted) {
+      diag?.log(`Debate aborted during round ${round}`);
+      break;
+    }
+
     const roundStatements: DebateStatement[] = [];
 
     const statements = await Promise.all(
       participantNodes.map(async (participant) => {
+        if (signal?.aborted) {
+          return {
+            participantId: participant.id,
+            participantLabel: participant.data.label ?? participant.id,
+            content: '[Debate was cancelled]',
+            round,
+          } as DebateStatement;
+        }
+
         const prompt = buildDebatePrompt(participant, allStatements, mode, round, maxRounds);
 
         try {
@@ -117,6 +135,9 @@ export async function runDebate(
           let text = '';
           for await (const chunk of result.textStream) {
             text += chunk;
+            if (!emitter.isClosed()) {
+              await emitter.emit('token', { nodeId: arena.id, chunk });
+            }
           }
 
           const final = await result;
@@ -186,46 +207,68 @@ export async function runDebate(
   let scores: Record<string, number> | undefined;
 
   if (hasArbitrator) {
-    const arbitratorModelId = config?.arbitratorModel ?? 'qwen3.7-max';
-    diag?.log(
-      `ARBITRATOR: model=${arbitratorModelId}, scoring=${config?.scoringCriteria || 'none'}`,
-    );
-    const provider = getProvider();
-    const model = provider(arbitratorModelId);
-    const transcript = formatTranscript(allStatements);
-    const scoringCriteriaVal = config?.scoringCriteria;
-    const scoringPrompt = scoringCriteriaVal
-      ? `\n\nScoring criteria: ${scoringCriteriaVal}\nEvaluate each participant against these criteria and provide a score for each.`
-      : '';
-
-    try {
-      const result = streamText({
-        model,
-        system:
-          'You are an impartial arbitrator. Analyze the debate transcript and provide a verdict.',
-        prompt: `Debate transcript:\n\n${transcript}\n\nProvide your verdict.${scoringPrompt}`,
-      });
-
-      for await (const chunk of result.textStream) {
-        verdict += chunk;
-      }
-
-      const final = await result;
-      const usage = await final.usage;
-      totalTokens += usage?.totalTokens ?? 0;
+    if (signal?.aborted) {
+      verdict = '[Debate was cancelled before arbitration]';
+      diag?.log('Debate aborted before arbitration');
+    } else {
+      const arbitratorModelId = config?.arbitratorModel ?? 'qwen3.7-max';
       diag?.log(
-        `Arbitrator verdict: ${verdict.substring(0, 200)}... (${usage?.totalTokens}tokens)`,
+        `ARBITRATOR: model=${arbitratorModelId}, scoring=${config?.scoringCriteria || 'none'}`,
       );
+      const provider = getProvider();
+      const model = provider(arbitratorModelId);
+      const transcript = formatTranscript(allStatements);
+      const scoringCriteriaVal = config?.scoringCriteria;
+      const participantNames = participantNodes.map((n) => n.data.label ?? n.id).join(', ');
+      const scoringPrompt = scoringCriteriaVal
+        ? `\n\nScoring criteria: ${scoringCriteriaVal}\nEvaluate each participant against these criteria and provide a score for each.`
+        : '';
 
-      scores = extractScores(verdict, participantNodes);
-      if (scores) {
-        diag?.logJson('Arbitrator scores', scores);
+      try {
+        const result = streamText({
+          model,
+          system:
+            'You are an impartial arbitrator. Analyze the debate transcript and provide a verdict.',
+          prompt: `Debate transcript:\n\n${transcript}\n\nProvide your verdict.${scoringPrompt}\n\nAfter your analysis, output a JSON block with scores for each participant (${participantNames}) like: {"scores": {"participantId": score}}. Place this JSON block at the end of your response.`,
+        });
+
+        for await (const chunk of result.textStream) {
+          verdict += chunk;
+          if (!emitter.isClosed()) {
+            await emitter.emit('token', { nodeId: arena.id, chunk });
+          }
+        }
+
+        const final = await result;
+        const usage = await final.usage;
+        totalTokens += usage?.totalTokens ?? 0;
+        diag?.log(
+          `Arbitrator verdict: ${verdict.substring(0, 200)}... (${usage?.totalTokens}tokens)`,
+        );
+
+        // Parse JSON scores, fall back to regex
+        const jsonMatch = verdict.match(/\{\s*"scores"\s*:\s*\{[^}]+\}\s*\}/);
+        if (jsonMatch) {
+          try {
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (parsed.scores && typeof parsed.scores === 'object') {
+              scores = parsed.scores as Record<string, number>;
+            }
+          } catch {
+            scores = extractScores(verdict, participantNodes);
+          }
+        } else {
+          scores = extractScores(verdict, participantNodes);
+        }
+        if (scores) {
+          diag?.logJson('Arbitrator scores', scores);
+        }
+      } catch (err) {
+        const msg = (err as Error).message;
+        log.error({ arenaId: arena.id, error: msg }, 'Arbitration failed');
+        diag?.log(`ARBITRATOR ERROR: ${msg}`);
+        verdict = `[Arbitration error: ${msg}]`;
       }
-    } catch (err) {
-      const msg = (err as Error).message;
-      log.error({ arenaId: arena.id, error: msg }, 'Arbitration failed');
-      diag?.log(`ARBITRATOR ERROR: ${msg}`);
-      verdict = `[Arbitration error: ${msg}]`;
     }
   }
 
@@ -294,16 +337,6 @@ function formatTranscript(statements: DebateStatement[]): string {
   return statements
     .map((s) => `[Round ${s.round}] ${s.participantLabel}:\n${s.content}\n`)
     .join('\n');
-}
-
-function extractBusPayloadText(msg?: BusMessage): string | undefined {
-  if (!msg) return undefined;
-  if (typeof msg.payload === 'string') return msg.payload;
-  if (msg.payload && typeof msg.payload === 'object') {
-    const p = msg.payload as Record<string, unknown>;
-    return (p.text as string) ?? (p.value as string) ?? JSON.stringify(msg.payload);
-  }
-  return String(msg.payload ?? '');
 }
 
 function escapeRegex(s: string): string {

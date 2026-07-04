@@ -3,7 +3,7 @@ import type { NodePayload, BusMessage } from '@qwenweaver/types';
 import { jsonSchema, streamText, tool, type Tool } from 'ai';
 import { z } from 'zod';
 import { createModuleLogger } from '../logger.js';
-import { createDiagnosticLogger, type CopilotDiag } from '../diagnostic-logger.js';
+import type { CopilotDiag } from '../diagnostic-logger.js';
 import { agent_duration_ms, llm_tokens_total } from '../metrics.js';
 import { buildHeadersFromAuthConfig, callMCPTool, discoverMCPTools } from './mcp-bridge.js';
 import { getModelForNode, getModelIdForNode } from './model-router.js';
@@ -12,9 +12,13 @@ import type { AgentResult, StreamEmitter } from './types.js';
 import { EXTENSION_MAP, CONTENT_TYPE_MAP } from './constants.js';
 import { writeBinaryAsset } from './file-asset.js';
 import { buildSystemPrompt, buildUserMessageFromBus } from './prompt-builder.js';
+import { extractPayloadText } from './shared.js';
 import { resolveCredentialAuth } from './credential-resolver.js';
 import { generateWanxImage } from './generators/wanx-image.js';
+import { generateQwenImage } from './generators/qwen-image.js';
 import { generateWanxVideo } from './generators/wanx-video.js';
+import { generateHappyhorseVideo } from './generators/happyhorse-video.js';
+import { generateHappyhorseImageToVideo } from './generators/happyhorse-i2v.js';
 import { generateCosyVoiceAudio } from './generators/cosyvoice.js';
 
 const log = createModuleLogger('engine/agent-runner');
@@ -34,8 +38,26 @@ export async function runAgent(
 
   diag?.log(`=== AGENT START: ${node.id} (${node.type}) "${nodeLabel}" ===`);
 
-  if (node.type === 'trigger' || node.type === 'input_trigger' || node.type === 'logic') {
-    const text = node.data.label ?? `[${node.type}] pass-through`;
+  if (
+    node.type === 'trigger' ||
+    node.type === 'input_trigger' ||
+    node.type === 'file_trigger' ||
+    node.type === 'logic'
+  ) {
+    if (node.type === 'file_trigger' && node.data.fileUrl) {
+      const fileUrl = node.data.fileUrl;
+      const durationMs = Math.round(performance.now() - startTime);
+      diag?.log(`FILE TRIGGER node ${node.id} — fileUrl: ${fileUrl}`);
+      return {
+        nodeId: node.id,
+        outputs: [{ type: 'image', contentType: 'image/png', value: fileUrl }],
+        text: `[File Trigger] ${node.data.fileName || 'Image'}: ${fileUrl}`,
+        tokensUsed: 0,
+        durationMs,
+        status: 'completed',
+      };
+    }
+    const text = node.data.label || '';
     const format = node.data.outputFormat ?? 'text';
     const ext = EXTENSION_MAP[format] ?? 'txt';
     const contentType = CONTENT_TYPE_MAP[format] ?? 'text/plain';
@@ -43,7 +65,7 @@ export async function runAgent(
     const runId = executionId ?? 'local-run';
     const fileUrl = await writeBinaryAsset(runId, node.id, ext, buffer);
     const durationMs = Math.round(performance.now() - startTime);
-    diag?.log(`PASS-THROUGH node ${node.id} (type=${node.type}) — label length: ${text.length}`);
+    diag?.log(`PASS-THROUGH node ${node.id} (type=${node.type}) — text length: ${text.length}`);
     return {
       nodeId: node.id,
       outputs: [{ type: 'text', contentType, value: fileUrl }],
@@ -119,13 +141,23 @@ export async function runAgent(
 
     // Handle Image Generation (Wanx)
     if (node.data.outputFormat === 'image') {
-      const prompt = node.data.systemPrompt || node.data.label || 'Generates an image';
+      const upstreamText = busMessages
+        .map((m) => extractPayloadText(m) ?? '')
+        .filter(Boolean)
+        .join('\n\n');
+      const prompt =
+        upstreamText || node.data.systemPrompt || node.data.label || 'Generates an image';
       diag?.log(`IMAGE GEN: node=${node.id}, prompt="${prompt.substring(0, 100)}"`);
       let buffer: Buffer;
 
       if (apiKey) {
-        log.info({ nodeId: node.id, prompt }, 'Calling Wanx image generation API');
-        buffer = await generateWanxImage(prompt, apiKey, abortController.signal);
+        if (node.data.model === 'qwen-image-2.0-pro') {
+          log.info({ nodeId: node.id, prompt }, 'Calling Qwen-Image generation API');
+          buffer = await generateQwenImage(prompt, apiKey, abortController.signal);
+        } else {
+          log.info({ nodeId: node.id, prompt }, 'Calling Wanx image generation API');
+          buffer = await generateWanxImage(prompt, apiKey, abortController.signal);
+        }
       } else {
         throw new Error(`Node "${node.id}" has outputFormat "image" but no DASHSCOPE_API_KEY set`);
       }
@@ -150,7 +182,7 @@ export async function runAgent(
       // Use upstream bus messages as the text to narrate
       let ttsText = '';
       for (const msg of busMessages) {
-        const textContent = extractBusPayloadText(msg);
+        const textContent = extractPayloadText(msg);
         if (textContent) {
           ttsText += (ttsText ? '\n\n' : '') + textContent;
         }
@@ -188,13 +220,37 @@ export async function runAgent(
 
     // Handle Video Generation (Wanx Video)
     if (node.data.outputFormat === 'video') {
-      const prompt = node.data.systemPrompt || node.data.label || 'Generates a video';
+      const upstreamText = busMessages
+        .map((m) => extractPayloadText(m) ?? '')
+        .filter(Boolean)
+        .join('\n\n');
+      const prompt =
+        upstreamText || node.data.systemPrompt || node.data.label || 'Generates a video';
       diag?.log(`VIDEO GEN: node=${node.id}, prompt="${prompt.substring(0, 100)}"`);
       let buffer: Buffer;
 
       if (apiKey) {
-        log.info({ nodeId: node.id, prompt }, 'Calling Wanx video generation API');
-        buffer = await generateWanxVideo(prompt, apiKey, abortController.signal);
+        if (node.data.model === 'happyhorse-1.1-t2v') {
+          log.info({ nodeId: node.id, prompt }, 'Calling HappyVideo generation API');
+          buffer = await generateHappyhorseVideo(prompt, apiKey, abortController.signal);
+        } else if (node.data.model === 'happyhorse-1.1-i2v') {
+          const imageUrl = node.data.imageUrl ?? extractImageFromBus(busMessages);
+          if (!imageUrl) {
+            throw new Error(
+              'happyhorse-1.1-i2v requires an input image (set imageUrl in config or connect an image node upstream)',
+            );
+          }
+          log.info({ nodeId: node.id, prompt, imageUrl }, 'Calling HappyI2V generation API');
+          buffer = await generateHappyhorseImageToVideo(
+            prompt,
+            imageUrl,
+            apiKey,
+            abortController.signal,
+          );
+        } else {
+          log.info({ nodeId: node.id, prompt }, 'Calling Wanx video generation API');
+          buffer = await generateWanxVideo(prompt, apiKey, abortController.signal);
+        }
       } else {
         throw new Error(`Node "${node.id}" has outputFormat "video" but no DASHSCOPE_API_KEY set`);
       }
@@ -274,12 +330,7 @@ export async function runAgent(
       }
     }
 
-    // Inject built-in workspace tools (blackboard)
-    if (executionId) {
-      const workspaceTools = createWorkspaceTools(executionId, node.id, emitter);
-      Object.assign(tools, workspaceTools);
-      diag?.log(`Workspace tools injected: ${Object.keys(workspaceTools).join(', ')}`);
-    }
+    // Workspace tools disabled — bus messages handle cross-agent data flow
 
     const providerOptions = enableThinking
       ? {
@@ -324,67 +375,57 @@ export async function runAgent(
     let tokensUsed = 0;
     let reasoningText = '';
     let toolInputBuffer = '';
+    let lastToolInput = '';
     let streamPartCount = 0;
 
-    if (enableThinking) {
-      diag?.log('fullStream loop (thinking enabled)');
-      for await (const part of result.fullStream) {
-        streamPartCount++;
-        if (part.type === 'reasoning-delta') {
-          const textChunk = (part as any).text || '';
-          if (textChunk) {
-            reasoningText += textChunk;
-            diag?.log(
-              `[${node.id}] THINKING (${textChunk.length}c): ${textChunk.substring(0, 150)}`,
-            );
-            if (emitter && !emitter.isClosed()) {
-              await emitter.emit('thinking', { nodeId: node.id, chunk: textChunk });
-            }
+    diag?.log(`fullStream loop (thinking=${enableThinking})`);
+    for await (const part of result.fullStream) {
+      streamPartCount++;
+      if (part.type === 'reasoning-delta') {
+        if (!enableThinking) continue;
+        const textChunk = (part as any).text || '';
+        if (textChunk) {
+          reasoningText += textChunk;
+          diag?.log(`[${node.id}] THINKING (${textChunk.length}c): ${textChunk.substring(0, 150)}`);
+          if (emitter && !emitter.isClosed()) {
+            await emitter.emit('thinking', { nodeId: node.id, chunk: textChunk });
           }
-        } else if (part.type === 'text-delta') {
-          const textChunk = (part as any).text || '';
-          if (textChunk) {
-            fullText += textChunk;
-            diag?.log(`[${node.id}] TOKEN (${textChunk.length}c): ${textChunk.substring(0, 150)}`);
-            if (emitter && !emitter.isClosed()) {
-              await emitter.emit('token', { nodeId: node.id, chunk: textChunk });
-            }
+        }
+      } else if (part.type === 'text-delta') {
+        const textChunk = (part as any).text || '';
+        if (textChunk) {
+          fullText += textChunk;
+          diag?.log(`[${node.id}] TOKEN (${textChunk.length}c): ${textChunk.substring(0, 150)}`);
+          if (emitter && !emitter.isClosed()) {
+            await emitter.emit('token', { nodeId: node.id, chunk: textChunk });
           }
-        } else if (part.type === 'tool-call') {
-          const tc = part as any;
-          const toolArgs = tc.args ?? tc.toolCall?.args ?? tc.arguments;
-          diag?.log(`[${node.id}] TOOL CALL: "${tc.toolName}"`);
-          diag?.logJson(`[${node.id}] Tool args`, toolArgs);
-        } else if (part.type === 'tool-result') {
-          const tr = part as any;
-          const toolResult = tr.result ?? tr;
-          diag?.log(`[${node.id}] TOOL RESULT: "${tr.toolName || tr.name}"`);
-          diag?.logJson(`[${node.id}] Tool result`, toolResult);
-        } else if (part.type === 'tool-input-delta') {
-          const chunk = (part as any).text || (part as any).delta || '';
-          if (chunk) toolInputBuffer += chunk;
-        } else if (part.type === 'tool-input-start') {
-          toolInputBuffer = '';
-        } else if (part.type === 'tool-input-end') {
-          diag?.log(`[${node.id}] TOOL INPUT (full JSON): ${toolInputBuffer.substring(0, 1000)}`);
-          toolInputBuffer = '';
-        } else if (part.type === 'error') {
-          const errPart = part as any;
-          const errMsg = errPart.error || JSON.stringify(errPart);
-          diag?.log(`[${node.id}] STREAM ERROR: ${errMsg}`);
         }
-      }
-      diag?.log(`[${node.id}] Stream parts processed: ${streamPartCount}`);
-    } else {
-      diag?.log('textStream loop (no thinking)');
-      for await (const chunk of result.textStream) {
-        fullText += chunk;
-        diag?.log(`[${node.id}] TOKEN (${chunk.length}c): ${chunk.substring(0, 150)}`);
-        if (emitter && !emitter.isClosed()) {
-          await emitter.emit('token', { nodeId: node.id, chunk });
-        }
+      } else if (part.type === 'tool-call') {
+        const tc = part as any;
+        const toolArgs = tc.args ?? tc.toolCall?.args ?? tc.arguments;
+        diag?.log(`[${node.id}] TOOL CALL: "${tc.toolName}"`);
+        diag?.logJson(`[${node.id}] Tool args`, toolArgs);
+      } else if (part.type === 'tool-result') {
+        const tr = part as any;
+        const toolResult = tr.result ?? tr;
+        diag?.log(`[${node.id}] TOOL RESULT: "${tr.toolName || tr.name}"`);
+        diag?.logJson(`[${node.id}] Tool result`, toolResult);
+      } else if (part.type === 'tool-input-delta') {
+        const chunk = (part as any).text || (part as any).delta || '';
+        if (chunk) toolInputBuffer += chunk;
+      } else if (part.type === 'tool-input-start') {
+        toolInputBuffer = '';
+      } else if (part.type === 'tool-input-end') {
+        diag?.log(`[${node.id}] TOOL INPUT (full JSON): ${toolInputBuffer.substring(0, 1000)}`);
+        lastToolInput = toolInputBuffer;
+        toolInputBuffer = '';
+      } else if (part.type === 'error') {
+        const errPart = part as any;
+        const errMsg = errPart.error || JSON.stringify(errPart);
+        diag?.log(`[${node.id}] STREAM ERROR: ${errMsg}`);
       }
     }
+    diag?.log(`[${node.id}] Stream parts processed: ${streamPartCount}`);
 
     const finalResult = await result;
     const usage = await finalResult.usage;
@@ -397,6 +438,52 @@ export async function runAgent(
       const finalText = await finalResult.text;
       if (finalText) {
         fullText = finalText;
+      }
+    }
+
+    // Fallback: if still empty but the model used workspace tools, extract value from tool args
+    if (!fullText && toolCalls) {
+      for (const tc of toolCalls as Array<Record<string, unknown>>) {
+        const name = tc.toolName ?? tc.name ?? '';
+        const args = tc.args ?? tc.arguments ?? tc.input ?? {};
+        if (name === 'workspace_write' && typeof args === 'object' && args !== null) {
+          const a = args as Record<string, unknown>;
+          if (a.value && typeof a.value === 'string') {
+            fullText = a.value;
+            break;
+          }
+          const propValues = Object.values(a).filter((v): v is string => typeof v === 'string');
+          if (propValues.length > 0) {
+            fullText = propValues[0];
+            break;
+          }
+        }
+      }
+    }
+
+    // Last resort: if still empty, try reasoning text, tool input, or bus fallback
+    if (!fullText) {
+      if (reasoningText) {
+        fullText = reasoningText;
+      } else if (lastToolInput) {
+        try {
+          const parsed = JSON.parse(lastToolInput);
+          const vals = Object.values(parsed).filter((v): v is string => typeof v === 'string');
+          if (vals.length > 0) fullText = vals[0];
+        } catch {
+          fullText = lastToolInput;
+        }
+      }
+      // Last-ditch: use the first bus message text as a fallback
+      if (!fullText) {
+        for (const m of busMessages) {
+          const t = extractPayloadText(m);
+          if (t) {
+            fullText = t;
+            diag?.log(`[${node.id}] Used bus fallback text: ${t.substring(0, 100)}`);
+            break;
+          }
+        }
       }
     }
 
@@ -464,11 +551,14 @@ export async function runAgent(
   }
 }
 
-function extractBusPayloadText(msg: BusMessage): string {
-  if (typeof msg.payload === 'string') return msg.payload;
-  if (msg.payload && typeof msg.payload === 'object') {
-    const p = msg.payload as Record<string, unknown>;
-    return (p.text as string) ?? (p.value as string) ?? JSON.stringify(msg.payload);
+function extractImageFromBus(busMessages: BusMessage[]): string | undefined {
+  for (const msg of busMessages) {
+    const payload = msg.payload as Record<string, unknown> | undefined;
+    const outputs = payload?.outputs as Array<{ type: string; value: string }> | undefined;
+    if (outputs) {
+      const img = outputs.find((o) => o.type === 'image');
+      if (img?.value) return img.value;
+    }
   }
-  return String(msg.payload ?? '');
+  return undefined;
 }

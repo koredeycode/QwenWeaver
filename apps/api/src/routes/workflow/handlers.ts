@@ -8,13 +8,7 @@ import { createModuleLogger } from '../../logger.js';
 import { active_sse_connections } from '../../metrics.js';
 import type { Variables } from '../../index.js';
 import type { Context } from 'hono';
-import {
-  NODE_BASE_COST,
-  FIXED_COST,
-  PROMPT_TOKEN_COST,
-  COMPLETION_TOKEN_COST,
-  MIN_COST,
-} from '../../config.js';
+import { estimateNodeMaxCost, calculateNodeCost } from '@qwenweaver/types';
 
 const log = createModuleLogger('routes/workflow.handlers');
 
@@ -376,23 +370,41 @@ export const handleGetStatus = async (c: Context<{ Variables: Variables }>) => {
   );
 };
 
-// ─── Cost estimation ──────────────────────────────────────────────────────────
+// ─── Cost estimation (model-aware) ────────────────────────────────────────────
 
+/**
+ * Reserve estimate: generous per-node cap so we never under-reserve.
+ * Over-reservation is refunded after execution.
+ */
 function estimateExecutionCost(workflow: z.infer<typeof WorkflowPayload>): number {
-  let total = FIXED_COST;
+  let total = 0;
   for (const node of workflow.nodes) {
-    total += NODE_BASE_COST[node.type] ?? 2;
+    total += estimateNodeMaxCost(node.type, node.data.model);
   }
-  return Math.max(total, MIN_COST);
+  return Math.max(total, 10);
 }
 
+/**
+ * Final cost: per-node model-aware pricing based on actual token usage.
+ */
 function calculateFinalCost(
   workflow: z.infer<typeof WorkflowPayload>,
-  totalTokens: number,
+  nodeTimings: Array<{ nodeId: string; tokensUsed?: number }>,
 ): number {
-  const baseCost = estimateExecutionCost(workflow);
-  const tokenCost = Math.round(totalTokens * (PROMPT_TOKEN_COST + COMPLETION_TOKEN_COST));
-  return Math.max(baseCost + tokenCost, MIN_COST);
+  const nodeMap = new Map<string, z.infer<typeof WorkflowPayload>['nodes'][0]>();
+  for (const node of workflow.nodes) {
+    nodeMap.set(node.id, node);
+  }
+
+  let total = 0;
+  for (const timing of nodeTimings) {
+    const node = nodeMap.get(timing.nodeId);
+    if (!node) continue;
+    const tokens = timing.tokensUsed ?? 0;
+    total += calculateNodeCost(node.type, node.data.model, tokens);
+  }
+
+  return Math.max(total, 1);
 }
 
 // ─── Async execution runner ─────────────────────────────────────────────────
@@ -444,8 +456,8 @@ async function runExecutionAsync(
 
     // ─── Credit settlement (refund over-reservation) ──────────────────────
     try {
-      const totalTokens = result.metrics?.totalTokens ?? 0;
-      const finalCost = calculateFinalCost(workflow, totalTokens);
+      const nodeTimings = result.metrics?.nodeTimings ?? [];
+      const finalCost = calculateFinalCost(workflow, nodeTimings);
       const refund = (reservedCredits ?? 0) - finalCost;
       if (result.status === 'completed') {
         if (refund > 0) {

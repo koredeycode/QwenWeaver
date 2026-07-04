@@ -1,4 +1,4 @@
-import { Bot, Brain, Image, Video, Volume2, Sparkles, Play } from 'lucide-react';
+import { Bot, Brain, Image, Video, Volume2, Sparkles, Play, Upload } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export interface WorkerOption {
@@ -82,6 +82,45 @@ export const WORKER_OPTIONS: WorkerOption[] = [
     iconColor: 'text-rose-600',
   },
   {
+    id: 'img-qwen',
+    name: 'Qwen Image Generator',
+    description: 'Generates images from text prompts using Qwen-Image 2.0 Pro.',
+    group: 'media',
+    model: 'qwen-image-2.0-pro',
+    enableThinking: false,
+    outputFormat: 'image',
+    systemPrompt: 'Qwen-Image 2.0 Pro generator. Convert instructions to detailed visual prompts.',
+    icon: Image,
+    iconBg: 'bg-cyan-50 border-cyan-200',
+    iconColor: 'text-cyan-600',
+  },
+  {
+    id: 'video-happy',
+    name: 'HappyVideo Generator',
+    description: 'Generates videos from text prompts using HappyHorse 1.1 T2V API.',
+    group: 'media',
+    model: 'happyhorse-1.1-t2v',
+    enableThinking: false,
+    outputFormat: 'video',
+    systemPrompt: 'HappyHorse Text-to-Video synthesis. Animate the text instructions.',
+    icon: Video,
+    iconBg: 'bg-violet-50 border-violet-200',
+    iconColor: 'text-violet-600',
+  },
+  {
+    id: 'video-i2v',
+    name: 'Image-to-Video',
+    description: 'Animates an image into a video using HappyHorse 1.1 I2V API.',
+    group: 'media',
+    model: 'happyhorse-1.1-i2v',
+    enableThinking: false,
+    outputFormat: 'video',
+    systemPrompt: 'HappyHorse Image-to-Video synthesis. Animate the provided image according to instructions.',
+    icon: Video,
+    iconBg: 'bg-fuchsia-50 border-fuchsia-200',
+    iconColor: 'text-fuchsia-600',
+  },
+  {
     id: 'audio',
     name: 'Speech Synthesizer (TTS)',
     description: 'Synthesizes text into high-fidelity speech using CosyVoice or Qwen-TTS API.',
@@ -110,7 +149,7 @@ export const WORKER_OPTIONS: WorkerOption[] = [
 ];
 
 export interface TriggerOption {
-  type: 'trigger' | 'input_trigger';
+  type: 'trigger' | 'input_trigger' | 'file_trigger';
   label: string;
   description: string;
   icon: LucideIcon;
@@ -134,6 +173,14 @@ export const TRIGGER_OPTIONS: TriggerOption[] = [
     icon: Play,
     iconBg: 'bg-emerald-50 border-emerald-200',
     iconColor: 'text-emerald-600',
+  },
+  {
+    type: 'file_trigger',
+    label: 'File Trigger',
+    description: 'Upload an image to pass as input to the workflow.',
+    icon: Upload,
+    iconBg: 'bg-cyan-50 border-cyan-200',
+    iconColor: 'text-cyan-600',
   },
 ];
 

@@ -80,7 +80,7 @@ export const CanvasWorkspace = () => {
   const workflowDescription = useStore((s) => s.workflowDescription);
   const workflowId = useStore((s) => s.workflowId);
   const setWorkflowMeta = useStore((s) => s.setWorkflowMeta);
-  const setEdgeData = useStore((s) => s.setEdgeData);
+
   const maximizedNodeId = useStore((s) => s.maximizedNodeId);
   const setMaximizedNodeId = useStore((s) => s.setMaximizedNodeId);
 
@@ -456,21 +456,6 @@ export const CanvasWorkspace = () => {
   const handlePaneClick = useCallback(() => {
     selectNode(null);
   }, [selectNode]);
-
-  const handleEdgeClick = useCallback(
-    (_: any, edge: any) => {
-      if (isLocked || status === 'running') return;
-      const isConversation = edge.data?.subscription?.conversationMode === true;
-      setEdgeData(edge.id, {
-        subscription: { conversationMode: !isConversation },
-      });
-      toast(
-        `Conversation mode ${isConversation ? 'disabled' : 'enabled'} on ${edge.source} ↔ ${edge.target}`,
-        { duration: 1500 },
-      );
-    },
-    [isLocked, status, setEdgeData],
-  );
 
   return (
     <>
@@ -889,7 +874,6 @@ export const CanvasWorkspace = () => {
                       nodeTypes={nodeTypes as any}
                       edgeTypes={edgeTypes as any}
                       onNodeClick={handleNodeClick}
-                      onEdgeClick={handleEdgeClick}
                       onPaneClick={handlePaneClick}
                       fitView
                       minZoom={0.2}

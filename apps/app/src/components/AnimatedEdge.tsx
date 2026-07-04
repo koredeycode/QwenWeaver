@@ -18,7 +18,6 @@ export const AnimatedEdge = memo(
   }: EdgeProps) => {
     const storeActive = useStore((s) => s.activeEdges.has(id));
     const isActive = data?._edgeActive === true || storeActive;
-    const isConversation = (data as any)?.subscription?.conversationMode === true;
 
     // Get stepped/orthogonal path
     const [edgePath] = getSmoothStepPath({
@@ -40,12 +39,12 @@ export const AnimatedEdge = memo(
             stroke: selected ? '#2563eb' : isActive ? '#f97316' : '#cbd5e1',
             strokeWidth: selected ? 3 : isActive ? 2.5 : 1.5,
             fill: 'none',
-            strokeDasharray: isConversation ? '6 3' : undefined,
+            strokeDasharray: '6 3',
             transition: 'stroke 0.2s, stroke-width 0.2s',
           }}
           className="react-flow__edge-path"
           d={edgePath}
-          markerEnd={isConversation ? undefined : markerEnd}
+          markerEnd={markerEnd}
         />
 
         {/* Foreground glowing animation overlay path */}
@@ -55,7 +54,6 @@ export const AnimatedEdge = memo(
               stroke: '#f97316',
               strokeWidth: 2,
               fill: 'none',
-              strokeDasharray: isConversation ? '6 3' : undefined,
             }}
             className="animate-edge-glow"
             d={edgePath}

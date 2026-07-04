@@ -6,6 +6,7 @@ import {
   Brain,
   Wrench,
   Play,
+  Upload,
   PanelLeft,
   PanelRight,
   Database,
@@ -65,6 +66,8 @@ export const MaximizedNodeOverlay = () => {
       case 'trigger':
       case 'input_trigger':
         return <Play className="w-4 h-4 text-emerald-600 fill-emerald-600/10" />;
+      case 'file_trigger':
+        return <Upload className="w-4 h-4 text-cyan-600" />;
       case 'agent':
         return <Bot className="w-4 h-4 text-[#f97316]" />;
       case 'supervisor':

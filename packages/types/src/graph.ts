@@ -7,6 +7,7 @@ export const NodeType = z.enum([
   'mcp_tool',
   'logic',
   'input_trigger',
+  'file_trigger',
   'debate_arena',
 ]);
 
@@ -46,6 +47,9 @@ export const OutputFormat = z.enum([
   'image',
   'audio',
   'video',
+  'verdict',
+  'transcript',
+  'score',
 ]);
 export type OutputFormat = z.infer<typeof OutputFormat>;
 
@@ -98,6 +102,9 @@ export const NodeData = z.object({
   enableThinking: z.boolean().optional(),
   outputFormat: OutputFormat.optional(),
   workerType: z.string().optional(),
+  fileUrl: z.string().optional(),
+  fileName: z.string().optional(),
+  imageUrl: z.string().optional(),
   _executionStatus: z.string().optional(),
   _output: z.string().optional(),
   _outputUrl: z.string().optional(),

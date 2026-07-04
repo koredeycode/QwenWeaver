@@ -1,7 +1,10 @@
 import type { BusMessage } from '@qwenweaver/types';
 import { createModuleLogger } from '../logger.js';
+import { buildChannelId } from './shared.js';
 
 const log = createModuleLogger('engine/data-bus');
+
+const TOPIC_PATTERN = /^(node:[\w.-]+\.(output|error)|conversation:[\w.|,-]+)$/;
 
 export type BusMessagePersistFn = (msg: BusMessage) => Promise<void>;
 
@@ -42,6 +45,13 @@ export class DataBus {
       timestamp: msg.timestamp ?? Date.now(),
       ...msg,
     };
+
+    if (!TOPIC_PATTERN.test(full.topic)) {
+      log.warn(
+        { executionId: this.executionId, topic: full.topic },
+        'Bus message published to non-standard topic',
+      );
+    }
 
     const existing = this.messagesByTopic.get(full.topic) ?? [];
     existing.push(full);
@@ -103,7 +113,7 @@ export class DataBus {
     const topics = new Set<string>();
     for (const edge of edges) {
       if (edge.source === nodeId || edge.target === nodeId) {
-        const channelId = [edge.source, edge.target].sort().join('|');
+        const channelId = buildChannelId(edge.source, edge.target);
         topics.add(`conversation:${channelId}`);
       }
     }
@@ -121,6 +131,20 @@ export class DataBus {
    */
   getConversationChannelMessages(channelId: string): BusMessage[] {
     return this.messagesByTopic.get(`conversation:${channelId}`) ?? [];
+  }
+
+  /**
+   * Get all messages for a node — merges upstream outputs and conversation messages.
+   * This is a convenience wrapper that replaces the dual-call pattern.
+   */
+  getAllMessagesForNode(
+    nodeId: string,
+    edges: Array<{ source: string; target: string }>,
+    conversationEdges: Array<{ source: string; target: string }>,
+  ): BusMessage[] {
+    const upstream = this.getMessagesForNode(nodeId, edges);
+    const conversation = this.getConversationMessages(nodeId, conversationEdges);
+    return [...upstream, ...conversation];
   }
 
   /**
