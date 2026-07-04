@@ -21,7 +21,7 @@ const MODEL_DEFAULTS: Record<string, string> = {
 /**
  * Node types that should use the thinking/reasoning mode.
  */
-const THINKING_ENABLED_TYPES = new Set(['supervisor', 'agent']);
+const THINKING_ENABLED_TYPES = new Set(['supervisor']);
 
 /** Default thinking budget tokens for supervisor nodes. */
 const DEFAULT_THINKING_BUDGET = 4096;

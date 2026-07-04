@@ -47,6 +47,9 @@ export const OutputFormat = z.enum([
   'image',
   'audio',
   'video',
+  'verdict',
+  'transcript',
+  'score',
 ]);
 export type OutputFormat = z.infer<typeof OutputFormat>;
 

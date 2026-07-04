@@ -98,9 +98,22 @@ export async function generateQwenImage(
     throw new Error(`Qwen-Image task did not return an image url: ${JSON.stringify(data)}`);
   }
 
-  const imageRes = await fetch(imageUrl, { signal });
-  if (!imageRes.ok) {
-    throw new Error(`Failed to download Qwen-Image result from ${imageUrl}`);
+  // Retry download up to 3 times — OSS URLs can be flaky
+  let lastError: Error | undefined;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const imageRes = await fetch(imageUrl, { signal });
+      if (!imageRes.ok) {
+        throw new Error(`Status ${imageRes.status}: ${await imageRes.text()}`);
+      }
+      return Buffer.from(await imageRes.arrayBuffer());
+    } catch (err) {
+      lastError = err as Error;
+      if (attempt < 3) {
+        log.warn({ attempt, imageUrl: imageUrl.substring(0, 80) }, 'Retrying image download');
+        await new Promise((r) => setTimeout(r, 1000 * attempt));
+      }
+    }
   }
-  return Buffer.from(await imageRes.arrayBuffer());
+  throw new Error(`Failed to download Qwen-Image result from ${imageUrl}: ${lastError?.message}`);
 }

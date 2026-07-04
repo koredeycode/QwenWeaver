@@ -330,12 +330,7 @@ export async function runAgent(
       }
     }
 
-    // Inject built-in workspace tools (blackboard)
-    if (executionId) {
-      const workspaceTools = createWorkspaceTools(executionId, node.id, emitter);
-      Object.assign(tools, workspaceTools);
-      diag?.log(`Workspace tools injected: ${Object.keys(workspaceTools).join(', ')}`);
-    }
+    // Workspace tools disabled — bus messages handle cross-agent data flow
 
     const providerOptions = enableThinking
       ? {
@@ -380,67 +375,57 @@ export async function runAgent(
     let tokensUsed = 0;
     let reasoningText = '';
     let toolInputBuffer = '';
+    let lastToolInput = '';
     let streamPartCount = 0;
 
-    if (enableThinking) {
-      diag?.log('fullStream loop (thinking enabled)');
-      for await (const part of result.fullStream) {
-        streamPartCount++;
-        if (part.type === 'reasoning-delta') {
-          const textChunk = (part as any).text || '';
-          if (textChunk) {
-            reasoningText += textChunk;
-            diag?.log(
-              `[${node.id}] THINKING (${textChunk.length}c): ${textChunk.substring(0, 150)}`,
-            );
-            if (emitter && !emitter.isClosed()) {
-              await emitter.emit('thinking', { nodeId: node.id, chunk: textChunk });
-            }
+    diag?.log(`fullStream loop (thinking=${enableThinking})`);
+    for await (const part of result.fullStream) {
+      streamPartCount++;
+      if (part.type === 'reasoning-delta') {
+        if (!enableThinking) continue;
+        const textChunk = (part as any).text || '';
+        if (textChunk) {
+          reasoningText += textChunk;
+          diag?.log(`[${node.id}] THINKING (${textChunk.length}c): ${textChunk.substring(0, 150)}`);
+          if (emitter && !emitter.isClosed()) {
+            await emitter.emit('thinking', { nodeId: node.id, chunk: textChunk });
           }
-        } else if (part.type === 'text-delta') {
-          const textChunk = (part as any).text || '';
-          if (textChunk) {
-            fullText += textChunk;
-            diag?.log(`[${node.id}] TOKEN (${textChunk.length}c): ${textChunk.substring(0, 150)}`);
-            if (emitter && !emitter.isClosed()) {
-              await emitter.emit('token', { nodeId: node.id, chunk: textChunk });
-            }
+        }
+      } else if (part.type === 'text-delta') {
+        const textChunk = (part as any).text || '';
+        if (textChunk) {
+          fullText += textChunk;
+          diag?.log(`[${node.id}] TOKEN (${textChunk.length}c): ${textChunk.substring(0, 150)}`);
+          if (emitter && !emitter.isClosed()) {
+            await emitter.emit('token', { nodeId: node.id, chunk: textChunk });
           }
-        } else if (part.type === 'tool-call') {
-          const tc = part as any;
-          const toolArgs = tc.args ?? tc.toolCall?.args ?? tc.arguments;
-          diag?.log(`[${node.id}] TOOL CALL: "${tc.toolName}"`);
-          diag?.logJson(`[${node.id}] Tool args`, toolArgs);
-        } else if (part.type === 'tool-result') {
-          const tr = part as any;
-          const toolResult = tr.result ?? tr;
-          diag?.log(`[${node.id}] TOOL RESULT: "${tr.toolName || tr.name}"`);
-          diag?.logJson(`[${node.id}] Tool result`, toolResult);
-        } else if (part.type === 'tool-input-delta') {
-          const chunk = (part as any).text || (part as any).delta || '';
-          if (chunk) toolInputBuffer += chunk;
-        } else if (part.type === 'tool-input-start') {
-          toolInputBuffer = '';
-        } else if (part.type === 'tool-input-end') {
-          diag?.log(`[${node.id}] TOOL INPUT (full JSON): ${toolInputBuffer.substring(0, 1000)}`);
-          toolInputBuffer = '';
-        } else if (part.type === 'error') {
-          const errPart = part as any;
-          const errMsg = errPart.error || JSON.stringify(errPart);
-          diag?.log(`[${node.id}] STREAM ERROR: ${errMsg}`);
         }
-      }
-      diag?.log(`[${node.id}] Stream parts processed: ${streamPartCount}`);
-    } else {
-      diag?.log('textStream loop (no thinking)');
-      for await (const chunk of result.textStream) {
-        fullText += chunk;
-        diag?.log(`[${node.id}] TOKEN (${chunk.length}c): ${chunk.substring(0, 150)}`);
-        if (emitter && !emitter.isClosed()) {
-          await emitter.emit('token', { nodeId: node.id, chunk });
-        }
+      } else if (part.type === 'tool-call') {
+        const tc = part as any;
+        const toolArgs = tc.args ?? tc.toolCall?.args ?? tc.arguments;
+        diag?.log(`[${node.id}] TOOL CALL: "${tc.toolName}"`);
+        diag?.logJson(`[${node.id}] Tool args`, toolArgs);
+      } else if (part.type === 'tool-result') {
+        const tr = part as any;
+        const toolResult = tr.result ?? tr;
+        diag?.log(`[${node.id}] TOOL RESULT: "${tr.toolName || tr.name}"`);
+        diag?.logJson(`[${node.id}] Tool result`, toolResult);
+      } else if (part.type === 'tool-input-delta') {
+        const chunk = (part as any).text || (part as any).delta || '';
+        if (chunk) toolInputBuffer += chunk;
+      } else if (part.type === 'tool-input-start') {
+        toolInputBuffer = '';
+      } else if (part.type === 'tool-input-end') {
+        diag?.log(`[${node.id}] TOOL INPUT (full JSON): ${toolInputBuffer.substring(0, 1000)}`);
+        lastToolInput = toolInputBuffer;
+        toolInputBuffer = '';
+      } else if (part.type === 'error') {
+        const errPart = part as any;
+        const errMsg = errPart.error || JSON.stringify(errPart);
+        diag?.log(`[${node.id}] STREAM ERROR: ${errMsg}`);
       }
     }
+    diag?.log(`[${node.id}] Stream parts processed: ${streamPartCount}`);
 
     const finalResult = await result;
     const usage = await finalResult.usage;
@@ -453,6 +438,52 @@ export async function runAgent(
       const finalText = await finalResult.text;
       if (finalText) {
         fullText = finalText;
+      }
+    }
+
+    // Fallback: if still empty but the model used workspace tools, extract value from tool args
+    if (!fullText && toolCalls) {
+      for (const tc of toolCalls as Array<Record<string, unknown>>) {
+        const name = tc.toolName ?? tc.name ?? '';
+        const args = tc.args ?? tc.arguments ?? tc.input ?? {};
+        if (name === 'workspace_write' && typeof args === 'object' && args !== null) {
+          const a = args as Record<string, unknown>;
+          if (a.value && typeof a.value === 'string') {
+            fullText = a.value;
+            break;
+          }
+          const propValues = Object.values(a).filter((v): v is string => typeof v === 'string');
+          if (propValues.length > 0) {
+            fullText = propValues[0];
+            break;
+          }
+        }
+      }
+    }
+
+    // Last resort: if still empty, try reasoning text, tool input, or bus fallback
+    if (!fullText) {
+      if (reasoningText) {
+        fullText = reasoningText;
+      } else if (lastToolInput) {
+        try {
+          const parsed = JSON.parse(lastToolInput);
+          const vals = Object.values(parsed).filter((v): v is string => typeof v === 'string');
+          if (vals.length > 0) fullText = vals[0];
+        } catch {
+          fullText = lastToolInput;
+        }
+      }
+      // Last-ditch: use the first bus message text as a fallback
+      if (!fullText) {
+        for (const m of busMessages) {
+          const t = extractPayloadText(m);
+          if (t) {
+            fullText = t;
+            diag?.log(`[${node.id}] Used bus fallback text: ${t.substring(0, 100)}`);
+            break;
+          }
+        }
       }
     }
 
