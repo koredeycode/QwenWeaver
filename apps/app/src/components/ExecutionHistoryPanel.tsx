@@ -119,9 +119,10 @@ export const ExecutionHistoryPanel = ({ onClose }: { onClose: () => void }) => {
 
   const formatNodeName = (nodeId: string) =>
     nodeId
-      .replace(/^(agent|supervisor|mcp)_/, '')
-      .replace(/-\d+$/, '')
-      .replace(/-/g, ' ') || nodeId;
+      .replace(/^node-/, '')
+      .replace(/-[a-f0-9]{8}$/, '')
+      .replace(/-/g, ' ')
+      .toUpperCase() || nodeId;
 
   const formatTime = (iso: string) => {
     const d = new Date(iso);
@@ -389,6 +390,7 @@ export const ExecutionHistoryPanel = ({ onClose }: { onClose: () => void }) => {
                                           outputParts={outputParts}
                                           streamingText={log.output?.text}
                                           status={log.status}
+                                          error={log.error}
                                         />
                                       </div>
                                       {!log.error &&

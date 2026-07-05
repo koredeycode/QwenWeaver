@@ -13,7 +13,7 @@ function resolveSingleTarget(target: TourTarget): SpotlightBox | null {
     const el = document.querySelector(target.value);
     if (!el) return null;
     const rect = el.getBoundingClientRect();
-    const pad = 8;
+    const pad = 16;
     return {
       x: rect.x - pad,
       y: rect.y - pad,

@@ -56,9 +56,13 @@ export interface QueryProvider {
     name: string;
     createdAt: Date | string | number;
   } | null>;
-  getUserById(
-    id: string,
-  ): Promise<{ id: string; email: string; name: string; createdAt: Date | string | number } | null>;
+  getUserById(id: string): Promise<{
+    id: string;
+    email: string;
+    name: string;
+    image?: string | null;
+    createdAt: Date | string | number;
+  } | null>;
 
   saveMcpServer(id: string, userId: string, input: SavedMCPServerInput): Promise<SavedMCPServer>;
   getMcpServers(userId: string): Promise<SavedMCPServer[]>;

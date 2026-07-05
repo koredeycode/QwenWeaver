@@ -3,9 +3,9 @@ import { TourStep } from './types.js';
 export const tourConfig: TourStep[] = [
   {
     id: 'sidebar-palette',
-    title: 'Drag Nodes from the Palette',
+    title: 'Open the Node Palette',
     description:
-      'The left sidebar has draggable node types. Click any item to place it on the canvas, or drag it into position. Expand the other categories to see Triggers and MCP Tools.',
+      'Click a category in the sidebar — Triggers, Workers, or MCP Tools — to open the palette and add nodes to your canvas. You can drag items from there onto the canvas.',
     targets: [{ type: 'dom_selector', value: '[data-tour="palette"]' }],
   },
   {
@@ -58,6 +58,6 @@ export const tourConfig: TourStep[] = [
     title: 'Ask Qwen Copilot',
     description:
       'Need help wiring up your workflow? Open the Qwen Copilot and describe what you want to build in plain English.',
-    targets: [{ type: 'dom_selector', value: '[data-tour="copilot"]' }],
+    targets: [{ type: 'dom_selector', value: '[data-tour="copilot-panel"]' }],
   },
 ];

@@ -11,6 +11,7 @@ interface OutputRendererProps {
   fileExtension?: string;
   status: string;
   outputParts?: OutputPart[];
+  error?: string;
 }
 
 function getMediaUrl(val: string): string {
@@ -121,6 +122,7 @@ export const OutputRenderer = React.memo(
     fileExtension,
     status,
     outputParts,
+    error,
   }: OutputRendererProps) => {
     const [isThinkingCollapsed, setIsThinkingCollapsed] = useState(true);
     const [fetchedContent, setFetchedContent] = useState<string | null>(null);
@@ -187,6 +189,16 @@ export const OutputRenderer = React.memo(
             </div>
           )}
           <div className="space-y-2">
+            {status === 'failed' && error && (
+              <div className="bg-rose-50 border-l-4 border-rose-500 p-3 mb-3">
+                <div className="text-[8px] font-extrabold tracking-widest text-rose-700 uppercase font-sans mb-0.5">
+                  Execution Error
+                </div>
+                <p className="text-[10px] font-mono text-rose-800 whitespace-pre-wrap leading-relaxed">
+                  {error}
+                </p>
+              </div>
+            )}
             {hasText && textContent && (
               <div className="font-sans text-[13px] text-slate-800">
                 {renderMarkdown(textContent)}
@@ -225,7 +237,7 @@ export const OutputRenderer = React.memo(
     }
 
     if (displayText || thinkingText || (finalOutputUrl && ext)) {
-      const headerLabel = isRunning ? 'STREAMING' : 'OUTPUT';
+      const headerLabel = status === 'failed' ? 'FAILED' : isRunning ? 'STREAMING' : 'OUTPUT';
       return (
         <div className="mt-2.5 bg-white border border-slate-200 p-4 font-sans text-sm text-slate-800 overflow-y-auto leading-relaxed shadow-sm">
           <div className="text-slate-400 border-b border-slate-100 pb-2 mb-3 flex items-center justify-between font-mono">
@@ -252,6 +264,16 @@ export const OutputRenderer = React.memo(
               {isRunning && <span className="animate-pulse text-amber-500">_</span>}
             </div>
           </div>
+          {status === 'failed' && error && (
+            <div className="bg-rose-50 border-l-4 border-rose-500 p-3 mb-3">
+              <div className="text-[8px] font-extrabold tracking-widest text-rose-700 uppercase font-sans mb-0.5">
+                Execution Error
+              </div>
+              <p className="text-[10px] font-mono text-rose-800 whitespace-pre-wrap leading-relaxed">
+                {error}
+              </p>
+            </div>
+          )}
           {thinkingText && (
             <div className="mb-4 bg-slate-50 border border-slate-200 rounded-md overflow-hidden">
               <button

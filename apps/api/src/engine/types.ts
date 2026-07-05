@@ -32,6 +32,7 @@ export interface SSEPayloadMap {
     timestamp: number;
     outputUrl?: string;
     outputParts?: OutputPart[];
+    error?: string;
   };
   edge_active: { sourceId: string; targetId: string; timestamp: number };
   complete: { executionId: string; metrics: ExecutionMetrics; timestamp: number };

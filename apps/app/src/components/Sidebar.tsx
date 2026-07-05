@@ -191,7 +191,7 @@ export const Sidebar = ({
       </button>
 
       {/* Upper Section */}
-      <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">
+      <div className="flex flex-col flex-1 min-h-0 overflow-y-auto" data-tour="palette">
         {/* Brand Block */}
         <div className="p-4 pb-2 flex items-center gap-3">
           <img
@@ -234,7 +234,7 @@ export const Sidebar = ({
         <div className="mx-4 border-t border-[#cbd5e1] mb-2" />
 
         {/* Navigation Categories */}
-        <div className="px-2 space-y-1" data-tour="palette">
+        <div className="px-2 space-y-1">
           {/* Triggers */}
           <button
             onClick={() => onOpenDockedPanel('triggers')}

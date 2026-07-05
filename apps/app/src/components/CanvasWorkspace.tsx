@@ -137,11 +137,15 @@ export const CanvasWorkspace = () => {
     }
   }, [isTourActive, currentStepIndex, steps]);
 
-  // Automatically open copilot when entering its tour step
+  // Automatically open the correct right panel for each tour step
   useEffect(() => {
-    if (isTourActive && steps[currentStepIndex]?.id === 'copilot-toggle') {
+    if (!isTourActive) return;
+    const stepId = steps[currentStepIndex]?.id;
+    if (stepId === 'copilot-toggle') {
       openRightPanel('copilot');
-    } else if (isTourActive && steps[currentStepIndex]?.id !== 'copilot-toggle') {
+    } else if (stepId === 'inspector-panel') {
+      openRightPanel('inspector');
+    } else {
       setRightPanel(null);
     }
   }, [isTourActive, currentStepIndex, steps]);
@@ -844,7 +848,7 @@ export const CanvasWorkspace = () => {
                     <ChevronDown className="w-3 h-3" />
                   </button>
                   {profileOpen && (
-                    <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-slate-200 shadow-lg z-50">
+                    <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-slate-200 shadow-lg z-[9999]">
                       <div className="px-3 py-2 text-xs text-slate-500 font-mono border-b border-slate-100 truncate">
                         {user.email}
                       </div>

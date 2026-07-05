@@ -10,6 +10,7 @@ export const OutputDialog = () => {
   const nodeOutputs = useStore((s) => s.nodeOutputs);
   const nodeOutputUrls = useStore((s) => s.nodeOutputUrls);
   const nodeOutputParts = useStore((s) => s.nodeOutputParts);
+  const nodeErrors = useStore((s) => s.nodeErrors);
   const nodeThinking = useStore((s) => s.nodeThinking);
   const metrics = useStore((s) => s.metrics);
   const workflowName = useStore((s) => s.workflowName);
@@ -46,11 +47,17 @@ export const OutputDialog = () => {
     }
   };
 
+  const nodeLabel = (nodeId: string) => {
+    const n = executedNodes.find((n) => n.id === nodeId);
+    return n?.data?.label || formatNodeName(nodeId);
+  };
+
   const formatNodeName = (nodeId: string) =>
     nodeId
-      .replace(/^(agent|supervisor|mcp)_/, '')
-      .replace(/-\d+$/, '')
-      .replace(/-/g, ' ') || nodeId;
+      .replace(/^node-/, '')
+      .replace(/-[a-f0-9]{8}$/, '')
+      .replace(/-/g, ' ')
+      .toUpperCase() || nodeId;
 
   const selectedNode = executedNodes.find((n) => n.id === selectedOutputNodeId);
   const selectedStatus = selectedOutputNodeId ? nodeStatuses[selectedOutputNodeId] : undefined;
@@ -60,6 +67,7 @@ export const OutputDialog = () => {
   const selectedOutputText = selectedOutputNodeId ? nodeOutputs[selectedOutputNodeId] : undefined;
   const selectedOutputUrl = selectedOutputNodeId ? nodeOutputUrls[selectedOutputNodeId] : undefined;
   const selectedThinking = selectedOutputNodeId ? nodeThinking[selectedOutputNodeId] : undefined;
+  const selectedError = selectedOutputNodeId ? nodeErrors[selectedOutputNodeId] : undefined;
 
   return (
     <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
@@ -141,7 +149,7 @@ export const OutputDialog = () => {
                         isSelected ? 'text-blue-800' : 'text-slate-700'
                       }`}
                     >
-                      {formatNodeName(node.id)}
+                      {nodeLabel(node.id)}
                     </span>
                     <span
                       className={`text-[8px] font-mono font-bold uppercase px-1 flex-shrink-0 ${
@@ -167,7 +175,7 @@ export const OutputDialog = () => {
                 <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
                   {nodeTypeIcon(selectedOutputNodeId)}
                   <span className="text-xs font-mono font-bold text-slate-800">
-                    {formatNodeName(selectedOutputNodeId)}
+                    {nodeLabel(selectedOutputNodeId)}
                   </span>
                   <span
                     className={`text-[8px] font-mono font-bold uppercase px-1 ${
@@ -187,6 +195,7 @@ export const OutputDialog = () => {
                   streamingText={selectedOutputText}
                   thinkingText={selectedThinking}
                   status={selectedStatus || 'pending'}
+                  error={selectedError}
                 />
               </div>
             ) : (

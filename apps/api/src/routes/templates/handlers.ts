@@ -22,6 +22,7 @@ async function enrichTemplate(tpl: any, provider: ReturnType<typeof getQueryProv
   return {
     ...tpl,
     authorName: user?.email?.split('@')[0] ?? 'Unknown',
+    authorImage: user?.image ?? null,
     category,
   };
 }

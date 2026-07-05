@@ -77,6 +77,7 @@ export const pgProvider: QueryProvider = {
       id: rows[0].id,
       email: rows[0].email,
       name: rows[0].name,
+      image: rows[0].image,
       createdAt: rows[0].createdAt,
     };
   },

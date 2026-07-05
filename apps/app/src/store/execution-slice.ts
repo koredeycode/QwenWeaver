@@ -17,6 +17,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
   activeExecutionId: null,
   executionStatus: 'idle',
   nodeStatuses: {},
+  nodeErrors: {},
   nodeOutputs: {},
   nodeThinking: {},
   nodeOutputUrls: {},
@@ -245,11 +246,12 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
             }
 
             case 'status_update': {
-              const { nodeId, status, outputUrl, outputParts } = payload as {
+              const { nodeId, status, outputUrl, outputParts, error } = payload as {
                 nodeId: string;
                 status: string;
                 outputUrl?: string;
                 outputParts?: OutputPart[];
+                error?: string;
               };
               set((s) => ({
                 nodeStatuses: {
@@ -269,6 +271,14 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
                       nodeOutputParts: {
                         ...s.nodeOutputParts,
                         [nodeId]: outputParts,
+                      },
+                    }
+                  : {}),
+                ...(error
+                  ? {
+                      nodeErrors: {
+                        ...s.nodeErrors,
+                        [nodeId]: error,
                       },
                     }
                   : {}),
@@ -511,6 +521,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
       loadedExecutionId: null,
       loadedExecutionDate: null,
       nodeStatuses: {},
+      nodeErrors: {},
       nodeOutputs: {},
       nodeThinking: {},
       nodeOutputUrls: {},

@@ -124,6 +124,7 @@ export interface ExecutionSlice {
   activeExecutionId: string | null;
   executionStatus: 'idle' | 'pending' | 'running' | 'completed' | 'failed';
   nodeStatuses: Record<string, 'pending' | 'running' | 'completed' | 'failed'>;
+  nodeErrors: Record<string, string>;
   nodeOutputs: Record<string, string>;
   nodeThinking: Record<string, string>;
   nodeOutputUrls: Record<string, string>;
