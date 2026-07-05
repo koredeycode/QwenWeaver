@@ -95,6 +95,7 @@ export const pgExecutions = pgTable(
     userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }),
     status: text('status').notNull(),
     metrics: jsonb('metrics').$type<ExecutionMetrics>(),
+    graphSnapshot: jsonb('graph_snapshot').$type<WorkflowPayload>(),
     startedAt: timestamp('started_at').defaultNow().notNull(),
     completedAt: timestamp('completed_at'),
   },

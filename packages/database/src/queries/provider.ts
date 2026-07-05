@@ -94,7 +94,12 @@ export interface QueryProvider {
     history: CopilotHistoryMessage[],
   ): Promise<void>;
 
-  createExecution(executionId: string, workflowId: string, userId: string): Promise<void>;
+  createExecution(
+    executionId: string,
+    workflowId: string,
+    userId: string,
+    graphSnapshot?: WorkflowPayload,
+  ): Promise<void>;
   updateExecution(executionId: string, status: string, metrics?: ExecutionMetrics): Promise<void>;
   saveAgentLog(
     executionId: string,
@@ -118,6 +123,7 @@ export interface QueryProvider {
     userId: string;
     status: string;
     metrics?: ExecutionMetrics;
+    graphSnapshot?: WorkflowPayload;
     startedAt: string;
     completedAt?: string;
   } | null>;

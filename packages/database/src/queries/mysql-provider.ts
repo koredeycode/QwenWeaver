@@ -519,7 +519,12 @@ export const mysqlProvider: QueryProvider = {
       );
   },
 
-  async createExecution(executionId: string, workflowId: string, userId: string): Promise<void> {
+  async createExecution(
+    executionId: string,
+    workflowId: string,
+    userId: string,
+    graphSnapshot?: WorkflowPayload,
+  ): Promise<void> {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
     await mysqlDb.insert(mysqlSchema.mysqlExecutions).values({
@@ -527,6 +532,7 @@ export const mysqlProvider: QueryProvider = {
       workflowId,
       userId,
       status: 'pending',
+      graphSnapshot: graphSnapshot || null,
       startedAt: new Date(),
     });
   },

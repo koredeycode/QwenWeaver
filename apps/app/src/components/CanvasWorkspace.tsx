@@ -59,7 +59,7 @@ import { ExportWorkflowModal } from './ExportWorkflowModal.js';
 import { ImportWorkflowModal } from './ImportWorkflowModal.js';
 import { MaximizedNodeOverlay } from './MaximizedNodeOverlay.js';
 import { MCPConfigDialog } from './MCPConfigDialog.js';
-import { CompletionSummaryDialog } from './CompletionSummaryDialog.js';
+import { OutputDialog } from './OutputDialog.js';
 import { SaveWorkflowDialog } from './SaveWorkflowDialog.js';
 import { PublishTemplateDialog } from './PublishTemplateDialog.js';
 import { ClearCanvasDialog } from './ClearCanvasDialog.js';
@@ -91,8 +91,12 @@ export const CanvasWorkspace = () => {
   const markClean = useStore((s) => s.markClean);
 
   const status = useStore((s) => s.executionStatus);
+  const canvasStatus = useStore((s) => s.canvasStatus);
+  const outputDialogOpen = useStore((s) => s.outputDialogOpen);
   const runWorkflow = useStore((s) => s.runWorkflow);
   const stopWorkflow = useStore((s) => s.stopWorkflow);
+  const openOutputDialog = useStore((s) => s.openOutputDialog);
+  const resetCanvasState = useStore((s) => s.resetCanvasState);
   const user = useStore((s) => s.user);
   const credits = useStore((s) => s.credits);
   const fetchCredits = useStore((s) => s.fetchCredits);
@@ -204,6 +208,7 @@ export const CanvasWorkspace = () => {
 
   useCanvasShortcuts({
     status,
+    canvasStatus,
     nodesLength: nodes.length,
     runWorkflow,
     rearrangeGraph,
@@ -746,8 +751,8 @@ export const CanvasWorkspace = () => {
                 </button>
               </div>
 
-              {/* Run Workflow / Kill Button (Solid Rust-Orange) */}
-              {status === 'running' ? (
+              {/* Run / Kill / View Output buttons (3-state) */}
+              {canvasStatus === 'running' ? (
                 <button
                   onClick={stopWorkflow}
                   className="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors cursor-pointer"
@@ -755,6 +760,23 @@ export const CanvasWorkspace = () => {
                   <Square className="w-3.5 h-3.5 fill-white" />
                   <span className="hidden md:inline">Kill Workflow</span>
                 </button>
+              ) : canvasStatus === 'runned' ? (
+                <>
+                  <button
+                    onClick={openOutputDialog}
+                    className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors cursor-pointer"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-white text-white" />
+                    <span className="hidden md:inline">View Output</span>
+                  </button>
+                  <button
+                    onClick={resetCanvasState}
+                    className="px-4 py-1.5 bg-slate-600 hover:bg-slate-500 text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span className="hidden md:inline">Reset</span>
+                  </button>
+                </>
               ) : (
                 <button
                   onClick={runWorkflow}
@@ -878,11 +900,19 @@ export const CanvasWorkspace = () => {
                       fitView
                       minZoom={0.2}
                       maxZoom={1.5}
-                      nodesDraggable={!isLocked && status !== 'running'}
-                      nodesConnectable={!isLocked && status !== 'running'}
-                      elementsSelectable={!isLocked && status !== 'running'}
+                      nodesDraggable={
+                        !isLocked && status !== 'running' && canvasStatus !== 'runned'
+                      }
+                      nodesConnectable={
+                        !isLocked && status !== 'running' && canvasStatus !== 'runned'
+                      }
+                      elementsSelectable={
+                        !isLocked && status !== 'running' && canvasStatus !== 'runned'
+                      }
                       deleteKeyCode={
-                        isLocked || status === 'running' ? null : ['Backspace', 'Delete']
+                        isLocked || status === 'running' || canvasStatus === 'runned'
+                          ? null
+                          : ['Backspace', 'Delete']
                       }
                       proOptions={{ hideAttribution: true }}
                       isValidConnection={isValidConnection}
@@ -1132,8 +1162,8 @@ export const CanvasWorkspace = () => {
         {/* MCP Configuration Dialog */}
         <MCPConfigDialog />
 
-        {/* Post-Execution Summary Dialog */}
-        <CompletionSummaryDialog />
+        {/* Post-Execution Output Dialog */}
+        {outputDialogOpen && <OutputDialog />}
 
         {/* Import Workflow Configuration Modal */}
         <ImportWorkflowModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />

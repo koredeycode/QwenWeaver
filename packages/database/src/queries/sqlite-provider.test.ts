@@ -72,6 +72,7 @@ function createTables() {
     user_id TEXT REFERENCES "user"(id) ON DELETE CASCADE,
     status TEXT NOT NULL,
     metrics TEXT,
+    graph_snapshot TEXT,
     started_at INTEGER NOT NULL,
     completed_at INTEGER
   )`);

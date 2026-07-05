@@ -1,12 +1,18 @@
-import type { ExecutionMetrics, AgentLogInput, AgentLogOutput } from '@qwenweaver/types';
+import type {
+  ExecutionMetrics,
+  AgentLogInput,
+  AgentLogOutput,
+  WorkflowPayload,
+} from '@qwenweaver/types';
 import { getQueryProvider } from './provider.js';
 
 export async function createExecution(
   executionId: string,
   workflowId: string,
   userId: string,
+  graphSnapshot?: WorkflowPayload,
 ): Promise<void> {
-  return getQueryProvider().createExecution(executionId, workflowId, userId);
+  return getQueryProvider().createExecution(executionId, workflowId, userId, graphSnapshot);
 }
 
 export async function updateExecution(

@@ -4,6 +4,7 @@ import { useStore } from '../store/index.js';
 
 export interface UseCanvasShortcutsParams {
   status: string;
+  canvasStatus: string;
   nodesLength: number;
   runWorkflow: () => void;
   rearrangeGraph: () => void;
@@ -18,6 +19,7 @@ export interface UseCanvasShortcutsParams {
 
 export function useCanvasShortcuts({
   status,
+  canvasStatus,
   nodesLength,
   runWorkflow,
   rearrangeGraph,
@@ -39,7 +41,7 @@ export function useCanvasShortcuts({
       // 1. Run Workflow: Ctrl + Enter or Cmd + Enter
       if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
         event.preventDefault();
-        if (status !== 'running' && nodesLength > 0) {
+        if (canvasStatus === 'idle' && status !== 'running' && nodesLength > 0) {
           runWorkflow();
         }
       }
@@ -114,6 +116,7 @@ export function useCanvasShortcuts({
     };
   }, [
     status,
+    canvasStatus,
     nodesLength,
     runWorkflow,
     rearrangeGraph,

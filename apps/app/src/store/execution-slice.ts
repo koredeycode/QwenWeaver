@@ -1,5 +1,11 @@
 import { StateCreator } from 'zustand';
-import type { NodeTiming, OutputPart, WorkspaceEntry, BusMessage } from '@qwenweaver/types';
+import type {
+  NodeTiming,
+  OutputPart,
+  WorkspaceEntry,
+  BusMessage,
+  NodeData,
+} from '@qwenweaver/types';
 import { StoreState, ExecutionSlice } from './types.js';
 import { toast } from 'sonner';
 import { getAccessToken, client } from '../lib/api-client.js';
@@ -26,6 +32,11 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
   channelMessages: [],
   debateRounds: [],
   debateVerdicts: [],
+  canvasStatus: 'idle',
+  loadedExecutionId: null,
+  loadedExecutionDate: null,
+  outputDialogOpen: false,
+  selectedOutputNodeId: null,
 
   fetchExecutionHistory: async (limit = 20, offset = 0) => {
     const workflowId = get().workflowId;
@@ -85,6 +96,11 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
       activeEdges: new Set(),
       metrics: null,
       activeExecutionId: null,
+      canvasStatus: 'running',
+      loadedExecutionId: null,
+      loadedExecutionDate: null,
+      outputDialogOpen: false,
+      selectedOutputNodeId: null,
     });
 
     const { nodes, edges, workflowName, workflowDescription, workflowId } = get();
@@ -450,7 +466,12 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
             }
             edgeActiveTimers.clear();
 
-            set({ executionStatus: hadError ? 'failed' : 'completed' });
+            const finalStatus = hadError ? 'failed' : 'completed';
+            set({
+              executionStatus: finalStatus,
+              canvasStatus: 'runned',
+              outputDialogOpen: true,
+            });
           }
         });
       }
@@ -470,6 +491,151 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
       executionStatus: 'idle',
       activeExecutionId: null,
       abortController: null,
+      canvasStatus: 'idle',
     });
+  },
+
+  openOutputDialog: () => set({ outputDialogOpen: true }),
+
+  closeOutputDialog: () => set({ outputDialogOpen: false, selectedOutputNodeId: null }),
+
+  setSelectedOutputNode: (nodeId) => set({ selectedOutputNodeId: nodeId }),
+
+  resetCanvasState: () => {
+    const state = get();
+    set({
+      executionStatus: 'idle',
+      activeExecutionId: null,
+      canvasStatus: 'idle',
+      loadedExecutionId: null,
+      loadedExecutionDate: null,
+      nodeStatuses: {},
+      nodeOutputs: {},
+      nodeThinking: {},
+      nodeOutputUrls: {},
+      nodeOutputParts: {},
+      activeEdges: new Set(),
+      metrics: null,
+      busMessages: [],
+      channelMessages: [],
+      debateRounds: [],
+      debateVerdicts: [],
+      workspaceEntries: [],
+      outputDialogOpen: false,
+      selectedOutputNodeId: null,
+    });
+  },
+
+  loadExecutionIntoCanvas: async (executionId: string) => {
+    set({ historyLoading: true });
+    try {
+      const res = await client.api.execution[':executionId'].$get({
+        param: { executionId },
+      });
+      if (!res.ok) {
+        toast.error('Failed to load execution');
+        set({ historyLoading: false });
+        return;
+      }
+      const execution = (await res.json()) as any;
+
+      const logsRes = await client.api.execution[':executionId'].logs.$get({
+        param: { executionId },
+      });
+      if (!logsRes.ok) {
+        toast.error('Failed to load execution logs');
+        set({ historyLoading: false });
+        return;
+      }
+      const logsData = (await logsRes.json()) as any;
+      const logs: Array<{
+        nodeId: string;
+        status: string;
+        output?: { text?: string; outputs?: OutputPart[]; reasoning?: string };
+        input?: any;
+      }> = logsData.logs || [];
+
+      const nodeStatuses: Record<string, 'pending' | 'running' | 'completed' | 'failed'> = {};
+      const nodeOutputs: Record<string, string> = {};
+      const nodeOutputParts: Record<string, OutputPart[]> = {};
+      const nodeThinking: Record<string, string> = {};
+
+      for (const log of logs) {
+        nodeStatuses[log.nodeId] =
+          (log.status as 'pending' | 'running' | 'completed' | 'failed') || 'completed';
+        if (log.output?.text) {
+          nodeOutputs[log.nodeId] = log.output.text;
+        }
+        if (log.output?.outputs) {
+          nodeOutputParts[log.nodeId] = log.output.outputs;
+        }
+        if (log.output?.reasoning) {
+          nodeThinking[log.nodeId] = log.output.reasoning;
+        }
+      }
+
+      const graphSnapshot = execution.graphSnapshot;
+      const loadedDate = execution.completedAt || execution.startedAt;
+
+      if (graphSnapshot) {
+        const { nodes: currentNodes } = get();
+        const snapshotNodes = graphSnapshot.nodes || [];
+        const snapshotEdges = graphSnapshot.edges || [];
+
+        if (snapshotNodes.length !== currentNodes.length) {
+          toast.warning(
+            `Execution used ${snapshotNodes.length} nodes (current canvas has ${currentNodes.length}). Canvas updated to match execution snapshot.`,
+          );
+        }
+
+        // Load the execution's graph state
+        const { loadUnsavedWorkflow } = get();
+        loadUnsavedWorkflow(
+          snapshotNodes.map((n: any) => ({
+            id: n.id,
+            type: n.type || 'agent',
+            position: n.position || { x: 0, y: 0 },
+            data: n.data || {},
+          })),
+          snapshotEdges.map((e: any) => ({
+            id: e.id,
+            source: e.source,
+            target: e.target,
+            sourceHandle: e.sourceHandle || undefined,
+            targetHandle: e.targetHandle || undefined,
+            data: e.data || undefined,
+          })),
+          execution.workflowName || graphSnapshot.name || 'Untitled Workflow',
+          graphSnapshot.description || '',
+        );
+
+        // Mark loaded nodes with their execution status
+        for (const n of snapshotNodes) {
+          if (nodeStatuses[n.id]) {
+            get().updateNodeData(n.id, { _executionStatus: nodeStatuses[n.id] as any });
+          }
+        }
+      }
+
+      set({
+        loadedExecutionId: executionId,
+        loadedExecutionDate: loadedDate || null,
+        nodeStatuses,
+        nodeOutputs,
+        nodeOutputParts,
+        nodeThinking,
+        metrics: execution.metrics || null,
+        canvasStatus: 'runned',
+        executionStatus: 'completed',
+        activeExecutionId: executionId,
+        historyLoading: false,
+        outputDialogOpen: false,
+        selectedOutputNodeId: null,
+      });
+    } catch (err) {
+      console.error('Failed to load execution into canvas:', err);
+      toast.error('Failed to load execution');
+      set({ historyLoading: false });
+    }
   },
 });
