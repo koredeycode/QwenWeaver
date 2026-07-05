@@ -472,6 +472,7 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
               canvasStatus: 'runned',
               outputDialogOpen: true,
             });
+            get().fetchCredits();
           }
         });
       }

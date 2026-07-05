@@ -1,4 +1,4 @@
-import React, { useState, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useLayoutEffect, useCallback, useMemo, useRef, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useStore } from '../store/index.js';
 import { getCanvasNodeScreenCoords } from './getCanvasNodeScreenCoords.js';
@@ -206,6 +206,29 @@ export const SpotlightOverlay = () => {
       animRef.current = null;
       setSpotlight(null);
     }
+  }, [activeStep, isTourActive]);
+
+  /* ---- retry spotlight after paint (handles panel render delays) ---- */
+  useEffect(() => {
+    if (!isTourActive || !activeStep) return;
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 10;
+    const retry = () => {
+      if (cancelled || attempts >= maxAttempts) return;
+      attempts++;
+      const resolved = computeCombinedSpotlight(activeStep);
+      if (resolved) {
+        animRef.current = resolved.combined;
+        setSpotlight(resolved);
+      } else {
+        requestAnimationFrame(retry);
+      }
+    };
+    requestAnimationFrame(retry);
+    return () => {
+      cancelled = true;
+    };
   }, [activeStep, isTourActive]);
 
   useLayoutEffect(() => {

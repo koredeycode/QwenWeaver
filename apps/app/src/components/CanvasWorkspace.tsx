@@ -206,6 +206,14 @@ export const CanvasWorkspace = () => {
     return saved !== 'false';
   });
 
+  const toggleCopilot = useCallback(() => {
+    if (rightPanel === 'copilot') {
+      setRightPanel(null);
+    } else {
+      openRightPanel('copilot');
+    }
+  }, [rightPanel, openRightPanel]);
+
   useCanvasShortcuts({
     status,
     canvasStatus,
@@ -219,6 +227,7 @@ export const CanvasWorkspace = () => {
     setIsLocked,
     setIsClearConfirmOpen,
     reactFlowInstance,
+    onToggleCopilot: toggleCopilot,
   });
 
   const { isSaving } = useAutoSave(id, navigate);
@@ -814,11 +823,23 @@ export const CanvasWorkspace = () => {
                       {user.email}
                     </span>
                     {credits && (
-                      <span
-                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded-none ${credits.lowBalance ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}
-                      >
-                        {credits.balance}
-                      </span>
+                      <>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            fetchCredits();
+                          }}
+                          className="p-0.5 hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer rounded-none"
+                          title="Refresh credits"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                        </button>
+                        <span
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded-none ${credits.lowBalance ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}
+                        >
+                          {credits.balance}
+                        </span>
+                      </>
                     )}
                     <ChevronDown className="w-3 h-3" />
                   </button>

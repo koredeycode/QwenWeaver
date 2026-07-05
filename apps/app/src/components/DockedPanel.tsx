@@ -53,7 +53,10 @@ export const DockedPanel = ({ mode, onClose }: DockedPanelProps) => {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto scrollbar">
+      <div
+        className="flex-1 overflow-y-auto scrollbar"
+        data-tour={mode === 'agents' ? 'worker-catalog' : undefined}
+      >
         {mode === 'triggers' ? (
           <TriggerPanel
             onSelect={(type) => {
