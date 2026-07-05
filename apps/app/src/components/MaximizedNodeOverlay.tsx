@@ -41,6 +41,8 @@ export const MaximizedNodeOverlay = () => {
   const workspaceLoading = useStore((s) => s.workspaceLoading);
   const activeExecutionId = useStore((s) => s.activeExecutionId);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [collapsedMessages, setCollapsedMessages] = useState<Record<number, boolean>>({});
+  const [collapsedRounds, setCollapsedRounds] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     let rafId: number;
@@ -322,6 +324,10 @@ export const MaximizedNodeOverlay = () => {
                     );
                   }
 
+                  const toggleMessage = (i: number) => {
+                    setCollapsedMessages((prev) => ({ ...prev, [i]: !prev[i] }));
+                  };
+
                   const displayMessages = (
                     nodeBusMessages.length > 0 ? nodeBusMessages : channelMessages
                   ).map((m, i) => {
@@ -337,11 +343,12 @@ export const MaximizedNodeOverlay = () => {
                     const channelOrTopic = msg.topic
                       ? (msg.topic.split(':').pop() ?? msg.topic)
                       : (msg.channelId ?? '');
+                    const isCollapsed = collapsedMessages[i] ?? true;
 
                     return (
                       <div
                         key={i}
-                        className={`border p-3 font-mono text-xs ${
+                        className={`border font-mono text-xs ${
                           fromNodeId === maximizedNodeId
                             ? 'bg-orange-50 border-orange-200 ml-6'
                             : toNodeId === maximizedNodeId
@@ -349,7 +356,10 @@ export const MaximizedNodeOverlay = () => {
                               : 'bg-white border-slate-200'
                         }`}
                       >
-                        <div className="flex items-center justify-between mb-1 text-[10px] text-slate-500">
+                        <button
+                          onClick={() => toggleMessage(i)}
+                          className="w-full flex items-center justify-between px-3 py-2 text-[10px] text-slate-500 hover:bg-black/5 transition-colors cursor-pointer text-left"
+                        >
                           <span className="font-bold">
                             {fromNodeId === maximizedNodeId
                               ? 'SENT'
@@ -357,14 +367,19 @@ export const MaximizedNodeOverlay = () => {
                                 ? 'RECEIVED'
                                 : `${fromNodeId}${toNodeId ? ` → ${toNodeId}` : ''}`}
                           </span>
-                          <span>
-                            {round ? `round ${round} · ` : ''}
-                            {channelOrTopic}
+                          <span className="flex items-center gap-2">
+                            <span className="text-[9px] text-slate-400">
+                              {round ? `round ${round} · ` : ''}
+                              {channelOrTopic}
+                            </span>
+                            <span className="text-slate-300">{isCollapsed ? '▸' : '▾'}</span>
                           </span>
-                        </div>
-                        <div className="text-slate-800 whitespace-pre-wrap leading-relaxed">
-                          {content}
-                        </div>
+                        </button>
+                        {!isCollapsed && (
+                          <div className="px-3 pb-3 text-slate-800 whitespace-pre-wrap leading-relaxed border-t border-inherit pt-2 mt-0">
+                            {content}
+                          </div>
+                        )}
                       </div>
                     );
                   });
@@ -377,56 +392,77 @@ export const MaximizedNodeOverlay = () => {
                 <div className="text-[10px] font-mono text-slate-400 mb-3 tracking-wider">
                   DEBATE TRANSCRIPT
                 </div>
-                {debateRounds.filter((r) => r.arenaId === maximizedNode.id).length === 0 ? (
-                  <div className="font-mono text-[11px] text-slate-400 italic">
-                    No debate rounds yet.
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {debateRounds
-                      .filter((r) => r.arenaId === maximizedNode.id)
-                      .map((round) => (
-                        <div key={round.round} className="border border-amber-200 p-3">
-                          <div className="text-[10px] font-mono font-bold text-amber-600 mb-2 tracking-wider">
-                            ROUND {round.round}
-                          </div>
-                          <div className="space-y-2">
-                            {round.statements.map((s, i) => (
-                              <div key={i} className="border-l-2 border-amber-300 pl-3">
-                                <div className="text-[10px] font-mono font-bold text-slate-600 mb-1">
-                                  {s.participantId}
-                                </div>
-                                <div className="text-xs font-mono text-slate-800 whitespace-pre-wrap leading-relaxed">
-                                  {s.content || '(empty)'}
-                                </div>
+                {(() => {
+                  const filteredRounds = debateRounds.filter((r) => r.arenaId === maximizedNode.id);
+
+                  const toggleRound = (round: number) => {
+                    setCollapsedRounds((prev) => ({ ...prev, [round]: !prev[round] }));
+                  };
+
+                  if (filteredRounds.length === 0) {
+                    return (
+                      <div className="font-mono text-[11px] text-slate-400 italic">
+                        No debate rounds yet.
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-4">
+                      {filteredRounds.map((round) => {
+                        const isCollapsed = collapsedRounds[round.round] ?? false;
+                        return (
+                          <div key={round.round} className="border border-amber-200">
+                            <button
+                              onClick={() => toggleRound(round.round)}
+                              className="w-full flex items-center justify-between px-3 py-2 bg-amber-50 hover:bg-amber-100 transition-colors cursor-pointer text-left"
+                            >
+                              <span className="text-[10px] font-mono font-bold text-amber-600 tracking-wider">
+                                ROUND {round.round}
+                              </span>
+                              <span className="text-amber-400">{isCollapsed ? '▸' : '▾'}</span>
+                            </button>
+                            {!isCollapsed && (
+                              <div className="p-3 space-y-2">
+                                {round.statements.map((s, i) => (
+                                  <div key={i} className="border-l-2 border-amber-300 pl-3">
+                                    <div className="text-[10px] font-mono font-bold text-slate-600 mb-1">
+                                      {s.participantId}
+                                    </div>
+                                    <div className="text-xs font-mono text-slate-800 whitespace-pre-wrap leading-relaxed">
+                                      {s.content || '(empty)'}
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
-                            ))}
+                            )}
                           </div>
-                        </div>
-                      ))}
-                    {debateVerdicts
-                      .filter((v) => v.arenaId === maximizedNode.id)
-                      .map((v, i) => (
-                        <div key={i} className="border border-blue-200 bg-blue-50 p-3">
-                          <div className="text-[10px] font-mono font-bold text-blue-600 mb-2 tracking-wider">
-                            VERDICT
-                          </div>
-                          <div className="text-xs font-mono text-slate-800 whitespace-pre-wrap leading-relaxed">
-                            {v.verdict}
-                          </div>
-                          {v.scores && Object.keys(v.scores).length > 0 && (
-                            <div className="mt-2 text-[10px] font-mono text-slate-600">
-                              {Object.entries(v.scores).map(([id, score]) => (
-                                <span key={id} className="mr-3">
-                                  {id}: {score}/10
-                                </span>
-                              ))}
+                        );
+                      })}
+                      {debateVerdicts
+                        .filter((v) => v.arenaId === maximizedNode.id)
+                        .map((v, i) => (
+                          <div key={i} className="border border-blue-200 bg-blue-50 p-3">
+                            <div className="text-[10px] font-mono font-bold text-blue-600 mb-2 tracking-wider">
+                              VERDICT
                             </div>
-                          )}
-                        </div>
-                      ))}
-                  </div>
-                )}
+                            <div className="text-xs font-mono text-slate-800 whitespace-pre-wrap leading-relaxed">
+                              {v.verdict}
+                            </div>
+                            {v.scores && Object.keys(v.scores).length > 0 && (
+                              <div className="mt-2 text-[10px] font-mono text-slate-600">
+                                {Object.entries(v.scores).map(([id, score]) => (
+                                  <span key={id} className="mr-3">
+                                    {id}: {score}/10
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  );
+                })()}
               </div>
             ) : (
               <div className="flex-1 overflow-hidden">

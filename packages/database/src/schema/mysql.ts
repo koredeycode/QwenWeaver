@@ -99,6 +99,7 @@ export const mysqlExecutions = mysqlTable(
     userId: varchar('user_id', { length: 255 }).references(() => user.id, { onDelete: 'cascade' }),
     status: text('status').notNull(),
     metrics: json('metrics').$type<ExecutionMetrics>(),
+    graphSnapshot: json('graph_snapshot').$type<WorkflowPayload>(),
     startedAt: timestamp('started_at').defaultNow().notNull(),
     completedAt: timestamp('completed_at'),
   },

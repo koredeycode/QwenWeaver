@@ -56,9 +56,13 @@ export interface QueryProvider {
     name: string;
     createdAt: Date | string | number;
   } | null>;
-  getUserById(
-    id: string,
-  ): Promise<{ id: string; email: string; name: string; createdAt: Date | string | number } | null>;
+  getUserById(id: string): Promise<{
+    id: string;
+    email: string;
+    name: string;
+    image?: string | null;
+    createdAt: Date | string | number;
+  } | null>;
 
   saveMcpServer(id: string, userId: string, input: SavedMCPServerInput): Promise<SavedMCPServer>;
   getMcpServers(userId: string): Promise<SavedMCPServer[]>;
@@ -94,7 +98,12 @@ export interface QueryProvider {
     history: CopilotHistoryMessage[],
   ): Promise<void>;
 
-  createExecution(executionId: string, workflowId: string, userId: string): Promise<void>;
+  createExecution(
+    executionId: string,
+    workflowId: string,
+    userId: string,
+    graphSnapshot?: WorkflowPayload,
+  ): Promise<void>;
   updateExecution(executionId: string, status: string, metrics?: ExecutionMetrics): Promise<void>;
   saveAgentLog(
     executionId: string,
@@ -118,6 +127,7 @@ export interface QueryProvider {
     userId: string;
     status: string;
     metrics?: ExecutionMetrics;
+    graphSnapshot?: WorkflowPayload;
     startedAt: string;
     completedAt?: string;
   } | null>;

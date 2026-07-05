@@ -124,6 +124,7 @@ export interface ExecutionSlice {
   activeExecutionId: string | null;
   executionStatus: 'idle' | 'pending' | 'running' | 'completed' | 'failed';
   nodeStatuses: Record<string, 'pending' | 'running' | 'completed' | 'failed'>;
+  nodeErrors: Record<string, string>;
   nodeOutputs: Record<string, string>;
   nodeThinking: Record<string, string>;
   nodeOutputUrls: Record<string, string>;
@@ -157,10 +158,20 @@ export interface ExecutionSlice {
     rationale?: string;
     timestamp: number;
   }>;
+  canvasStatus: 'idle' | 'running' | 'runned';
+  loadedExecutionId: string | null;
+  loadedExecutionDate: string | null;
+  outputDialogOpen: boolean;
+  selectedOutputNodeId: string | null;
   runWorkflow: () => Promise<void>;
   stopWorkflow: () => void;
   fetchExecutionHistory: (limit?: number, offset?: number) => Promise<void>;
   fetchWorkspaceEntries: (executionId: string) => Promise<void>;
+  openOutputDialog: () => void;
+  closeOutputDialog: () => void;
+  setSelectedOutputNode: (nodeId: string | null) => void;
+  resetCanvasState: () => void;
+  loadExecutionIntoCanvas: (executionId: string) => Promise<void>;
 }
 
 export interface CopilotSlice {

@@ -61,6 +61,7 @@ export const ExecutionHistoryPanel = ({ onClose }: { onClose: () => void }) => {
   const executionHistory = useStore((s) => s.executionHistory);
   const historyLoading = useStore((s) => s.historyLoading);
   const fetchExecutionHistory = useStore((s) => s.fetchExecutionHistory);
+  const loadExecutionIntoCanvas = useStore((s) => s.loadExecutionIntoCanvas);
   const [selectedExecution, setSelectedExecution] = useState<ExecutionSummary | null>(null);
   const [agentLogs, setAgentLogs] = useState<AgentLogEntry[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
@@ -118,9 +119,10 @@ export const ExecutionHistoryPanel = ({ onClose }: { onClose: () => void }) => {
 
   const formatNodeName = (nodeId: string) =>
     nodeId
-      .replace(/^(agent|supervisor|mcp)_/, '')
-      .replace(/-\d+$/, '')
-      .replace(/-/g, ' ') || nodeId;
+      .replace(/^node-/, '')
+      .replace(/-[a-f0-9]{8}$/, '')
+      .replace(/-/g, ' ')
+      .toUpperCase() || nodeId;
 
   const formatTime = (iso: string) => {
     const d = new Date(iso);
@@ -212,6 +214,19 @@ export const ExecutionHistoryPanel = ({ onClose }: { onClose: () => void }) => {
                   {/* Expanded agent logs — inline outputs, no drill-down modal */}
                   {selectedExecution?.id === exec.id && (
                     <div className="bg-slate-50 border-t border-slate-100">
+                      {/* View in Canvas button */}
+                      <div className="px-4 py-2 bg-blue-50 border-b border-blue-100">
+                        <button
+                          onClick={() => {
+                            loadExecutionIntoCanvas(exec.id);
+                            onClose();
+                          }}
+                          className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] font-mono tracking-wide uppercase flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <Play className="w-3 h-3 fill-white" />
+                          View in Canvas
+                        </button>
+                      </div>
                       {logsLoading ? (
                         <div className="flex items-center justify-center py-6 text-slate-400">
                           <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -375,6 +390,7 @@ export const ExecutionHistoryPanel = ({ onClose }: { onClose: () => void }) => {
                                           outputParts={outputParts}
                                           streamingText={log.output?.text}
                                           status={log.status}
+                                          error={log.error}
                                         />
                                       </div>
                                       {!log.error &&

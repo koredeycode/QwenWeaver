@@ -80,6 +80,7 @@ export const mysqlProvider: QueryProvider = {
       id: rows[0].id,
       email: rows[0].email,
       name: rows[0].name,
+      image: rows[0].image,
       createdAt: rows[0].createdAt,
     };
   },
@@ -519,7 +520,12 @@ export const mysqlProvider: QueryProvider = {
       );
   },
 
-  async createExecution(executionId: string, workflowId: string, userId: string): Promise<void> {
+  async createExecution(
+    executionId: string,
+    workflowId: string,
+    userId: string,
+    graphSnapshot?: WorkflowPayload,
+  ): Promise<void> {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
     await mysqlDb.insert(mysqlSchema.mysqlExecutions).values({
@@ -527,6 +533,7 @@ export const mysqlProvider: QueryProvider = {
       workflowId,
       userId,
       status: 'pending',
+      graphSnapshot: graphSnapshot || null,
       startedAt: new Date(),
     });
   },

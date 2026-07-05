@@ -278,6 +278,10 @@ export const createCopilotSlice: StateCreator<StoreState, [], [], CopilotSlice> 
           }
         : undefined,
     }));
-    set({ copilotMessages: [defaultMsg, ...mapped] });
+    const hasGreeting =
+      mapped.length > 0 &&
+      mapped[0].role === 'assistant' &&
+      mapped[0].text?.includes('Visual Architect Copilot');
+    set({ copilotMessages: hasGreeting ? mapped : [defaultMsg, ...mapped] });
   },
 });

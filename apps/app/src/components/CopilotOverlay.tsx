@@ -290,7 +290,10 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
   };
 
   return (
-    <div className="w-[380px] h-full bg-white border-l border-[#cbd5e1] flex flex-col z-20 flex-shrink-0 select-none">
+    <div
+      className="w-[380px] h-full bg-white border-l border-[#cbd5e1] flex flex-col z-20 flex-shrink-0 select-none"
+      data-tour="copilot-panel"
+    >
       {/* Panel Header */}
       <div className="h-14 border-b border-[#cbd5e1] px-4 flex items-center justify-between bg-slate-50 flex-shrink-0">
         <div className="flex items-center gap-2">

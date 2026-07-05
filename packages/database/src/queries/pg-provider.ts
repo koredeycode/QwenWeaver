@@ -77,6 +77,7 @@ export const pgProvider: QueryProvider = {
       id: rows[0].id,
       email: rows[0].email,
       name: rows[0].name,
+      image: rows[0].image,
       createdAt: rows[0].createdAt,
     };
   },
@@ -501,7 +502,12 @@ export const pgProvider: QueryProvider = {
       .where(and(eq(pgSchema.pgWorkflows.id, workflowId), eq(pgSchema.pgWorkflows.userId, userId)));
   },
 
-  async createExecution(executionId: string, workflowId: string, userId: string): Promise<void> {
+  async createExecution(
+    executionId: string,
+    workflowId: string,
+    userId: string,
+    graphSnapshot?: WorkflowPayload,
+  ): Promise<void> {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
     await pgDb.insert(pgSchema.pgExecutions).values({
@@ -509,6 +515,7 @@ export const pgProvider: QueryProvider = {
       workflowId,
       userId,
       status: 'pending',
+      graphSnapshot: graphSnapshot || null,
       startedAt: new Date(),
     });
   },

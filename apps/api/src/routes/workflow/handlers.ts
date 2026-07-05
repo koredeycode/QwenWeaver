@@ -179,7 +179,7 @@ export const handleExecute = async (c: Context<{ Variables: Variables }>) => {
   log.info({ executionId, userId, estimatedCost }, 'Credits reserved for execution');
 
   // Only create execution record after credit reservation succeeds
-  await provider.createExecution(executionId, workflowId, userId);
+  await provider.createExecution(executionId, workflowId, userId, workflow);
 
   let resolveExecution: () => void;
   const promise = new Promise<void>((resolve) => {

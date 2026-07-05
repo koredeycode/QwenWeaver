@@ -4,6 +4,7 @@ import { useStore } from '../store/index.js';
 
 export interface UseCanvasShortcutsParams {
   status: string;
+  canvasStatus: string;
   nodesLength: number;
   runWorkflow: () => void;
   rearrangeGraph: () => void;
@@ -14,10 +15,12 @@ export interface UseCanvasShortcutsParams {
   setIsLocked: (fn: (prev: boolean) => boolean | boolean) => void;
   setIsClearConfirmOpen: (v: boolean) => void;
   reactFlowInstance: ReactFlowInstance;
+  onToggleCopilot?: () => void;
 }
 
 export function useCanvasShortcuts({
   status,
+  canvasStatus,
   nodesLength,
   runWorkflow,
   rearrangeGraph,
@@ -28,6 +31,7 @@ export function useCanvasShortcuts({
   setIsLocked,
   setIsClearConfirmOpen,
   reactFlowInstance,
+  onToggleCopilot,
 }: UseCanvasShortcutsParams): void {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -39,7 +43,7 @@ export function useCanvasShortcuts({
       // 1. Run Workflow: Ctrl + Enter or Cmd + Enter
       if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
         event.preventDefault();
-        if (status !== 'running' && nodesLength > 0) {
+        if (canvasStatus === 'idle' && status !== 'running' && nodesLength > 0) {
           runWorkflow();
         }
       }
@@ -106,6 +110,12 @@ export function useCanvasShortcuts({
         event.preventDefault();
         useStore.getState().redo();
       }
+
+      // 10. Toggle Copilot: Ctrl + Shift + C
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'c') {
+        event.preventDefault();
+        onToggleCopilot?.();
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -114,6 +124,7 @@ export function useCanvasShortcuts({
     };
   }, [
     status,
+    canvasStatus,
     nodesLength,
     runWorkflow,
     rearrangeGraph,
@@ -124,5 +135,6 @@ export function useCanvasShortcuts({
     setMaximizedNodeId,
     setIsLocked,
     setIsClearConfirmOpen,
+    onToggleCopilot,
   ]);
 }

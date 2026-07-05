@@ -1,6 +1,7 @@
 import React from 'react';
-import { Download, FolderOpen, Bot, Brain, Wrench, Play } from 'lucide-react';
+import { Download, Bot, Brain, Wrench, Play } from 'lucide-react';
 import { StarRating } from './StarRating.js';
+import { UserAvatar } from './UserAvatar.js';
 import type { TemplateSummary } from '../lib/templates-client.js';
 
 interface TemplateCardProps {
@@ -35,94 +36,101 @@ export const TemplateCard = React.memo(({ template, onSelect, onFork }: Template
       className="bg-white border-2 border-slate-200 hover:border-[#f97316] flex flex-col shadow-sm hover:shadow-md transition-all rounded-none group cursor-pointer relative"
       onClick={() => onSelect(template.id)}
     >
-      {template.thumbnail ? (
-        <div className="w-full h-36 overflow-hidden bg-slate-50 border-b border-slate-200">
+      <div
+        className="w-full h-40 overflow-hidden border-b border-slate-200 relative"
+        style={{
+          background: 'url(/fallback-thumbnail.png) center / cover',
+          backgroundColor: '#0f172a',
+        }}
+      >
+        {template.thumbnail && (
           <img
             src={template.thumbnail}
             alt={template.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="w-full h-full object-cover transition-opacity duration-500 group-hover:scale-105"
             loading="lazy"
+            onLoad={(e) => ((e.target as HTMLImageElement).style.opacity = '1')}
+            style={{ opacity: 0 }}
           />
-        </div>
-      ) : (
-        <div className="w-full h-36 flex items-center justify-center bg-slate-50 border-b border-slate-200 overflow-hidden">
-          <FolderOpen className="w-8 h-8 text-slate-300 group-hover:text-[#f97316] transition-all duration-500 group-hover:scale-110" />
-        </div>
-      )}
-      {template.featured && (
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+      </div>
+      {!!template.featured && (
         <div className="absolute top-3 right-3">
           <span className="text-[9px] font-mono bg-orange-50 border border-orange-200 text-[#f97316] px-1.5 py-0.5 font-bold">
             FEATURED
           </span>
         </div>
       )}
-      <div className="p-6 flex flex-col justify-between flex-1 min-h-0">
-        <div>
-          <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#f97316] transition-colors">
+      <div className="p-4 flex flex-col gap-2.5 flex-1">
+        <div className="flex-1 min-h-0">
+          <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#f97316] transition-colors leading-tight">
             {template.name}
           </h3>
           {template.description && (
-            <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed font-sans line-clamp-3">
+            <p className="text-[11px] text-slate-500 mt-1 leading-relaxed line-clamp-2">
               {template.description}
             </p>
           )}
         </div>
 
-        {(counts.triggers > 0 ||
-          counts.agents > 0 ||
-          counts.supervisors > 0 ||
-          counts.tools > 0) && (
-          <div className="flex gap-1.5 flex-wrap">
-            {counts.triggers > 0 && (
-              <span
-                className="flex items-center gap-0.5 text-[9px] font-mono bg-emerald-50 border border-emerald-200 text-emerald-700 px-1 py-0.5"
-                title="Triggers"
-              >
-                <Play className="w-2.5 h-2.5" /> {counts.triggers}
-              </span>
-            )}
-            {counts.agents > 0 && (
-              <span
-                className="flex items-center gap-0.5 text-[9px] font-mono bg-orange-50 border border-orange-200 text-[#f97316] px-1 py-0.5"
-                title="Agents"
-              >
-                <Bot className="w-2.5 h-2.5" /> {counts.agents}
-              </span>
-            )}
-            {counts.supervisors > 0 && (
-              <span
-                className="flex items-center gap-0.5 text-[9px] font-mono bg-blue-50 border border-blue-200 text-[#2563eb] px-1 py-0.5"
-                title="Supervisors"
-              >
-                <Brain className="w-2.5 h-2.5" /> {counts.supervisors}
-              </span>
-            )}
-            {counts.tools > 0 && (
-              <span
-                className="flex items-center gap-0.5 text-[9px] font-mono bg-purple-50 border border-purple-200 text-purple-700 px-1 py-0.5"
-                title="MCP Tools"
-              >
-                <Wrench className="w-2.5 h-2.5" /> {counts.tools}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="pt-4 border-t border-slate-100 space-y-2">
-        <div className="flex items-center justify-between">
-          <StarRating rating={template.avgRating} count={template.ratingCount} />
-          <span className="flex items-center gap-1 text-[10px] font-mono text-slate-400">
-            <Download className="w-3 h-3" /> {template.downloads}
-          </span>
+        <div className="flex flex-wrap gap-1">
+          {counts.triggers > 0 && (
+            <span
+              className="flex items-center gap-0.5 text-[9px] font-mono bg-emerald-50 border border-emerald-200 text-emerald-700 px-1 py-0.5"
+              title="Triggers"
+            >
+              <Play className="w-2.5 h-2.5" /> {counts.triggers}
+            </span>
+          )}
+          {counts.agents > 0 && (
+            <span
+              className="flex items-center gap-0.5 text-[9px] font-mono bg-orange-50 border border-orange-200 text-[#f97316] px-1 py-0.5"
+              title="Agents"
+            >
+              <Bot className="w-2.5 h-2.5" /> {counts.agents}
+            </span>
+          )}
+          {counts.supervisors > 0 && (
+            <span
+              className="flex items-center gap-0.5 text-[9px] font-mono bg-blue-50 border border-blue-200 text-[#2563eb] px-1 py-0.5"
+              title="Supervisors"
+            >
+              <Brain className="w-2.5 h-2.5" /> {counts.supervisors}
+            </span>
+          )}
+          {counts.tools > 0 && (
+            <span
+              className="flex items-center gap-0.5 text-[9px] font-mono bg-purple-50 border border-purple-200 text-purple-700 px-1 py-0.5"
+              title="MCP Tools"
+            >
+              <Wrench className="w-2.5 h-2.5" /> {counts.tools}
+            </span>
+          )}
         </div>
+
+        <div className="flex items-center justify-between pt-1.5 border-t border-slate-100">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <UserAvatar name={template.authorName} image={template.authorImage} size={20} />
+            <span className="text-[10px] font-mono text-slate-500 truncate">
+              {template.authorName || 'Anonymous'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2.5 flex-shrink-0">
+            <StarRating rating={template.avgRating} count={template.ratingCount} size={11} />
+            <span className="flex items-center gap-0.5 text-[10px] font-mono text-slate-400">
+              <Download className="w-3 h-3" /> {template.downloads}
+            </span>
+          </div>
+        </div>
+
         <div className="flex gap-2">
           <button
             onClick={(e) => {
               e.stopPropagation();
               onSelect(template.id);
             }}
-            className="flex-1 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-mono font-bold transition-all"
+            className="flex-1 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-mono font-bold transition-all cursor-pointer"
           >
             VIEW DETAILS
           </button>
@@ -131,7 +139,7 @@ export const TemplateCard = React.memo(({ template, onSelect, onFork }: Template
               e.stopPropagation();
               onFork(template.id);
             }}
-            className="py-1.5 px-3 bg-[#ea580c] hover:bg-[#a73a00] text-white text-[10px] font-mono font-bold transition-all"
+            className="py-1.5 px-3 bg-[#ea580c] hover:bg-[#a73a00] text-white text-[10px] font-mono font-bold transition-all cursor-pointer"
           >
             FORK →
           </button>

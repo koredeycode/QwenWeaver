@@ -84,6 +84,7 @@ export const sqliteExecutions = sqliteTable(
     userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }),
     status: text('status').notNull(),
     metrics: text('metrics', { mode: 'json' }).$type<ExecutionMetrics>(),
+    graphSnapshot: text('graph_snapshot', { mode: 'json' }).$type<WorkflowPayload>(),
     startedAt: integer('started_at').notNull(),
     completedAt: integer('completed_at'),
   },

@@ -330,7 +330,10 @@ export async function runAgent(
       }
     }
 
-    // Workspace tools disabled — bus messages handle cross-agent data flow
+    if (executionId) {
+      const workspaceTools = createWorkspaceTools(executionId, node.id, emitter);
+      Object.assign(tools, workspaceTools);
+    }
 
     const providerOptions = enableThinking
       ? {

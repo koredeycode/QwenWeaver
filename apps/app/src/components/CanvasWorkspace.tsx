@@ -59,7 +59,7 @@ import { ExportWorkflowModal } from './ExportWorkflowModal.js';
 import { ImportWorkflowModal } from './ImportWorkflowModal.js';
 import { MaximizedNodeOverlay } from './MaximizedNodeOverlay.js';
 import { MCPConfigDialog } from './MCPConfigDialog.js';
-import { CompletionSummaryDialog } from './CompletionSummaryDialog.js';
+import { OutputDialog } from './OutputDialog.js';
 import { SaveWorkflowDialog } from './SaveWorkflowDialog.js';
 import { PublishTemplateDialog } from './PublishTemplateDialog.js';
 import { ClearCanvasDialog } from './ClearCanvasDialog.js';
@@ -91,8 +91,12 @@ export const CanvasWorkspace = () => {
   const markClean = useStore((s) => s.markClean);
 
   const status = useStore((s) => s.executionStatus);
+  const canvasStatus = useStore((s) => s.canvasStatus);
+  const outputDialogOpen = useStore((s) => s.outputDialogOpen);
   const runWorkflow = useStore((s) => s.runWorkflow);
   const stopWorkflow = useStore((s) => s.stopWorkflow);
+  const openOutputDialog = useStore((s) => s.openOutputDialog);
+  const resetCanvasState = useStore((s) => s.resetCanvasState);
   const user = useStore((s) => s.user);
   const credits = useStore((s) => s.credits);
   const fetchCredits = useStore((s) => s.fetchCredits);
@@ -133,11 +137,15 @@ export const CanvasWorkspace = () => {
     }
   }, [isTourActive, currentStepIndex, steps]);
 
-  // Automatically open copilot when entering its tour step
+  // Automatically open the correct right panel for each tour step
   useEffect(() => {
-    if (isTourActive && steps[currentStepIndex]?.id === 'copilot-toggle') {
+    if (!isTourActive) return;
+    const stepId = steps[currentStepIndex]?.id;
+    if (stepId === 'copilot-toggle') {
       openRightPanel('copilot');
-    } else if (isTourActive && steps[currentStepIndex]?.id !== 'copilot-toggle') {
+    } else if (stepId === 'inspector-panel') {
+      openRightPanel('inspector');
+    } else {
       setRightPanel(null);
     }
   }, [isTourActive, currentStepIndex, steps]);
@@ -202,8 +210,17 @@ export const CanvasWorkspace = () => {
     return saved !== 'false';
   });
 
+  const toggleCopilot = useCallback(() => {
+    if (rightPanel === 'copilot') {
+      setRightPanel(null);
+    } else {
+      openRightPanel('copilot');
+    }
+  }, [rightPanel, openRightPanel]);
+
   useCanvasShortcuts({
     status,
+    canvasStatus,
     nodesLength: nodes.length,
     runWorkflow,
     rearrangeGraph,
@@ -214,6 +231,7 @@ export const CanvasWorkspace = () => {
     setIsLocked,
     setIsClearConfirmOpen,
     reactFlowInstance,
+    onToggleCopilot: toggleCopilot,
   });
 
   const { isSaving } = useAutoSave(id, navigate);
@@ -746,8 +764,8 @@ export const CanvasWorkspace = () => {
                 </button>
               </div>
 
-              {/* Run Workflow / Kill Button (Solid Rust-Orange) */}
-              {status === 'running' ? (
+              {/* Run / Kill / View Output buttons (3-state) */}
+              {canvasStatus === 'running' ? (
                 <button
                   onClick={stopWorkflow}
                   className="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors cursor-pointer"
@@ -755,6 +773,23 @@ export const CanvasWorkspace = () => {
                   <Square className="w-3.5 h-3.5 fill-white" />
                   <span className="hidden md:inline">Kill Workflow</span>
                 </button>
+              ) : canvasStatus === 'runned' ? (
+                <>
+                  <button
+                    onClick={openOutputDialog}
+                    className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors cursor-pointer"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-white text-white" />
+                    <span className="hidden md:inline">View Output</span>
+                  </button>
+                  <button
+                    onClick={resetCanvasState}
+                    className="px-4 py-1.5 bg-slate-600 hover:bg-slate-500 text-white font-bold text-xs flex items-center gap-1.5 rounded-none transition-colors cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span className="hidden md:inline">Reset</span>
+                  </button>
+                </>
               ) : (
                 <button
                   onClick={runWorkflow}
@@ -792,16 +827,28 @@ export const CanvasWorkspace = () => {
                       {user.email}
                     </span>
                     {credits && (
-                      <span
-                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded-none ${credits.lowBalance ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}
-                      >
-                        {credits.balance}
-                      </span>
+                      <>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            fetchCredits();
+                          }}
+                          className="p-0.5 hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer rounded-none"
+                          title="Refresh credits"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                        </button>
+                        <span
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded-none ${credits.lowBalance ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}
+                        >
+                          {credits.balance}
+                        </span>
+                      </>
                     )}
                     <ChevronDown className="w-3 h-3" />
                   </button>
                   {profileOpen && (
-                    <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-slate-200 shadow-lg z-50">
+                    <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-slate-200 shadow-lg z-[9999]">
                       <div className="px-3 py-2 text-xs text-slate-500 font-mono border-b border-slate-100 truncate">
                         {user.email}
                       </div>
@@ -878,11 +925,19 @@ export const CanvasWorkspace = () => {
                       fitView
                       minZoom={0.2}
                       maxZoom={1.5}
-                      nodesDraggable={!isLocked && status !== 'running'}
-                      nodesConnectable={!isLocked && status !== 'running'}
-                      elementsSelectable={!isLocked && status !== 'running'}
+                      nodesDraggable={
+                        !isLocked && status !== 'running' && canvasStatus !== 'runned'
+                      }
+                      nodesConnectable={
+                        !isLocked && status !== 'running' && canvasStatus !== 'runned'
+                      }
+                      elementsSelectable={
+                        !isLocked && status !== 'running' && canvasStatus !== 'runned'
+                      }
                       deleteKeyCode={
-                        isLocked || status === 'running' ? null : ['Backspace', 'Delete']
+                        isLocked || status === 'running' || canvasStatus === 'runned'
+                          ? null
+                          : ['Backspace', 'Delete']
                       }
                       proOptions={{ hideAttribution: true }}
                       isValidConnection={isValidConnection}
@@ -1132,8 +1187,8 @@ export const CanvasWorkspace = () => {
         {/* MCP Configuration Dialog */}
         <MCPConfigDialog />
 
-        {/* Post-Execution Summary Dialog */}
-        <CompletionSummaryDialog />
+        {/* Post-Execution Output Dialog */}
+        {outputDialogOpen && <OutputDialog />}
 
         {/* Import Workflow Configuration Modal */}
         <ImportWorkflowModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />

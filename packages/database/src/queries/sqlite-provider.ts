@@ -80,6 +80,7 @@ export const sqliteProvider: QueryProvider = {
       id: rows[0].id,
       email: rows[0].email,
       name: rows[0].name,
+      image: rows[0].image,
       createdAt: rows[0].createdAt,
     };
   },
@@ -547,7 +548,12 @@ export const sqliteProvider: QueryProvider = {
       );
   },
 
-  async createExecution(executionId: string, workflowId: string, userId: string): Promise<void> {
+  async createExecution(
+    executionId: string,
+    workflowId: string,
+    userId: string,
+    graphSnapshot?: WorkflowPayload,
+  ): Promise<void> {
     const { db } = getConnection();
     const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
     await sqliteDb.insert(sqliteSchema.sqliteExecutions).values({
@@ -555,6 +561,7 @@ export const sqliteProvider: QueryProvider = {
       workflowId,
       userId,
       status: 'pending',
+      graphSnapshot: graphSnapshot || null,
       startedAt: Date.now(),
     });
   },

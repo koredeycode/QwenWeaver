@@ -330,7 +330,7 @@ export const WorkflowDashboard = () => {
                 <ChevronDown className="w-3 h-3" />
               </button>
               {profileOpen && (
-                <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-slate-200 shadow-lg z-50">
+                <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-slate-200 shadow-lg z-[9999]">
                   <div className="px-3 py-2 text-xs text-slate-500 font-mono border-b border-slate-100 truncate">
                     {user.email}
                   </div>

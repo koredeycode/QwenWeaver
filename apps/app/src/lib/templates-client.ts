@@ -13,6 +13,7 @@ export interface TemplateSummary {
   categoryId?: string;
   tags?: string[];
   authorName?: string;
+  authorImage?: string | null;
   downloads: number;
   avgRating: number;
   ratingCount: number;

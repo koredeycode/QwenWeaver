@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, X, ArrowLeft, Loader2 } from 'lucide-react';
 import { useStore } from '../store/index.js';
@@ -20,6 +20,7 @@ export const TemplateGallery = () => {
 
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     fetchCategories();
@@ -28,6 +29,16 @@ export const TemplateGallery = () => {
   useEffect(() => {
     fetchTemplates({ categoryId: activeCategory || undefined, search: search || undefined });
   }, [activeCategory, fetchTemplates]);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchTemplates({ categoryId: activeCategory || undefined, search: search || undefined });
+    }, 300);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [search]);
 
   const handleSearch = useCallback(
     (e: React.FormEvent) => {
@@ -48,7 +59,6 @@ export const TemplateGallery = () => {
     async (id: string) => {
       const ok = await forkTemplate(id);
       if (ok) {
-        // Create a new empty workflow to get a proper workflow ID
         const payload = {
           name: 'Forked Template',
           description: 'Workflow created from a template',
@@ -74,7 +84,6 @@ export const TemplateGallery = () => {
           navigate(`/workflows/${result.workflowId}`);
         } catch (err) {
           console.error('Failed to create workflow from template', err);
-          // Fallback to original behavior if API call fails
           navigate('/workflows/unsaved');
         }
       }
@@ -129,13 +138,20 @@ export const TemplateGallery = () => {
 
       <div className="flex-1 min-h-0 overflow-y-auto p-8 scrollbar">
         <div className="max-w-5xl mx-auto space-y-8">
-          <div>
-            <h1 className="text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-              TEMPLATE LIBRARY
-            </h1>
-            <p className="text-xs text-slate-500 font-mono mt-1 uppercase tracking-wide">
-              Browse community-built multi-agent workflows. Fork any template to your workspace.
-            </p>
+          <div className="flex items-end justify-between">
+            <div>
+              <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
+                TEMPLATE LIBRARY
+              </h1>
+              <p className="text-xs text-slate-500 font-mono mt-1">
+                Browse community-built multi-agent workflows. Fork any template to your workspace.
+              </p>
+            </div>
+            {templatesTotal > 0 && (
+              <span className="text-[10px] font-mono text-slate-400 flex-shrink-0">
+                {templatesTotal} template{templatesTotal !== 1 ? 's' : ''}
+              </span>
+            )}
           </div>
 
           <div className="flex gap-2 flex-wrap">
@@ -145,8 +161,8 @@ export const TemplateGallery = () => {
                 onClick={() => setActiveCategory(cat.id)}
                 className={`px-3 py-1.5 text-[10px] font-mono font-bold border transition-all cursor-pointer ${
                   activeCategory === cat.id
-                    ? 'bg-[#f97316] text-white border-[#f97316]'
-                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                    ? 'bg-[#f97316] text-white border-[#f97316] shadow-sm'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:bg-slate-50'
                 }`}
               >
                 {cat.name}
@@ -160,7 +176,22 @@ export const TemplateGallery = () => {
             </div>
           ) : templates.length === 0 ? (
             <div className="text-center py-20">
-              <p className="text-sm font-mono text-slate-400">No templates found</p>
+              <p className="text-sm font-mono text-slate-400">
+                {search || activeCategory
+                  ? 'No templates match your filters'
+                  : 'No templates found'}
+              </p>
+              {(search || activeCategory) && (
+                <button
+                  onClick={() => {
+                    setSearch('');
+                    setActiveCategory('');
+                  }}
+                  className="mt-3 text-[10px] font-mono text-[#f97316] hover:underline cursor-pointer"
+                >
+                  Clear filters
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -172,12 +203,6 @@ export const TemplateGallery = () => {
                   onFork={handleFork}
                 />
               ))}
-            </div>
-          )}
-
-          {templates.length > 0 && (
-            <div className="text-center text-[10px] font-mono text-slate-400 pb-4">
-              {templatesTotal} template{templatesTotal !== 1 ? 's' : ''} available
             </div>
           )}
         </div>

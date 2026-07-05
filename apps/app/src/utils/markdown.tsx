@@ -43,6 +43,62 @@ export const renderMarkdown = (text: string) => {
     }
 
     const lines = part.split('\n');
+
+    // Check if this block contains a table (pipe syntax)
+    const tableLines = lines.filter((l) => l.trim().startsWith('|') && l.trim().endsWith('|'));
+    if (tableLines.length >= 3 && lines.some((l) => /^\|[\s:-]+\|/.test(l.trim()))) {
+      const headerLine = lines.find((l) => l.trim().startsWith('|'));
+      const separatorLine = lines.find((l) => /^\|[\s:-]+\|/.test(l.trim()));
+      const bodyLines = lines.filter(
+        (l) => l.trim().startsWith('|') && l !== separatorLine && l !== headerLine,
+      );
+
+      if (headerLine && separatorLine) {
+        const headers = headerLine
+          .trim()
+          .split('|')
+          .map((h) => h.trim())
+          .filter(Boolean);
+        const rows = bodyLines.map((l) =>
+          l
+            .trim()
+            .split('|')
+            .map((c) => c.trim())
+            .filter(Boolean),
+        );
+
+        return (
+          <div key={`table-${idx}`} className="my-2 overflow-x-auto">
+            <table className="w-full text-[11px] font-sans border-collapse border border-slate-300">
+              <thead>
+                <tr className="bg-slate-100">
+                  {headers.map((h, i) => (
+                    <th
+                      key={i}
+                      className="border border-slate-300 px-3 py-1.5 text-left font-bold text-slate-700"
+                    >
+                      {parseInline(h)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, ri) => (
+                  <tr key={ri} className={ri % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
+                    {row.map((cell, ci) => (
+                      <td key={ci} className="border border-slate-300 px-3 py-1 text-slate-700">
+                        {parseInline(cell)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      }
+    }
+
     return lines.map((line, lIdx) => {
       const trimmed = line.trim();
 

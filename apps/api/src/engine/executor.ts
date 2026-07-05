@@ -363,6 +363,7 @@ export async function executeWorkflow(
         timestamp: Date.now(),
         outputUrl: result.outputs?.[0]?.value,
         outputParts: result.outputs,
+        error: result.error,
       });
 
       if (result.status === 'failed') {
