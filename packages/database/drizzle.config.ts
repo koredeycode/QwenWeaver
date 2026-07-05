@@ -20,4 +20,5 @@ export default defineConfig({
   schema: schemaPath(),
   dialect: dialect(),
   dbCredentials: { url },
+  out: './migrations',
 });

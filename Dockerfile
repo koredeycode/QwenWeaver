@@ -89,4 +89,4 @@ ENV PORT=3001
 ENTRYPOINT ["/sbin/tini", "--"]
 
 # Default: start the API server
-CMD ["node", "apps/api/dist/index.js"]
+CMD ["sh", "-c", "pnpm --filter @qwenweaver/database drizzle:migrate && node apps/api/dist/index.js"]

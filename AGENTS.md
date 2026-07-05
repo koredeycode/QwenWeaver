@@ -10,17 +10,18 @@ Before writing code or running commands, follow the rules and conventions below.
 
 Use exact flags. Never `npm` or `yarn`.
 
-| Action                     | Command                                            |
-| -------------------------- | -------------------------------------------------- |
-| Install all dependencies   | `pnpm install`                                     |
-| Start dev servers (all)    | `pnpm dev`                                         |
-| Run tests (all)            | `pnpm test`                                        |
-| Lint all packages          | `pnpm lint`                                        |
-| Format all files           | `pnpm format`                                      |
-| Check formatting           | `pnpm format:check`                                |
-| Type-check workspace       | `pnpm typecheck` (runs `build` in every workspace) |
-| Execute one workspace      | `pnpm --filter <name> <cmd>`                       |
-| DB migrations (SQLite dev) | `pnpm db:push`                                     |
+| Action                     | Command                                              |
+| -------------------------- | ---------------------------------------------------- |
+| Install all dependencies   | `pnpm install`                                       |
+| Start dev servers (all)    | `pnpm dev`                                           |
+| Run tests (all)            | `pnpm test`                                          |
+| Lint all packages          | `pnpm lint`                                          |
+| Format all files           | `pnpm format`                                        |
+| Check formatting           | `pnpm format:check`                                  |
+| Type-check workspace       | `pnpm typecheck` (runs `build` in every workspace)   |
+| Execute one workspace      | `pnpm --filter <name> <cmd>`                         |
+| DB migrations (SQLite dev) | `pnpm db:push`                                       |
+| DB migrations (prod)       | `pnpm --filter @qwenweaver/database drizzle:migrate` |
 
 Workspace names: `@qwenweaver/app`, `@qwenweaver/api`, `@qwenweaver/database`, `@qwenweaver/types`, `@qwenweaver/mcp-client`, `@qwenweaver/site`.
 
@@ -63,6 +64,7 @@ packages/database/  Drizzle ORM — dual dialect (SQLite local, PostgreSQL cloud
     pg.ts          PostgreSQL schema
     sqlite.ts      SQLite schema
   index.ts         Dynamic connection factory
+  migrations/     Auto-generated migration files
 
 packages/types/    Shared Zod schemas + TypeScript interfaces
   src/graph.ts     Node/Edge payload schemas
@@ -97,6 +99,7 @@ packages/mcp-client/  Model Context Protocol connection logic
 - **Dual schemas.** Maintain separate `schema/pg.ts` and `schema/sqlite.ts`. Never conflate them.
 - **Connection factory.** Use the dynamic factory that switches between `better-sqlite3` (file path in `DATABASE_URL`) and `postgres` (URI).
 - **Additive migrations only.** Never drop or rename columns.
+- **Production migrations.** After schema changes: `pnpm --filter @qwenweaver/database drizzle:generate` then push code + let Docker CMD apply via `drizzle:migrate`. Never `drizzle:push` on production (it crashes on Supabase CHECK constraints).
 
 ### AI & MCP (Vercel AI SDK)
 
@@ -120,6 +123,19 @@ When the user clicks "Run Workflow":
 
 ---
 
+## 5. CI/CD Pipeline
+
+- **CI workflow** (`.github/workflows/ci.yml`): lint → test → build, runs on every push.
+- **Deploy workflow** (`.github/workflows/deploy.yml`): triggered on push to `main`. Steps:
+  1. CI passes (reuses ci.yml)
+  2. Build Docker image → push to GHCR
+  3. `pnpm build` all workspaces
+  4. **Apply migrations**: `pnpm --filter @qwenweaver/database drizzle:migrate` (uses `drizzle-kit migrate`, never `push`)
+  5. Archive dist files → upload as artifact
+  6. SSH to VPS, pull new image, restart containers, health check
+
+**Important:** `drizzle-kit push` is disabled on production. It crashes on Supabase CHECK constraints (`TypeError: Cannot read properties of undefined (reading 'replace')` in drizzle-kit 0.31.10). Always use `generate + migrate`.
+
 ---
 
 ## 6. Git Workflow
@@ -142,9 +158,39 @@ When the user clicks "Run Workflow":
 
 ---
 
-## 5. Boundaries
+## 7. Boundaries
 
 - **Secrets.** Never hardcode API keys. Never commit `.env` files.
 - **pnpm-lock.yaml.** Never edit manually. Only update via `pnpm add`.
 - **External libs.** Only shadcn/ui + Tailwind for UI. No MUI, Chakra, etc.
 - **DB.** Prefer additive DDL. Never drop/rename columns in migrations.
+
+## 8. Working Summary
+
+### Context
+
+Production (`main` branch) deploy. Fixing CI/CD pipeline and database schema issues.
+
+### Done
+
+1. Moved `drizzle-kit` from `devDependencies` → `dependencies` in `packages/database/package.json`
+2. Removed `|| echo` fallback that silently swallowed failures in deploy.yml
+3. Replaced `drizzle-kit push` with `drizzle-kit generate + migrate` to avoid Supabase CHECK constraint crash
+4. Ran `pnpm install` to sync lockfile
+5. Added `migrations/` to `.prettierignore`
+6. Generated migration `0000_cooing_marrow.sql` and committed all migration metadata
+7. Applied migration to Supabase production by marking it complete in `drizzle.__drizzle_migrations`
+8. Created templates/categories/reviews seed data in production
+9. Reset all user credit balances to 5000
+
+### Known Issues
+
+- `drizzle-kit push` crashes on Supabase (CHECK constraint introspection bug). Use `generate + migrate` instead.
+- Migration files cannot be re-run if already applied. For schema changes, generate a new migration file.
+
+### Production State
+
+- Database: Supabase PostgreSQL, schema fully applied
+- Docker: Image pushed to GHCR, running on VPS
+- CI/CD: Both CI and deploy workflows passing
+- DNS: `app.qwenweaver.xyz` → VPS, `qwenweaver.xyz` → Vercel
