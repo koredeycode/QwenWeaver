@@ -2,7 +2,7 @@ export interface CreditTransaction {
   id: string;
   userId: string;
   amount: number;
-  type: 'signup_bonus' | 'execution_cost' | 'admin_grant';
+  type: 'signup' | 'execution_cost' | 'admin_grant' | 'credit_refund' | 'execution_failed_refund';
   description: string | null;
   executionId: string | null;
   createdAt: string;
@@ -103,7 +103,7 @@ function getEffectiveModel(nodeType: string, userModel?: string): string {
  */
 const ESTIMATED_MAX_TOKENS: Record<string, number> = {
   agent: 3000,
-  supervisor: 5000,
+  supervisor: 20000,
   mcp_tool: 2000,
   trigger: 0,
   input_trigger: 0,

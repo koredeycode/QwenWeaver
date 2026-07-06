@@ -119,7 +119,7 @@ When the user clicks "Run Workflow":
 5. For MCP-connected agents, initialize `@modelcontextprotocol/sdk` client and inject tools into prompt
 6. Backend streams `token`, `status_update`, `edge_active` events to SSE
 7. Zustand store intercepts events, triggers node glow + edge animations on canvas
-8. If conflicting outputs detected, Supervisor node (`qwen3-max` with thinking) resolves
+8. If conflicting outputs detected, Supervisor node (`qwen3.7-max` with thinking) resolves
 
 ---
 

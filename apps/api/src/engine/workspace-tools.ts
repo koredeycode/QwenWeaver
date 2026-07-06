@@ -6,7 +6,11 @@ import { createModuleLogger } from '../logger.js';
 
 const log = createModuleLogger('engine/workspace-tools');
 
-export function createWorkspaceTools(executionId: string, nodeId: string, emitter?: StreamEmitter) {
+export function createWorkspaceTools(
+  executionId: string,
+  nodeId: string,
+  emitter?: StreamEmitter,
+): Record<string, any> {
   const provider = getQueryProvider();
 
   return {

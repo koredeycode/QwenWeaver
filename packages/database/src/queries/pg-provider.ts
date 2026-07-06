@@ -950,13 +950,18 @@ export const pgProvider: QueryProvider = {
     return result.length > 0;
   },
 
-  async deductCredits(userId: string, amount: number, description?: string, executionId?: string) {
+  async deductCredits(
+    userId: string,
+    amount: number,
+    description?: string,
+    executionId?: string,
+  ): Promise<boolean> {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
     await pgDb
       .update(pgSchema.pgUserCredits)
       .set({
-        balance: sql`${pgSchema.pgUserCredits.balance} - ${amount}`,
+        balance: sql`GREATEST(${pgSchema.pgUserCredits.balance} - ${amount}, 0)`,
         lifetimeSpent: sql`${pgSchema.pgUserCredits.lifetimeSpent} + ${amount}`,
         updatedAt: new Date(),
       })
@@ -967,6 +972,36 @@ export const pgProvider: QueryProvider = {
       userId,
       amount: -amount,
       type: 'execution_cost',
+      description: description ?? null,
+      executionId: executionId ?? null,
+      createdAt: new Date(),
+    });
+    return true;
+  },
+
+  async refundCredits(
+    userId: string,
+    amount: number,
+    type: string,
+    description?: string,
+    executionId?: string,
+  ) {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    await pgDb
+      .update(pgSchema.pgUserCredits)
+      .set({
+        balance: sql`${pgSchema.pgUserCredits.balance} + ${amount}`,
+        lifetimeSpent: sql`${pgSchema.pgUserCredits.lifetimeSpent} - ${amount}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(pgSchema.pgUserCredits.userId, userId));
+
+    await pgDb.insert(pgSchema.pgCreditTransactions).values({
+      id: crypto.randomUUID(),
+      userId,
+      amount,
+      type,
       description: description ?? null,
       executionId: executionId ?? null,
       createdAt: new Date(),

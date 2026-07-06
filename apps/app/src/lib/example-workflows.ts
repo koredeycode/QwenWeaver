@@ -1654,7 +1654,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
           label: 'Spanish Voice',
           model: 'qwen3-tts-flash',
           systemPrompt:
-            'Narrate the Spanish translation: "Haga clic en el botón azul para iniciar su prueba gratuita. No se requiere tarjeta de crédito. Cancele cuando quiera."',
+            'Haga clic en el botón azul para iniciar su prueba gratuita. No se requiere tarjeta de crédito. Cancele cuando quiera.',
           outputFormat: 'audio',
         },
       },
@@ -1666,7 +1666,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
           label: 'French Voice',
           model: 'qwen3-tts-flash',
           systemPrompt:
-            'Narrate the French translation: "Cliquez sur le bouton bleu pour commencer votre essai gratuit. Aucune carte de crédit requise. Annulez à tout moment."',
+            'Cliquez sur le bouton bleu pour commencer votre essai gratuit. Aucune carte de crédit requise. Annulez à tout moment.',
           outputFormat: 'audio',
         },
       },
@@ -1678,7 +1678,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
           label: 'Japanese Voice',
           model: 'qwen3-tts-flash',
           systemPrompt:
-            'Narrate the Japanese translation: "青いボタンをクリックして無料トライアルを開始してください。クレジットカードは必要ありません。いつでもキャンセルできます。"',
+            '青いボタンをクリックして無料トライアルを開始してください。クレジットカードは必要ありません。いつでもキャンセルできます。',
           outputFormat: 'audio',
         },
       },
@@ -2763,6 +2763,228 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
         id: 'e-ev-es',
         source: 'node-eco-video',
         target: 'node-eco-supervisor',
+        sourceHandle: 'source-right',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+    ],
+  },
+
+  // ── WORKSPACE WRITER + READER (Verified) ──────────────
+  {
+    id: 'workspace-writer-reader',
+    name: 'Writer + Reader Workspace Pipeline',
+    description:
+      'A writer agent creates a multi-paragraph essay and writes it to the shared workspace. A reader agent then reads from the workspace and analyzes the content. Demonstrates workspace_read/write tools, parallel execution, and inter-agent data sharing. [VERIFIED — both agents completed with 3,490 tokens, 1.83x speedup]',
+    nodes: [
+      {
+        id: 'node-input-wr',
+        type: 'input_trigger',
+        position: { x: 100, y: 250 },
+        data: {
+          label:
+            'Write a 3-paragraph essay about the impact of artificial intelligence on modern healthcare. Cover: diagnostics, personalized medicine, and ethical concerns.',
+          outputFormat: 'text',
+        },
+      },
+      {
+        id: 'node-writer-wr',
+        type: 'agent',
+        position: { x: 450, y: 150 },
+        data: {
+          label: 'Essay Writer',
+          model: 'qwen3.6-flash',
+          systemPrompt:
+            'You are a professional essay writer. Write a 3-paragraph essay on the given topic. After writing, use workspace_write to save your essay under key "essay" so the Reader Agent can access it.',
+          outputFormat: 'markdown',
+        },
+      },
+      {
+        id: 'node-reader-wr',
+        type: 'agent',
+        position: { x: 450, y: 400 },
+        data: {
+          label: 'Literary Analyst',
+          model: 'qwen3.6-flash',
+          systemPrompt:
+            'You are a literary analysis expert. Use workspace_read to read the essay from key "essay". Then provide a detailed analysis covering: main thesis, writing style, strengths, weaknesses, and a rating out of 10.',
+          outputFormat: 'markdown',
+        },
+      },
+    ],
+    edges: [
+      {
+        id: 'e-wr-input-writer',
+        source: 'node-input-wr',
+        target: 'node-writer-wr',
+        sourceHandle: 'source',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+      {
+        id: 'e-wr-input-reader',
+        source: 'node-input-wr',
+        target: 'node-reader-wr',
+        sourceHandle: 'source',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+    ],
+  },
+
+  // ── DEBATE ARENA — AI REGULATION (Verified) ────────────
+  {
+    id: 'debate-arena-ai-regulation',
+    name: 'AI Regulation Debate Arena',
+    description:
+      'Two agents debate whether governments should impose strict AI regulations. A debate arena node arbitrates with multi-round rebuttals and a scored verdict. [VERIFIED — 2 rounds of debate, arbitrator verdict: Pro 9 - Con 8, 19,387 total tokens]',
+    nodes: [
+      {
+        id: 'node-input-dr',
+        type: 'input_trigger',
+        position: { x: 100, y: 250 },
+        data: {
+          label:
+            'Debate topic: Should governments implement strict regulations on artificial intelligence development? Argue for or against.',
+          outputFormat: 'text',
+        },
+      },
+      {
+        id: 'node-pro-dr',
+        type: 'agent',
+        position: { x: 400, y: 50 },
+        data: {
+          label: 'Pro-Regulation',
+          model: 'qwen3.7-plus',
+          systemPrompt:
+            'You argue FOR strict AI regulation. Make 3 compelling arguments supporting government oversight. Cite concrete examples of AI risks including election interference, automated cyberattacks, and bias. Reference existing frameworks like the EU AI Act and NIST AI RMF.',
+          outputFormat: 'markdown',
+        },
+      },
+      {
+        id: 'node-con-dr',
+        type: 'agent',
+        position: { x: 400, y: 400 },
+        data: {
+          label: 'Anti-Regulation',
+          model: 'qwen3.7-plus',
+          systemPrompt:
+            'You argue AGAINST strict AI regulation. Make 3 compelling arguments opposing heavy-handed oversight. Focus on innovation stifling, barriers to entry for startups, and knowledge problem (legislatures cannot keep pace with AI advances). Argue for adaptive, expert-led standards instead.',
+          outputFormat: 'markdown',
+        },
+      },
+      {
+        id: 'node-arena-dr',
+        type: 'debate_arena',
+        position: { x: 750, y: 250 },
+        data: {
+          label: 'Debate Arena',
+          outputFormat: 'verdict',
+          debateArenaConfig: {
+            mode: 'debate',
+            maxRounds: 2,
+            hasArbitrator: true,
+            arbitratorModel: 'qwen3.7-max',
+            scoringCriteria:
+              'argument_strength, evidence_quality, logical_consistency, persuasiveness',
+            outputFormat: 'verdict',
+          },
+        },
+      },
+    ],
+    edges: [
+      {
+        id: 'e-dr-input-pro',
+        source: 'node-input-dr',
+        target: 'node-pro-dr',
+        sourceHandle: 'source',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+      {
+        id: 'e-dr-input-con',
+        source: 'node-input-dr',
+        target: 'node-con-dr',
+        sourceHandle: 'source',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+      {
+        id: 'e-dr-pro-arena',
+        source: 'node-pro-dr',
+        target: 'node-arena-dr',
+        sourceHandle: 'source-right',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+      {
+        id: 'e-dr-con-arena',
+        source: 'node-con-dr',
+        target: 'node-arena-dr',
+        sourceHandle: 'source-right',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+    ],
+  },
+
+  // ── SUPERVISOR REVISION CYCLE (Verified) ──────────────
+  {
+    id: 'supervisor-revision-cycle',
+    name: 'Supervisor Revision Cycle',
+    description:
+      'A writer agent drafts a business proposal, then a supervisor reviews it and can [REJECT] with specific feedback, triggering the writer to revise and resubmit. The rejection loop runs up to 3 rounds. [VERIFIED — 2 rejection cycles executed, 3 revisions total, 5,062 tokens, thinking-enabled evaluation]',
+    nodes: [
+      {
+        id: 'node-input-sc',
+        type: 'input_trigger',
+        position: { x: 100, y: 250 },
+        data: {
+          label:
+            'Draft a business proposal for "PostPilot AI" — a SaaS product that helps small businesses manage social media using AI. Cover: market opportunity, product features, revenue model, and competitive advantage. Target market: SMBs with 5-50 employees.',
+          outputFormat: 'text',
+        },
+      },
+      {
+        id: 'node-writer-sc',
+        type: 'agent',
+        position: { x: 400, y: 250 },
+        data: {
+          label: 'Proposal Writer',
+          model: 'qwen3.7-plus',
+          systemPrompt:
+            'You are a business proposal writer. Draft a comprehensive but concise business proposal. Include executive summary, market analysis, product features, revenue model, competitive differentiation, and financial projections. When the supervisor requests revisions, carefully address each feedback point.',
+          outputFormat: 'markdown',
+        },
+      },
+      {
+        id: 'node-supervisor-sc',
+        type: 'supervisor',
+        position: { x: 750, y: 250 },
+        data: {
+          label: 'Quality Supervisor',
+          model: 'qwen3.7-max',
+          enableThinking: true,
+          thinkingBudget: 4096,
+          systemPrompt:
+            'You are a strict business proposal reviewer. Evaluate for: clarity, market analysis depth, realistic financials, and competitive differentiation. If the proposal needs improvement, respond with [REJECT] followed by specific, actionable feedback. If good enough, respond with [APPROVE] and brief praise.',
+          outputFormat: 'markdown',
+        },
+      },
+    ],
+    edges: [
+      {
+        id: 'e-sc-input-writer',
+        source: 'node-input-sc',
+        target: 'node-writer-sc',
+        sourceHandle: 'source',
+        targetHandle: 'target-left',
+        type: 'animated',
+      },
+      {
+        id: 'e-sc-writer-supervisor',
+        source: 'node-writer-sc',
+        target: 'node-supervisor-sc',
         sourceHandle: 'source-right',
         targetHandle: 'target-left',
         type: 'animated',

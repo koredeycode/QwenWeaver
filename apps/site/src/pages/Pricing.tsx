@@ -37,7 +37,7 @@ export function Pricing() {
             <div className="mt-4 flex items-baseline gap-1">
               <span className="text-4xl font-extrabold tracking-tight">$0</span>
             </div>
-            <p className="mt-1 text-sm text-on-surface-variant">1,000 free credits on signup</p>
+            <p className="mt-1 text-sm text-on-surface-variant">5,000 free credits on signup</p>
             <p className="text-sm text-on-surface-variant">2 active workflows</p>
 
             <ul className="mt-8 space-y-3" role="list">

@@ -898,14 +898,14 @@ async function seed() {
     })
     .run();
 
-  // Grant demo user 1000 credits
-  console.log('  Granting 1000 credits to demo user');
+  // Grant demo user 5000 credits
+  console.log('  Granting 5000 credits to demo user');
   sqliteDb
     .insert(s.sqliteUserCredits)
     .values({
       userId,
-      balance: 1000,
-      lifetimeEarned: 1000,
+      balance: 5000,
+      lifetimeEarned: 5000,
       lifetimeSpent: 0,
       updatedAt: NOW,
     })

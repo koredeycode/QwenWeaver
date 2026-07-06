@@ -458,32 +458,31 @@ async function runExecutionAsync(
     try {
       const nodeTimings = result.metrics?.nodeTimings ?? [];
       const finalCost = calculateFinalCost(workflow, nodeTimings);
-      const refund = (reservedCredits ?? 0) - finalCost;
+      const diff = (reservedCredits ?? 0) - finalCost;
       if (result.status === 'completed') {
-        if (refund > 0) {
-          await provider.grantCredits(
+        if (diff > 0) {
+          // Refund over-reservation — decrements lifetimeSpent, increments balance
+          await provider.refundCredits(
             userId!,
-            refund,
+            diff,
             'credit_refund',
             `Refund for execution ${executionId}`,
             executionId,
           );
-          log.info({ executionId, refund }, 'Over-reserved credits refunded');
-        } else if (refund < 0) {
+          log.info({ executionId, refund: diff }, 'Over-reserved credits refunded');
+        } else if (diff < 0) {
+          const additional = Math.abs(diff);
           await provider.deductCredits(
             userId!,
-            Math.abs(refund),
+            additional,
             `Additional cost for execution ${executionId}`,
             executionId,
           );
-          log.info(
-            { executionId, additionalCost: Math.abs(refund) },
-            'Additional credits deducted',
-          );
+          log.info({ executionId, additionalCost: additional }, 'Additional credits deducted');
         }
       } else {
-        // Failed execution — full refund
-        await provider.grantCredits(
+        // Failed execution — full refund (reverts lifetimeSpent from the reservation)
+        await provider.refundCredits(
           userId!,
           reservedCredits ?? 0,
           'execution_failed_refund',

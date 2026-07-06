@@ -48,10 +48,10 @@ export interface ModelConfig {
 /**
  * Selects the appropriate Qwen model for a given node.
  *
- * - Supervisors → `qwen-max` with thinking mode enabled
- * - Agents → `qwen-plus` (or custom via `node.data.model`)
- * - MCP tools → `qwen-plus` (needs tool-calling capability)
- * - Trigger/Logic → `qwen-turbo` (lightweight pass-through)
+ * - Supervisors → `qwen3.7-max` with thinking mode enabled
+ * - Agents → `qwen3.7-plus` (or custom via `node.data.model`)
+ * - MCP tools → `qwen3.7-plus` (needs tool-calling capability)
+ * - Trigger/Logic → `qwen3.6-flash` (lightweight pass-through)
  *
  * The user can override any model by setting `node.data.model`.
  */

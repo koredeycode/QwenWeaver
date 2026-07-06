@@ -1012,13 +1012,18 @@ export const sqliteProvider: QueryProvider = {
     return changes > 0;
   },
 
-  async deductCredits(userId: string, amount: number, description?: string, executionId?: string) {
+  async deductCredits(
+    userId: string,
+    amount: number,
+    description?: string,
+    executionId?: string,
+  ): Promise<boolean> {
     const { db } = getConnection();
     const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
     await sqliteDb
       .update(sqliteSchema.sqliteUserCredits)
       .set({
-        balance: sql`${sqliteSchema.sqliteUserCredits.balance} - ${amount}`,
+        balance: sql`MAX(${sqliteSchema.sqliteUserCredits.balance} - ${amount}, 0)`,
         lifetimeSpent: sql`${sqliteSchema.sqliteUserCredits.lifetimeSpent} + ${amount}`,
         updatedAt: Date.now(),
       })
@@ -1029,6 +1034,36 @@ export const sqliteProvider: QueryProvider = {
       userId,
       amount: -amount,
       type: 'execution_cost',
+      description: description ?? null,
+      executionId: executionId ?? null,
+      createdAt: Date.now(),
+    });
+    return true;
+  },
+
+  async refundCredits(
+    userId: string,
+    amount: number,
+    type: string,
+    description?: string,
+    executionId?: string,
+  ) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    await sqliteDb
+      .update(sqliteSchema.sqliteUserCredits)
+      .set({
+        balance: sql`${sqliteSchema.sqliteUserCredits.balance} + ${amount}`,
+        lifetimeSpent: sql`${sqliteSchema.sqliteUserCredits.lifetimeSpent} - ${amount}`,
+        updatedAt: Date.now(),
+      })
+      .where(eq(sqliteSchema.sqliteUserCredits.userId, userId));
+
+    await sqliteDb.insert(sqliteSchema.sqliteCreditTransactions).values({
+      id: crypto.randomUUID(),
+      userId,
+      amount,
+      type,
       description: description ?? null,
       executionId: executionId ?? null,
       createdAt: Date.now(),
