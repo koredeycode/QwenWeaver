@@ -976,13 +976,18 @@ export const mysqlProvider: QueryProvider = {
     return (r.affectedRows ?? r.meta?.affectedRows ?? 0) > 0;
   },
 
-  async deductCredits(userId: string, amount: number, description?: string, executionId?: string) {
+  async deductCredits(
+    userId: string,
+    amount: number,
+    description?: string,
+    executionId?: string,
+  ): Promise<boolean> {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
     await mysqlDb
       .update(mysqlSchema.mysqlUserCredits)
       .set({
-        balance: sql`${mysqlSchema.mysqlUserCredits.balance} - ${amount}`,
+        balance: sql`GREATEST(${mysqlSchema.mysqlUserCredits.balance} - ${amount}, 0)`,
         lifetimeSpent: sql`${mysqlSchema.mysqlUserCredits.lifetimeSpent} + ${amount}`,
         updatedAt: new Date(),
       })
@@ -993,6 +998,36 @@ export const mysqlProvider: QueryProvider = {
       userId,
       amount: -amount,
       type: 'execution_cost',
+      description: description ?? null,
+      executionId: executionId ?? null,
+      createdAt: new Date(),
+    });
+    return true;
+  },
+
+  async refundCredits(
+    userId: string,
+    amount: number,
+    type: string,
+    description?: string,
+    executionId?: string,
+  ) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    await mysqlDb
+      .update(mysqlSchema.mysqlUserCredits)
+      .set({
+        balance: sql`${mysqlSchema.mysqlUserCredits.balance} + ${amount}`,
+        lifetimeSpent: sql`${mysqlSchema.mysqlUserCredits.lifetimeSpent} - ${amount}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(mysqlSchema.mysqlUserCredits.userId, userId));
+
+    await mysqlDb.insert(mysqlSchema.mysqlCreditTransactions).values({
+      id: crypto.randomUUID(),
+      userId,
+      amount,
+      type,
       description: description ?? null,
       executionId: executionId ?? null,
       createdAt: new Date(),

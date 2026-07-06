@@ -52,7 +52,8 @@ vi.mock('@qwenweaver/database', () => {
       .fn()
       .mockResolvedValue({ balance: 1000, lifetimeEarned: 1000, lifetimeSpent: 0 }),
     grantCredits: vi.fn(),
-    deductCredits: vi.fn(),
+    deductCredits: vi.fn().mockResolvedValue(true),
+    refundCredits: vi.fn(),
     reserveCredits: vi.fn().mockResolvedValue(true),
     listCreditTransactions: vi.fn().mockResolvedValue([]),
     listCredentials: vi.fn().mockResolvedValue([]),

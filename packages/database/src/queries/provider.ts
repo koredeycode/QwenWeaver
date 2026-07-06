@@ -222,6 +222,14 @@ export interface QueryProvider {
     amount: number,
     description?: string,
     executionId?: string,
+  ): Promise<boolean>;
+  /** Refund credits that were over-reserved — increments balance, decrements lifetimeSpent */
+  refundCredits(
+    userId: string,
+    amount: number,
+    type: string,
+    description?: string,
+    executionId?: string,
   ): Promise<void>;
   reserveCredits(userId: string, amount: number): Promise<boolean>;
   listCreditTransactions(userId: string, limit?: number): Promise<CreditTransaction[]>;
