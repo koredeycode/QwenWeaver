@@ -46,7 +46,7 @@ export async function extractGenerationPrompt(
       model,
       system: systemPrompt,
       prompt: `Raw input:\n${trimmed}`,
-      maxTokens: 512,
+      maxOutputTokens: 512,
       abortSignal: combinedSignal,
     });
 

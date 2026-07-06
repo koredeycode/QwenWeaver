@@ -689,19 +689,19 @@ describe('Simulation: Full Executor — Example Workflow Patterns', () => {
     const supervisorCall = agentCalls.find((c: any) => c[0].id === 'node-dub-supervisor');
 
     // Trigger has zero incoming bus messages (no upstream)
-    expect(triggerCall[1].length).toBe(0);
+    expect(triggerCall![1].length).toBe(0);
 
     // Each dub receives the trigger's output via bus
-    expect(spanishCall[1].length).toBe(1);
-    expect(spanishCall[1][0].sourceNodeId).toBe('node-trigger-dub');
-    expect(frenchCall[1].length).toBe(1);
-    expect(frenchCall[1][0].sourceNodeId).toBe('node-trigger-dub');
-    expect(japaneseCall[1].length).toBe(1);
-    expect(japaneseCall[1][0].sourceNodeId).toBe('node-trigger-dub');
+    expect(spanishCall![1].length).toBe(1);
+    expect(spanishCall![1][0].sourceNodeId).toBe('node-trigger-dub');
+    expect(frenchCall![1].length).toBe(1);
+    expect(frenchCall![1][0].sourceNodeId).toBe('node-trigger-dub');
+    expect(japaneseCall![1].length).toBe(1);
+    expect(japaneseCall![1][0].sourceNodeId).toBe('node-trigger-dub');
 
     // Supervisor receives all three dubs' outputs via bus
-    expect(supervisorCall[1].length).toBe(3);
-    const supervisorSources = supervisorCall[1].map((m: any) => m.sourceNodeId).sort();
+    expect(supervisorCall![1].length).toBe(3);
+    const supervisorSources = supervisorCall![1].map((m: any) => m.sourceNodeId).sort();
     expect(supervisorSources).toEqual(['node-dub-french', 'node-dub-japanese', 'node-dub-spanish']);
 
     // Check SSE events
@@ -770,16 +770,16 @@ describe('Simulation: Full Executor — Example Workflow Patterns', () => {
 
     // Verify bus message propagation: writer receives both upstream outputs
     const writerCall = vi.mocked(runAgent).mock.calls.find((c: any) => c[0].id === 'writer');
-    expect(writerCall[1].length).toBe(2);
-    const writerSources = writerCall[1].map((m: any) => m.sourceNodeId).sort();
+    expect(writerCall![1].length).toBe(2);
+    const writerSources = writerCall![1].map((m: any) => m.sourceNodeId).sort();
     expect(writerSources).toEqual(['analyst', 'researcher']);
 
     // Researcher and analyst each receive the trigger
     const researcherCall = vi
       .mocked(runAgent)
       .mock.calls.find((c: any) => c[0].id === 'researcher');
-    expect(researcherCall[1].length).toBe(1);
-    expect(researcherCall[1][0].sourceNodeId).toBe('trigger');
+    expect(researcherCall![1].length).toBe(1);
+    expect(researcherCall![1][0].sourceNodeId).toBe('trigger');
   });
 
   it('supervisor rejection backtrack re-runs workers and clears DataBus', async () => {
