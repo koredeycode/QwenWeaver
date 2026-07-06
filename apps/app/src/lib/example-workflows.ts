@@ -1654,7 +1654,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
           label: 'Spanish Voice',
           model: 'qwen3-tts-flash',
           systemPrompt:
-            'Narrate the Spanish translation: "Haga clic en el botón azul para iniciar su prueba gratuita. No se requiere tarjeta de crédito. Cancele cuando quiera."',
+            'Haga clic en el botón azul para iniciar su prueba gratuita. No se requiere tarjeta de crédito. Cancele cuando quiera.',
           outputFormat: 'audio',
         },
       },
@@ -1666,7 +1666,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
           label: 'French Voice',
           model: 'qwen3-tts-flash',
           systemPrompt:
-            'Narrate the French translation: "Cliquez sur le bouton bleu pour commencer votre essai gratuit. Aucune carte de crédit requise. Annulez à tout moment."',
+            'Cliquez sur le bouton bleu pour commencer votre essai gratuit. Aucune carte de crédit requise. Annulez à tout moment.',
           outputFormat: 'audio',
         },
       },
@@ -1678,7 +1678,7 @@ export const EXAMPLE_WORKFLOWS: ExampleWorkflow[] = [
           label: 'Japanese Voice',
           model: 'qwen3-tts-flash',
           systemPrompt:
-            'Narrate the Japanese translation: "青いボタンをクリックして無料トライアルを開始してください。クレジットカードは必要ありません。いつでもキャンセルできます。"',
+            '青いボタンをクリックして無料トライアルを開始してください。クレジットカードは必要ありません。いつでもキャンセルできます。',
           outputFormat: 'audio',
         },
       },

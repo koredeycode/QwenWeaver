@@ -20,6 +20,7 @@ import { generateWanxVideo } from './generators/wanx-video.js';
 import { generateHappyhorseVideo } from './generators/happyhorse-video.js';
 import { generateHappyhorseImageToVideo } from './generators/happyhorse-i2v.js';
 import { generateCosyVoiceAudio } from './generators/cosyvoice.js';
+import { extractGenerationPrompt } from './prompt-extractor.js';
 
 const log = createModuleLogger('engine/agent-runner');
 
@@ -145,8 +146,9 @@ export async function runAgent(
         .map((m) => extractPayloadText(m) ?? '')
         .filter(Boolean)
         .join('\n\n');
-      const prompt =
+      const rawPrompt =
         upstreamText || node.data.systemPrompt || node.data.label || 'Generates an image';
+      const prompt = await extractGenerationPrompt(rawPrompt, 'image', abortController.signal);
       diag?.log(`IMAGE GEN: node=${node.id}, prompt="${prompt.substring(0, 100)}"`);
       let buffer: Buffer;
 
@@ -179,17 +181,21 @@ export async function runAgent(
 
     // Handle Audio Generation (CosyVoice)
     if (node.data.outputFormat === 'audio') {
-      // Use upstream bus messages as the text to narrate
-      let ttsText = '';
-      for (const msg of busMessages) {
-        const textContent = extractPayloadText(msg);
-        if (textContent) {
-          ttsText += (ttsText ? '\n\n' : '') + textContent;
+      // Prefer node systemPrompt (translated text in dubbing workflows),
+      // fall back to upstream bus messages, then label.
+      let ttsText = node.data.systemPrompt || '';
+      if (!ttsText) {
+        for (const msg of busMessages) {
+          const textContent = extractPayloadText(msg);
+          if (textContent) {
+            ttsText += (ttsText ? '\n\n' : '') + textContent;
+          }
         }
       }
       if (!ttsText) {
         ttsText = node.data.label || 'Generates audio';
       }
+      ttsText = await extractGenerationPrompt(ttsText, 'audio', abortController.signal);
       diag?.log(`AUDIO GEN: node=${node.id}, ttsTextLength=${ttsText.length}`);
       let buffer: Buffer;
 
@@ -224,8 +230,9 @@ export async function runAgent(
         .map((m) => extractPayloadText(m) ?? '')
         .filter(Boolean)
         .join('\n\n');
-      const prompt =
+      const rawPrompt =
         upstreamText || node.data.systemPrompt || node.data.label || 'Generates a video';
+      const prompt = await extractGenerationPrompt(rawPrompt, 'video', abortController.signal);
       diag?.log(`VIDEO GEN: node=${node.id}, prompt="${prompt.substring(0, 100)}"`);
       let buffer: Buffer;
 
