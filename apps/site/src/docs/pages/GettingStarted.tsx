@@ -10,7 +10,7 @@ export function GettingStarted() {
       <h2>1. Sign Up</h2>
       <p>
         Go to <a href={URLS.app}>{URLS.app}</a> and create an account. You'll receive{' '}
-        <strong>1,000 free credits</strong> instantly — no credit card required.
+        <strong>5,000 free credits</strong> instantly — no credit card required.
       </p>
 
       <h2>2. Create a Workflow</h2>
@@ -25,7 +25,7 @@ export function GettingStarted() {
         <li>
           Drag an <strong>Agent Node</strong> and connect it to the trigger
         </li>
-        <li>Configure the agent's system prompt and model (defaults to qwen3-max)</li>
+        <li>Configure the agent's system prompt and model (defaults to qwen3.7-plus)</li>
         <li>
           Optionally add a <strong>Supervisor Node</strong> to review outputs, or a{' '}
           <strong>Debate Arena</strong> for multi-agent debate

@@ -50,7 +50,7 @@ export function Hero() {
             className="mt-4 text-sm text-on-surface-variant animate-fade-in"
             style={{ animationDelay: '0.35s' }}
           >
-            1000 free credits on signup <span className="mx-1.5 text-outline">·</span> No credit
+            5000 free credits on signup <span className="mx-1.5 text-outline">·</span> No credit
             card required
           </p>
         </div>

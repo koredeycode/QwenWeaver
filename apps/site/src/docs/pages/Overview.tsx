@@ -87,7 +87,7 @@ export function Overview() {
 
       <h2>Deployment Options</h2>
       <p>
-        <strong>Cloud:</strong> Use our hosted version at <a href={URLS.app}>{URLS.app}</a>. 1000
+        <strong>Cloud:</strong> Use our hosted version at <a href={URLS.app}>{URLS.app}</a>. 5000
         free credits on signup, no credit card required.
       </p>
       <p>

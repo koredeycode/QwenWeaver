@@ -20,7 +20,7 @@ const nodeTypes = [
     type: 'agent',
     description:
       'An LLM-powered agent with a system prompt. Processes upstream data and generates output.',
-    model: 'qwen3-max (default), qwen-plus, or custom',
+    model: 'qwen3.7-max, qwen3.7-plus, or custom',
     config:
       'System prompt, model selection, temperature, thinking budget, output format, MCP tools',
   },
@@ -29,7 +29,7 @@ const nodeTypes = [
     type: 'supervisor',
     description:
       'Reviews agent outputs and can reject them with feedback. Supports multi-round backtracking.',
-    model: 'qwen3-max with thinking enabled',
+    model: 'qwen3.7-max with thinking enabled',
     config: 'System prompt, thinking budget, max negotiation rounds',
   },
   {
@@ -37,7 +37,7 @@ const nodeTypes = [
     type: 'debate_arena',
     description:
       'Multi-agent debate with configurable modes (debate, negotiation, consensus). Supports optional AI arbitrator with scoring.',
-    model: 'qwen3-max (arbitrator)',
+    model: 'qwen3.7-max (arbitrator)',
     config:
       'Mode (debate/negotiation/consensus), max rounds, has arbitrator, arbitrator model, scoring criteria, output format (verdict/transcript/score)',
   },
@@ -95,10 +95,10 @@ export function NodeTypes() {
           <strong>System Prompt</strong> — instructions that define the agent's behavior and role
         </li>
         <li>
-          <strong>Model</strong> — choose from available LLM models (defaults to qwen3-max)
+          <strong>Model</strong> — choose from available LLM models (defaults to qwen3.7-plus)
         </li>
         <li>
-          <strong>Enable Thinking</strong> — enables chain-of-thought reasoning (qwen3-max only)
+          <strong>Enable Thinking</strong> — enables chain-of-thought reasoning (qwen3.7-max)
         </li>
         <li>
           <strong>Thinking Budget</strong> — max tokens allocated to reasoning (default: 4096)
@@ -114,7 +114,7 @@ export function NodeTypes() {
 
       <h2>Supervisor Node Details</h2>
       <p>
-        Supervisor nodes use <strong>qwen3-max with thinking enabled</strong> by default. During
+        Supervisor nodes use <strong>qwen3.7-max with thinking enabled</strong> by default. During
         execution, if a supervisor's output contains <code>[REJECT]</code>, the engine:
       </p>
       <ol>

@@ -13,7 +13,7 @@ export function CTA() {
           className="mx-auto mt-4 max-w-xl text-lg text-on-surface-variant animate-fade-in"
           style={{ animationDelay: '0.1s' }}
         >
-          Start free and get 1000 credits to begin orchestrating. No credit card.
+          Start free and get 5000 credits to begin orchestrating. No credit card.
         </p>
         <div
           className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center animate-slide-up"

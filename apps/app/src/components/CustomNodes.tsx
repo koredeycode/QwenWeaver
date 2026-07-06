@@ -215,7 +215,7 @@ export const AgentNode = memo(({ id, data }: NodeProps<any>) => {
         <div className="flex items-center gap-2">
           <Bot className="w-4 h-4 text-[#f97316]" />
           <span className="text-[10px] font-mono font-bold tracking-wider text-primary">
-            AGENT ({data.model || 'qwen-plus'})
+            AGENT ({data.model || 'qwen3.7-plus'})
           </span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -294,7 +294,7 @@ export const SupervisorNode = memo(({ id, data }: NodeProps<any>) => {
         <div className="flex items-center gap-2">
           <Brain className="w-4 h-4 text-[#2563eb]" />
           <span className="text-[10px] font-mono font-bold tracking-wider text-secondary">
-            SUPERVISOR ({data.model || 'qwen3-max'})
+            SUPERVISOR ({data.model || 'qwen3.7-max'})
           </span>
         </div>
         <div className="flex items-center gap-1.5">

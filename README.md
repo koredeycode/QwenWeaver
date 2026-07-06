@@ -33,24 +33,42 @@ Built for the Qwen Cloud Hackathon Track 3 ("Agent Society").
 - **AI Media Generation** — built-in support for image generation (Wanx), audio synthesis (CosyVoice), and video generation (Wanx Video) via Qwen DashScope API.
 - **Multi-Output Formats** — agents can output markdown, HTML, JSON, CSV, XML, YAML, plain text, images, audio, or video.
 - **AI Copilot** — natural-language workflow builder embedded in the canvas. Describe what you want and the copilot generates or modifies the graph.
-- **Dual-Database** — SQLite (better-sqlite3) for local development, PostgreSQL for production. Schema managed via Drizzle ORM with additive-only migrations.
-- **Granular Metrics** — per-node timing, token counts, parallel speedup ratio, and efficiency metrics reported after every execution.
 - **Template Library** — community workflow templates with fork support. Publish and discover reusable workflows.
-- **Prometheus Metrics** — `/api/metrics` endpoint exposes execution counts, LLM token usage, agent durations, and rate limiting stats.
 
 ## Architecture
 
+```mermaid
+flowchart TB
+    subgraph "Frontend"
+        Canvas["React Flow v12 Canvas<br/>Visual DAG Editor"]
+        Site["Marketing Site<br/>Home, Pricing, Docs"]
+    end
+
+    subgraph "Backend (Hono.js)"
+        API["API Server<br/>REST + SSE Streaming"]
+        Engine["Execution Engine<br/>Kahn's Algorithm<br/>Parallel Batch Execution"]
+    end
+
+    subgraph "AI & Tools"
+        DashScope["DashScope API<br/>Qwen3.7-Max / Qwen3.7-Plus"]
+        MCP["MCP Servers<br/>HTTP & Stdio"]
+    end
+
+    subgraph "Database"
+        DB["Drizzle ORM<br/>SQLite (dev) / PostgreSQL (prod)"]
+    end
+
+    Canvas -->|"DAG JSON"| API
+    API --> Engine
+    Engine -->|"streamText"| DashScope
+    Engine -->|"tool calls"| MCP
+    Engine --> DB
+    API -->|"SSE events"| Canvas
 ```
-qwenweaver/
-├── apps/
-│   ├── app/          React 19 + Vite + React Flow v12 + Zustand + Tailwind
-│   ├── site/         Marketing site — Vite + React + Tailwind v4
-│   └── api/          Hono.js backend — SSE streaming, DAG execution, MCP tools
-├── packages/
-│   ├── types/        Shared Zod schemas & TypeScript interfaces
-│   ├── database/     Drizzle ORM — dual dialect (SQLite / PostgreSQL)
-│   └── mcp-client/   Model Context Protocol transport (HTTP & Stdio)
-```
+
+The frontend canvas serializes the workflow DAG as JSON and sends it to the API. The backend compiles the graph into topological batches using Kahn's Algorithm and executes independent agents concurrently. Results stream back in real time via Server-Sent Events, with tokens, status updates, and edge activations animating on the canvas.
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full architecture documentation.
 
 ## Prerequisites
 
@@ -90,7 +108,7 @@ pnpm dev
 | **Frontend** | React 19, Vite 8, React Flow v12, Zustand, Tailwind v4, shadcn/ui |
 | **Backend**  | Hono.js 4, `@hono/node-server`, SSE streaming                     |
 | **Database** | Drizzle ORM, better-sqlite3 (dev) / postgres (prod)               |
-| **AI**       | `@ai-sdk/alibaba` — Qwen3-Max / Qwen3-Plus on DashScope           |
+| **AI**       | `@ai-sdk/alibaba` — Qwen3.7-Max / Qwen3.7-Plus on DashScope       |
 | **MCP**      | `@modelcontextprotocol/sdk` — HTTP & Stdio transports             |
 | **Auth**     | Better Auth — JWT sessions, email/password, OAuth                 |
 
