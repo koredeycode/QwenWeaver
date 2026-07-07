@@ -30,4 +30,8 @@ export class LocalStorageDriver implements StorageService {
     const base = PUBLIC_URL;
     return `${base}/public/storage/runs/${key}`;
   }
+
+  async getSignedUrl(key: string, _expires?: number): Promise<string> {
+    return this.getUrl(key);
+  }
 }
