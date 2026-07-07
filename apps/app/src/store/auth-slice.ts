@@ -66,12 +66,12 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
           console.error('Register error', result.error);
           return false;
         }
-        const session = await authClient.getSession();
-        if (session?.data) {
-          set({ user: session.data.user, session: session.data.session });
+        const signUpData = result.data as unknown as { user: any; session?: any } | null;
+        if (signUpData?.session) {
+          set({ user: signUpData.user, session: signUpData.session });
           fetchCredits();
-          return true;
         }
+        return true;
       } catch (e) {
         console.error('Registration error', e);
       }

@@ -34,7 +34,7 @@ export function buildSystemPrompt(node: NodePayload): string {
   // Add workspace guidance
   base = `${base}\n\n[SHARED STATE GUIDANCE]: You have access to a shared workspace where you can write data using 'workspace_write' for other agents to read later in the workflow, regardless of the graph connections. Use this for important findings that future agents need, or for data that multiple agents should contribute to (use 'workspace_append' for arrays). Regular output flows automatically to connected downstream agents.`;
 
-  base = `${base}\n\n[OUTPUT REQUIREMENT]: Produce your complete answer as text.`;
+  base = `${base}\n\n[OUTPUT REQUIREMENT]: After using any tools, you MUST produce your complete answer as text output. Do NOT rely solely on tool calls to convey your response — always include your full analysis, summary, or verdict as natural language text after your tool calls.`;
 
   return base;
 }

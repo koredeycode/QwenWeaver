@@ -451,31 +451,30 @@ export async function runAgent(
       }
     }
 
-    // Fallback: if still empty but the model used workspace tools, extract value from tool args
-    if (!fullText && toolCalls) {
+    // Fallback: if still empty or very short but the model used workspace tools, extract the most substantial value
+    if ((!fullText || fullText.length < 100) && toolCalls) {
+      let bestWorkspaceValue = '';
       for (const tc of toolCalls as Array<Record<string, unknown>>) {
         const name = tc.toolName ?? tc.name ?? '';
         const args = tc.args ?? tc.arguments ?? tc.input ?? {};
         if (name === 'workspace_write' && typeof args === 'object' && args !== null) {
           const a = args as Record<string, unknown>;
-          if (a.value && typeof a.value === 'string') {
-            fullText = a.value;
-            break;
-          }
-          const propValues = Object.values(a).filter((v): v is string => typeof v === 'string');
-          if (propValues.length > 0) {
-            fullText = propValues[0];
-            break;
+          const val = typeof a.value === 'string' ? a.value : '';
+          if (val.length > bestWorkspaceValue.length) {
+            bestWorkspaceValue = val;
           }
         }
       }
+      if (bestWorkspaceValue.length > (fullText?.length ?? 0)) {
+        fullText = bestWorkspaceValue;
+      }
     }
 
-    // Last resort: if still empty, try reasoning text, tool input, or bus fallback
-    if (!fullText) {
-      if (reasoningText) {
+    // Last resort: if still empty or very short, try reasoning text (for supervisor/thinking nodes)
+    if (!fullText || fullText.length < 100) {
+      if (reasoningText && reasoningText.length > (fullText?.length ?? 0)) {
         fullText = reasoningText;
-      } else if (lastToolInput) {
+      } else if (!fullText && lastToolInput) {
         try {
           const parsed = JSON.parse(lastToolInput);
           const vals = Object.values(parsed).filter((v): v is string => typeof v === 'string');
