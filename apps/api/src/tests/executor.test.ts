@@ -79,6 +79,16 @@ describe('executor', () => {
     const statusEvents = emitter.events.filter((e) => e.event === 'status_update');
     expect(statusEvents.length).toBeGreaterThanOrEqual(6); // running + completed for each
 
+    // Verify outputText is present in completed status_update events
+    const completedStatusEvents = emitter.events.filter(
+      (e: any) => e.event === 'status_update' && e.data.status === 'completed',
+    );
+    expect(completedStatusEvents.length).toBe(3);
+    for (const evt of completedStatusEvents) {
+      expect((evt.data as any).outputText).toBeDefined();
+      expect((evt.data as any).outputText).toContain('Output from');
+    }
+
     // Check that complete event was emitted
     const completeEvents = emitter.events.filter((e) => e.event === 'complete');
     expect(completeEvents).toHaveLength(1);

@@ -363,6 +363,7 @@ export async function executeWorkflow(
         timestamp: Date.now(),
         outputUrl: result.outputs?.[0]?.value,
         outputParts: result.outputs,
+        outputText: result.text,
         error: result.error,
       });
 

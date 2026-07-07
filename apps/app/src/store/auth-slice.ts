@@ -66,8 +66,9 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
           console.error('Register error', result.error);
           return false;
         }
-        if (result.data?.session) {
-          set({ user: result.data.user, session: result.data.session });
+        const signUpData = result.data as unknown as { user: any; session?: any } | null;
+        if (signUpData?.session) {
+          set({ user: signUpData.user, session: signUpData.session });
           fetchCredits();
         }
         return true;
