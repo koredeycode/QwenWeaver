@@ -15,6 +15,7 @@ import { creditsRoutes } from './routes/credits/index.js';
 import { credentialsRoutes } from './routes/credentials/index.js';
 import { templateRoutes } from './routes/templates/index.js';
 import { fileRoutes } from './routes/files/index.js';
+import { storageRoutes } from './routes/storage/index.js';
 import { workspaceRoutes } from './routes/workspace/index.js';
 
 import { register } from './metrics.js';
@@ -86,7 +87,8 @@ app.use('/api/*', async (c, next) => {
     path.startsWith('/api/docs') ||
     path.startsWith('/api/openapi.json') ||
     path.startsWith('/api/mcp/registry') ||
-    path.startsWith('/api/metrics')
+    path.startsWith('/api/metrics') ||
+    path.startsWith('/api/storage/proxy')
   ) {
     return next();
   }
@@ -124,6 +126,7 @@ app.use('/api/*', async (c, next) => {
     '/api/reset-password',
     '/api/change-password',
     '/api/update-user',
+    '/api/storage/proxy',
   ];
   for (const skip of skipPaths) {
     if (path.startsWith(skip)) {
@@ -175,6 +178,7 @@ app.use('/api/*', async (c, next) => {
     '/api/reset-password',
     '/api/change-password',
     '/api/update-user',
+    '/api/storage/proxy',
   ];
   for (const skip of skipPaths) {
     if (path.startsWith(skip)) {
@@ -200,6 +204,7 @@ app
   .route('/api/credits', creditsRoutes)
   .route('/api/credentials', credentialsRoutes)
   .route('/api/files', fileRoutes)
+  .route('/api/storage', storageRoutes)
   .route('/api/workspace', workspaceRoutes);
 
 export type AppType = typeof app;

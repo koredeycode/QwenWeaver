@@ -7,6 +7,7 @@ declare module 'ali-oss' {
     endpoint?: string;
     internal?: boolean;
     secure?: boolean;
+    authorizationV4?: boolean;
   }
 
   interface PutOptions {
@@ -42,6 +43,13 @@ declare module 'ali-oss' {
     get(name: string): Promise<GetResult>;
     list(query?: { prefix?: string; marker?: string; 'max-keys'?: number }): Promise<ListResult>;
     delete(name: string): Promise<DeleteResult>;
+    signatureUrlV4(
+      method: string,
+      expires: number,
+      request: Record<string, unknown>,
+      objectName: string,
+      additionalHeaders?: Record<string, string>,
+    ): Promise<string>;
   }
 
   export default OSS;
