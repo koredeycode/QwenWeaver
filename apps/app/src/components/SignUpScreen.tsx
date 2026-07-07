@@ -45,9 +45,10 @@ export const SignUpScreen = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [verifyEmail, setVerifyEmail] = useState('');
 
   useEffect(() => {
-    if (user) navigate('/');
+    if (user?.emailVerified) navigate('/');
   }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -64,8 +65,13 @@ export const SignUpScreen = () => {
     setIsLoading(true);
     try {
       const success = await register(email, password, name);
-      if (success) navigate('/');
-      else setError('Registration failed. Email may already be in use.');
+      if (success) {
+        if (!user?.emailVerified) {
+          setVerifyEmail(email);
+          return;
+        }
+        navigate('/');
+      } else setError('Registration failed. Email may already be in use.');
     } catch {
       setError('Could not connect to the server. Please try again.');
     } finally {
@@ -114,13 +120,23 @@ export const SignUpScreen = () => {
               </p>
             </div>
 
-            {error && (
-              <div className="p-3 bg-red-50 border border-red-200 text-xs font-mono text-rose-600 rounded-lg">
-                {error}
+            {verifyEmail ? (
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg text-center">
+                <h3 className="text-sm font-bold text-emerald-800 mb-1">Account created!</h3>
+                <p className="text-xs text-emerald-700 leading-relaxed">
+                  We sent a verification link to{' '}
+                  <span className="font-semibold">{verifyEmail}</span>.
+                  Click the link to activate your account.
+                </p>
               </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
+            ) : (
+              <>
+                {error && (
+                  <div className="p-3 bg-red-50 border border-red-200 text-xs font-mono text-rose-600 rounded-lg">
+                    {error}
+                  </div>
+                )}
+                <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-700">Name</label>
                 <input
@@ -231,6 +247,8 @@ export const SignUpScreen = () => {
                 </button>
               </div>
             </form>
+              </>
+            )}
           </div>
 
           <div className="text-center text-xs text-slate-500 mt-6">
