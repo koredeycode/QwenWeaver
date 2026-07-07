@@ -186,3 +186,35 @@ Agents can connect to external tools via the Model Context Protocol. The `@qwenw
 - **Stdio** — local processes (e.g., npx-based servers)
 
 Tools are discovered on execution via `listTools()` and injected into the agent's prompt. Auth methods include `none`, `api_key` (header), `bearer` (token), and `basic` (username+password). Credentials are encrypted at rest in the `credentials` table and resolved at runtime via the credential resolver.
+
+---
+
+## Agent Disagreement and Conflict Resolution
+
+To meet the requirements of Track 3 (Agent Society), QwenWeaver implements three key architectural patterns for managing agent disagreements, execution conflicts, and collaborative shared memory state:
+
+### 1. Supervisor Backtracking (Sequential Quality Gates)
+
+When a `supervisor` node reviews upstream outputs and encounters issues, it outputs a `[REJECT]` prefix along with constructive natural-language feedback. The execution engine:
+
+- Traps the rejection during batch execution.
+- Identifies all upstream nodes that contributed inputs to the supervisor.
+- Wipes their published outputs from the active `DataBus`.
+- Appends the supervisor's feedback to the upstream agents' cumulative revision history.
+- Rewinds Kahn's execution queue (backtracks) to re-run the upstream agents with the new feedback context.
+- Runs this feedback loop up to a user-configured limit (default: 3 rounds).
+
+### 2. Debate Arena (Democratic Consensus)
+
+For complex multi-agent negotiations, the `debate_arena` node groups multiple worker agents in a structured, multi-turn exchange:
+
+- **Modes**: Supports `debate` (arguing distinct positions), `negotiation` (compromising on overlap), and `consensus` (collaborative alignment).
+- **Rounds**: Workers generate parallel statements and rebuttals, referencing the shared discussion transcript in subsequent turns.
+- **Impartial Arbitration**: An optional AI arbitrator (`qwen3.7-max` with reasoning/thinking enabled) evaluates the transcript, scores each participant based on custom criteria, and produces a final consolidated verdict.
+
+### 3. Shared Workspace Concurrency Control
+
+When multiple agents in a parallel batch write to the shared blackboard, data race conditions can occur. QwenWeaver mitigates this using optimistic concurrency control:
+
+- The `workspace_append` tool reads the entry, tracks its current revision round, appends the new data, and attempts to write it back.
+- If a write conflict is detected (the round changed in the database due to a concurrent write by another agent), the tool rolls back, waits with exponential backoff, and retries up to 5 times.
