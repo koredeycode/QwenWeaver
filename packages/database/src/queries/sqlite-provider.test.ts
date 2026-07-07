@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { createConnection, getConnection, sqliteSchema } from '../index.js';
 import { sqliteProvider } from './sqlite-provider.js';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
+import { sql } from 'drizzle-orm';
 import type { WorkflowPayload, CopilotHistoryMessage } from '@qwenweaver/types';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -212,6 +213,9 @@ describe('sqlite-provider', () => {
     const { db } = getConnection();
     const sqliteDb = db as BetterSQLite3Database<any>;
     const s = sqliteSchema;
+
+    sqliteDb.run(sql`PRAGMA foreign_keys = OFF`);
+
     sqliteDb.delete(s.sqliteAgentLogs).run();
     sqliteDb.delete(s.sqliteExecutions).run();
     sqliteDb.delete(s.sqliteCredentials).run();
@@ -223,6 +227,8 @@ describe('sqlite-provider', () => {
     sqliteDb.delete(s.sqliteTemplates).run();
     sqliteDb.delete(s.sqliteTemplateCategories).run();
     sqliteDb.delete(s.user).run();
+
+    sqliteDb.run(sql`PRAGMA foreign_keys = ON`);
 
     // Create a test user
     userId = crypto.randomUUID();
