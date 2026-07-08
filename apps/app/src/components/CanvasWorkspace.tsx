@@ -1,8 +1,22 @@
-import { Background, MiniMap, Panel, ReactFlow, useReactFlow } from '@xyflow/react';
+import {
+  Background,
+  MiniMap,
+  Panel,
+  ReactFlow,
+  ReactFlowProvider,
+  useReactFlow,
+} from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { toPng } from 'html-to-image';
+const toPng = (() => {
+  let _fn: ((node: HTMLElement, options?: Record<string, unknown>) => Promise<string>) | null =
+    null;
+  return async (node: HTMLElement, options?: Record<string, unknown>) => {
+    if (!_fn) _fn = (await import('html-to-image')).toPng;
+    return _fn(node, options);
+  };
+})();
 
 import type { NodeType } from '@qwenweaver/types';
 import { client, withRefresh } from '../lib/api-client.js';
@@ -65,6 +79,14 @@ import { PublishTemplateDialog } from './PublishTemplateDialog.js';
 import { ClearCanvasDialog } from './ClearCanvasDialog.js';
 
 export const CanvasWorkspace = () => {
+  return (
+    <ReactFlowProvider>
+      <CanvasContent />
+    </ReactFlowProvider>
+  );
+};
+
+const CanvasContent = () => {
   const nodes = useStore((s) => s.nodes);
   const edges = useStore((s) => s.edges);
   const onNodesChange = useStore((s) => s.onNodesChange);

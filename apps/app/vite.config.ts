@@ -12,4 +12,19 @@ export default defineConfig({
       '/public/storage': 'http://localhost:3001',
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react-router'))
+            return 'vendor-react';
+          if (id.includes('node_modules/@xyflow/react')) return 'vendor-flow';
+          if (id.includes('node_modules/lucide-react') || id.includes('node_modules/sonner'))
+            return 'vendor-ui';
+          if (id.includes('node_modules/better-auth')) return 'vendor-auth';
+          if (id.includes('node_modules/hono')) return 'vendor-api';
+        },
+      },
+    },
+  },
 });
