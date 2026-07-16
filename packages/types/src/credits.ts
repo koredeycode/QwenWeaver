@@ -86,8 +86,10 @@ const NODE_DEFAULT_MODEL: Record<string, string> = {
   supervisor: 'qwen3.7-max',
   agent: 'qwen3.7-plus',
   mcp_tool: 'qwen3.7-plus',
+  debate_arena: 'qwen3.7-max',
   trigger: 'qwen3.6-flash',
   input_trigger: 'qwen3.6-flash',
+  file_trigger: 'qwen3.6-flash',
   logic: 'qwen3.6-flash',
 };
 
@@ -105,8 +107,10 @@ const ESTIMATED_MAX_TOKENS: Record<string, number> = {
   agent: 3000,
   supervisor: 20000,
   mcp_tool: 2000,
+  debate_arena: 20000,
   trigger: 0,
   input_trigger: 0,
+  file_trigger: 0,
   logic: 0,
 };
 
