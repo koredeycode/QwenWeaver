@@ -16,7 +16,7 @@ export function createWorkspaceTools(
   return {
     workspace_write: tool({
       description:
-        'Write a value to the shared workspace blackboard under a key. Other agents can read it. Existing keys are updated (upsert). Keys use dot-path naming like "research.findings".',
+        'Write a value to the shared workspace blackboard under a key. Other agents can read it. Existing keys are updated (upsert). Keys use dot-path naming like "research.findings". Note: writing to the workspace does NOT replace your answer — you must still produce your complete response as your final message.',
       parameters: z.object({
         key: z.string().min(1).max(256).describe('Dot-path key, e.g. "research.findings"'),
         value: z.any().describe('JSON-serializable value to store'),

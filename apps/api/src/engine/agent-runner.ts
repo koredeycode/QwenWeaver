@@ -451,24 +451,9 @@ export async function runAgent(
       }
     }
 
-    // Fallback: if still empty or very short but the model used workspace tools, extract the most substantial value
-    if ((!fullText || fullText.length < 100) && toolCalls) {
-      let bestWorkspaceValue = '';
-      for (const tc of toolCalls as Array<Record<string, unknown>>) {
-        const name = tc.toolName ?? tc.name ?? '';
-        const args = tc.args ?? tc.arguments ?? tc.input ?? {};
-        if (name === 'workspace_write' && typeof args === 'object' && args !== null) {
-          const a = args as Record<string, unknown>;
-          const val = typeof a.value === 'string' ? a.value : '';
-          if (val.length > bestWorkspaceValue.length) {
-            bestWorkspaceValue = val;
-          }
-        }
-      }
-      if (bestWorkspaceValue.length > (fullText?.length ?? 0)) {
-        fullText = bestWorkspaceValue;
-      }
-    }
+    // Fallback: if the model delivered its main content via workspace_write tools, merge the
+    // most substantial workspace value into the output so downstream nodes and the UI see it
+    fullText = mergeWorkspaceContent(fullText, toolCalls as Array<Record<string, unknown>>);
 
     // Last resort: if still empty or very short, try reasoning text (for supervisor/thinking nodes)
     if (!fullText || fullText.length < 100) {
@@ -558,6 +543,39 @@ export async function runAgent(
     clearTimeout(timeoutId);
     if (pollInterval) clearInterval(pollInterval);
   }
+}
+
+export function mergeWorkspaceContent(
+  fullText: string,
+  toolCalls: Array<Record<string, unknown>> | undefined,
+): string {
+  if (!toolCalls) return fullText;
+  let bestWorkspaceValue = '';
+  for (const tc of toolCalls) {
+    const name = tc.toolName ?? tc.name ?? '';
+    const args = tc.args ?? tc.arguments ?? tc.input ?? {};
+    if (name === 'workspace_write' && typeof args === 'object' && args !== null) {
+      const a = args as Record<string, unknown>;
+      let val = '';
+      if (typeof a.value === 'string') {
+        val = a.value;
+      } else if (a.value !== null && a.value !== undefined) {
+        try {
+          val = JSON.stringify(a.value, null, 2);
+        } catch {
+          val = '';
+        }
+      }
+      if (val.length > bestWorkspaceValue.length) {
+        bestWorkspaceValue = val;
+      }
+    }
+  }
+  const textLen = fullText.length;
+  if (bestWorkspaceValue.length > Math.max(textLen * 2, 100)) {
+    return textLen > 0 ? `${fullText.trimEnd()}\n\n${bestWorkspaceValue}` : bestWorkspaceValue;
+  }
+  return fullText;
 }
 
 function extractImageFromBus(busMessages: BusMessage[]): string | undefined {
