@@ -72,7 +72,6 @@ pnpm dev
 # App:  http://localhost:5173
 # Site: http://localhost:5174
 # API:  http://localhost:3001
-# Docs: http://localhost:3001/api/docs
 ```
 
 ## Available Commands
