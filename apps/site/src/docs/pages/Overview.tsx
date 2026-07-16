@@ -71,6 +71,18 @@ export function Overview() {
             <td>Entry point — passes user input into the workflow</td>
           </tr>
           <tr>
+            <td>Input Trigger Node</td>
+            <td>Like Trigger Node but with custom input formatting and validation</td>
+          </tr>
+          <tr>
+            <td>File Trigger Node</td>
+            <td>Entry point that passes an uploaded file to downstream nodes</td>
+          </tr>
+          <tr>
+            <td>Logic Node</td>
+            <td>Routing, merging, and conditional branching operations</td>
+          </tr>
+          <tr>
             <td>Conversation Edge</td>
             <td>Enables multi-round back-and-forth exchanges between agents</td>
           </tr>

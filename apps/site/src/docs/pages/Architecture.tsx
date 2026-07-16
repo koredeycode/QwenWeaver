@@ -55,6 +55,12 @@ export function Architecture() {
             </td>
             <td>MCP transport layer — HTTP Streamable and Stdio clients.</td>
           </tr>
+          <tr>
+            <td>
+              <code>packages/encryption</code>
+            </td>
+            <td>AES-256-GCM credential encryption (API keys, tokens, auth secrets).</td>
+          </tr>
         </tbody>
       </table>
 
