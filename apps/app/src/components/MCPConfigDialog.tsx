@@ -269,7 +269,13 @@ export const MCPConfigDialog = () => {
               <AuthTypeSelect
                 value={data.mcpAuthConfig?.type || 'none'}
                 onChange={handleAuthTypeChange}
+                supportedTypes={data.mcpSupportedAuthTypes}
               />
+              {data.mcpSupportedAuthTypes && data.mcpSupportedAuthTypes.length > 0 && (
+                <p className="text-[9px] text-slate-400 font-mono">
+                  This server supports: {data.mcpSupportedAuthTypes.join(', ')}
+                </p>
+              )}
               {data.mcpAuthConfig?.type && data.mcpAuthConfig.type !== 'none' && (
                 <CredentialPicker
                   authConfig={data.mcpAuthConfig}
@@ -433,10 +439,22 @@ export const MCPConfigDialog = () => {
   );
 };
 
-function AuthTypeSelect({ value, onChange }: { value: string; onChange: (type: string) => void }) {
+function AuthTypeSelect({
+  value,
+  onChange,
+  supportedTypes,
+}: {
+  value: string;
+  onChange: (type: string) => void;
+  supportedTypes?: string[];
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const types = ['none', 'bearer', 'api_key', 'basic'];
+  const allTypes = ['none', 'bearer', 'api_key', 'basic'];
+  const types =
+    supportedTypes && supportedTypes.length > 0
+      ? allTypes.filter((t) => t === 'none' || supportedTypes.includes(t))
+      : allTypes;
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {

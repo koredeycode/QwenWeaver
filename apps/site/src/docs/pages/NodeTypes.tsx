@@ -16,6 +16,14 @@ const nodeTypes = [
     config: 'Label, input schema, validation rules',
   },
   {
+    name: 'File Trigger Node',
+    type: 'file_trigger',
+    description:
+      'Entry point that passes an uploaded file (image, audio, video) to downstream nodes.',
+    model: 'qwen3.6-flash',
+    config: 'Label, file upload, output format',
+  },
+  {
     name: 'Agent Node',
     type: 'agent',
     description:

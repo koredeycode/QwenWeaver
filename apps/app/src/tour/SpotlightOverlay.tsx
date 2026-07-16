@@ -241,9 +241,17 @@ export const SpotlightOverlay = () => {
     const handleScroll = () => recalc();
     document.addEventListener('scroll', handleScroll, { passive: true });
 
+    const viewport = document.querySelector('.react-flow__viewport');
+    let mo: MutationObserver | null = null;
+    if (viewport) {
+      mo = new MutationObserver(recalc);
+      mo.observe(viewport, { attributes: true, attributeFilter: ['style'] });
+    }
+
     return () => {
       ro.disconnect();
       document.removeEventListener('scroll', handleScroll);
+      mo?.disconnect();
     };
   }, [isTourActive, recalc]);
 

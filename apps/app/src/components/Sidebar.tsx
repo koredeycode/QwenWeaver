@@ -152,7 +152,7 @@ export const Sidebar = ({
         </a>
 
         <a
-          href="#"
+          href="https://qwenweaver.xyz/docs"
           target="_blank"
           rel="noopener noreferrer"
           className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-all cursor-pointer"
@@ -162,7 +162,7 @@ export const Sidebar = ({
         </a>
 
         <a
-          href="#"
+          href="https://qwenweaver.xyz/docs/getting-started"
           target="_blank"
           rel="noopener noreferrer"
           className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-all cursor-pointer"
@@ -307,7 +307,7 @@ export const Sidebar = ({
         {/* Documentation / Support links */}
         <div className="pt-2 flex flex-col gap-1 border-t border-[#cbd5e1]/40">
           <a
-            href="#"
+            href="https://qwenweaver.xyz/docs"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2.5 px-2 py-1 text-xs text-slate-500 hover:text-slate-900 transition-colors"
@@ -316,7 +316,7 @@ export const Sidebar = ({
             <span>Documentation</span>
           </a>
           <a
-            href="#"
+            href="https://qwenweaver.xyz/docs/getting-started"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2.5 px-2 py-1 text-xs text-slate-500 hover:text-slate-900 transition-colors"

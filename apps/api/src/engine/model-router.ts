@@ -13,8 +13,10 @@ const MODEL_DEFAULTS: Record<string, string> = {
   supervisor: 'qwen3.7-max',
   agent: 'qwen3.7-plus',
   mcp_tool: 'qwen3.7-plus',
+  debate_arena: 'qwen3.7-max',
   trigger: 'qwen3.6-flash',
   input_trigger: 'qwen3.6-flash',
+  file_trigger: 'qwen3.6-flash',
   logic: 'qwen3.6-flash',
 };
 

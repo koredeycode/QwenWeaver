@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, Copy, Trash2, X, HelpCircle, Bot, Brain, Wrench, Play, Upload } from 'lucide-react';
 import { useStore } from '../store/index.js';
-import type { OutputFormat } from '@qwenweaver/types';
+import type { OutputFormat, DebateArenaConfig } from '@qwenweaver/types';
 
 export const Inspector = ({ onClose }: { onClose: () => void }) => {
   const selectedNodeId = useStore((s) => s.selectedNodeId);
@@ -39,6 +39,20 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
 
   const handleThinkingToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (selectedNodeId) updateNodeData(selectedNodeId, { enableThinking: e.target.checked });
+  };
+
+  const updateDebateConfig = (patch: Partial<DebateArenaConfig>) => {
+    if (selectedNodeId && selectedNode)
+      updateNodeData(selectedNodeId, {
+        debateArenaConfig: {
+          mode: 'debate',
+          maxRounds: 3,
+          hasArbitrator: false,
+          outputFormat: 'verdict',
+          ...(selectedNode.data.debateArenaConfig ?? {}),
+          ...patch,
+        },
+      });
   };
 
   const getNodeIcon = (type: string | undefined) => {
@@ -242,6 +256,113 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
                 >
                   Open MCP Configuration
                 </button>
+              </div>
+            )}
+
+            {/* DEBATE ARENA CONFIGURATION */}
+            {selectedNode.type === 'debate_arena' && (
+              <div className="space-y-4 border-t border-slate-100 pt-3">
+                <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+                  Debate Arena Configuration
+                </label>
+                <div>
+                  <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-1">
+                    Mode
+                  </label>
+                  <select
+                    value={selectedNode.data.debateArenaConfig?.mode || 'debate'}
+                    onChange={(e) =>
+                      updateDebateConfig({ mode: e.target.value as DebateArenaConfig['mode'] })
+                    }
+                    className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
+                  >
+                    <option value="debate">Debate (adversarial argument)</option>
+                    <option value="negotiation">Negotiation (trade-off seeking)</option>
+                    <option value="consensus">Consensus (alignment building)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-1">
+                    Max Rounds (1-20)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={selectedNode.data.debateArenaConfig?.maxRounds ?? 3}
+                    onChange={(e) =>
+                      updateDebateConfig({
+                        maxRounds: Math.min(20, Math.max(1, Number(e.target.value) || 1)),
+                      })
+                    }
+                    className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-1">
+                    Output Format
+                  </label>
+                  <select
+                    value={selectedNode.data.debateArenaConfig?.outputFormat || 'verdict'}
+                    onChange={(e) =>
+                      updateDebateConfig({
+                        outputFormat: e.target.value as DebateArenaConfig['outputFormat'],
+                      })
+                    }
+                    className="w-full bg-white border border-[#cbd5e1] p-2 text-xs font-mono text-slate-800 outline-none rounded-none"
+                  >
+                    <option value="verdict">Verdict (final decision only)</option>
+                    <option value="transcript">Transcript (full exchange)</option>
+                    <option value="score">Score (participant ratings)</option>
+                  </select>
+                </div>
+                <div className="space-y-3 bg-slate-50 border border-slate-200 p-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-mono font-bold text-slate-700">
+                      AI Arbitrator (qwen3.7-max reasoning)
+                    </label>
+                    <input
+                      type="checkbox"
+                      checked={selectedNode.data.debateArenaConfig?.hasArbitrator ?? false}
+                      onChange={(e) => updateDebateConfig({ hasArbitrator: e.target.checked })}
+                      className="w-3.5 h-3.5 accent-purple-600"
+                    />
+                  </div>
+                  {selectedNode.data.debateArenaConfig?.hasArbitrator && (
+                    <>
+                      <div>
+                        <label className="block text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-1">
+                          Arbitrator Model
+                        </label>
+                        <select
+                          value={
+                            selectedNode.data.debateArenaConfig?.arbitratorModel || 'qwen3.7-max'
+                          }
+                          onChange={(e) => updateDebateConfig({ arbitratorModel: e.target.value })}
+                          className="w-full bg-white border border-slate-200 p-1.5 text-xs font-mono text-slate-800 outline-none rounded-none"
+                        >
+                          <option value="qwen3.7-max">qwen3.7-max (Reasoning Default)</option>
+                          <option value="qwen3.7-plus">qwen3.7-plus (Balanced)</option>
+                          <option value="deepseek-v4-pro">
+                            deepseek-v4-pro (DeepSeek Reasoning)
+                          </option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-1">
+                          Scoring Criteria
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={selectedNode.data.debateArenaConfig?.scoringCriteria || ''}
+                          onChange={(e) => updateDebateConfig({ scoringCriteria: e.target.value })}
+                          className="w-full bg-white border border-slate-200 p-1.5 text-xs font-mono text-slate-800 outline-none rounded-none resize-y"
+                          placeholder="e.g. Evidence quality, logical rigor, practicality..."
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             )}
 

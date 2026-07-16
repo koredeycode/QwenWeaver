@@ -55,6 +55,10 @@ The frontend canvas serializes the workflow DAG as JSON and sends it to the API.
 
 See [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for the full architecture documentation.
 
+## Proof of Alibaba Cloud Deployment
+
+The backend runs on Alibaba Cloud ECS, stores assets in Alibaba Cloud OSS, and performs all AI inference via Qwen models on DashScope. See [PROOF_OF_DEPLOYMENT.md](./docs/PROOF_OF_DEPLOYMENT.md) for deployment screenshots and links to every Alibaba Cloud code file.
+
 ## Prerequisites
 
 - **Node.js** >= 20

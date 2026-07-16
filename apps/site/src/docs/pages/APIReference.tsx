@@ -224,9 +224,9 @@ export function APIReference() {
         </thead>
         <tbody>
           <tr>
-            <td>GET</td>
+            <td>POST</td>
             <td>
-              <code>/api/mcp/tools</code>
+              <code>/api/mcp/tools/discover</code>
             </td>
             <td>JWT</td>
             <td>Discover MCP server tools</td>
@@ -256,6 +256,148 @@ export function APIReference() {
             </td>
             <td>JWT</td>
             <td>Delete server config</td>
+          </tr>
+          <tr>
+            <td>POST</td>
+            <td>
+              <code>
+                /api/mcp/servers/{'{'}id{'}'}/auth
+              </code>
+            </td>
+            <td>JWT</td>
+            <td>Update server authentication</td>
+          </tr>
+          <tr>
+            <td>POST</td>
+            <td>
+              <code>
+                /api/mcp/servers/{'{'}id{'}'}/favorite
+              </code>
+            </td>
+            <td>JWT</td>
+            <td>Toggle server favorite</td>
+          </tr>
+          <tr>
+            <td>GET</td>
+            <td>
+              <code>/api/mcp/registry/search</code>
+            </td>
+            <td>JWT</td>
+            <td>Search MCP server registry</td>
+          </tr>
+          <tr>
+            <td>POST</td>
+            <td>
+              <code>/api/mcp/registry/adopt</code>
+            </td>
+            <td>JWT</td>
+            <td>Adopt server from registry</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Copilot</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Method</th>
+            <th>Path</th>
+            <th>Auth</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>POST</td>
+            <td>
+              <code>/api/copilot/init</code>
+            </td>
+            <td>JWT</td>
+            <td>Initialize a copilot session</td>
+          </tr>
+          <tr>
+            <td>GET</td>
+            <td>
+              <code>
+                /api/copilot/stream/{'{'}sessionId{'}'}
+              </code>
+            </td>
+            <td>JWT</td>
+            <td>SSE stream for copilot session</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Credits</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Method</th>
+            <th>Path</th>
+            <th>Auth</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>GET</td>
+            <td>
+              <code>/api/credits</code>
+            </td>
+            <td>JWT</td>
+            <td>Get current credit balance</td>
+          </tr>
+          <tr>
+            <td>GET</td>
+            <td>
+              <code>/api/credits/transactions</code>
+            </td>
+            <td>JWT</td>
+            <td>List credit transactions</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Files</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Method</th>
+            <th>Path</th>
+            <th>Auth</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>POST</td>
+            <td>
+              <code>/api/files/upload</code>
+            </td>
+            <td>JWT</td>
+            <td>Upload a file to storage</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Storage</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Method</th>
+            <th>Path</th>
+            <th>Auth</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>GET</td>
+            <td>
+              <code>/api/storage/proxy</code>
+            </td>
+            <td>JWT</td>
+            <td>Generate a signed URL for an object</td>
           </tr>
         </tbody>
       </table>
