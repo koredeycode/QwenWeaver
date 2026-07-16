@@ -183,6 +183,33 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
   const [thinkingCollapsed, setThinkingCollapsed] = useState<Record<number, boolean>>({});
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [statusVerb, setStatusVerb] = useState('creating');
+  const [panelWidth, setPanelWidth] = useState(() => {
+    const saved = Number(localStorage.getItem('copilotPanelWidth'));
+    return saved >= 320 && saved <= 720 ? saved : 380;
+  });
+  const widthRef = useRef(panelWidth);
+
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = widthRef.current;
+    const onMove = (ev: MouseEvent) => {
+      const next = Math.min(720, Math.max(320, startWidth + (startX - ev.clientX)));
+      widthRef.current = next;
+      setPanelWidth(next);
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      localStorage.setItem('copilotPanelWidth', String(widthRef.current));
+    };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
 
   const VERBS = useMemo(
     () => ['creating', 'weaving', 'designing', 'analyzing', 'crafting', 'building', 'architecting'],
@@ -291,9 +318,15 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
 
   return (
     <div
-      className="w-[380px] h-full bg-white border-l border-[#cbd5e1] flex flex-col z-20 flex-shrink-0 select-none"
+      className="relative h-full bg-white border-l border-[#cbd5e1] flex flex-col z-20 flex-shrink-0 select-none"
+      style={{ width: panelWidth }}
       data-tour="copilot-panel"
     >
+      <div
+        onMouseDown={handleResizeStart}
+        className="absolute left-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-orange-400/40 active:bg-orange-400/60 z-30"
+        title="Drag to resize"
+      />
       {/* Panel Header */}
       <div className="h-14 border-b border-[#cbd5e1] px-4 flex items-center justify-between bg-slate-50 flex-shrink-0">
         <div className="flex items-center gap-2">
