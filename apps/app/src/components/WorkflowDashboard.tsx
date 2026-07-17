@@ -547,9 +547,9 @@ export const WorkflowDashboard = () => {
                     <input
                       type="checkbox"
                       checked={selectedIds.has(wf.id)}
-                      onChange={() => toggleSelect(wf.id)}
+                      readOnly
                       data-checkbox
-                      className="w-4 h-4 accent-[#f97316] cursor-pointer"
+                      className="w-4 h-4 accent-[#f97316] cursor-pointer pointer-events-none"
                     />
                   </div>
                 </div>
