@@ -69,6 +69,8 @@ export interface GraphSlice {
   nodes: Node<NodeData>[];
   edges: Edge[];
   selectedNodeId: string | null;
+  selectedEdgeId: string | null;
+  selectEdge: (id: string | null) => void;
   workflowId: string | null;
   workflowName: string;
   workflowDescription: string;

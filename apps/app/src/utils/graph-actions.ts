@@ -1,6 +1,6 @@
 import type { Node, Edge } from '@xyflow/react';
 import type { GraphAction } from '@qwenweaver/types';
-import { isAgent, isTrigger, autoDetectHandles } from './connection-validation.js';
+import { isAgent, isAgentOrDebate, isTrigger, autoDetectHandles } from './connection-validation.js';
 
 export interface GraphActionResult {
   nodes: Node<any>[];
@@ -133,21 +133,28 @@ export function executeGraphActions(
       const sourceNode = currentNodes.find((n) => n.id === source);
       const targetNode = currentNodes.find((n) => n.id === target);
       if (sourceNode && targetNode) {
-        const detected = autoDetectHandles(sourceNode.type as string, targetNode.type as string);
-        const sourceHandle = detected.sourceHandle || connSourceHandle;
-        const targetHandle = detected.targetHandle || connTargetHandle;
+        const ok =
+          !(sourceNode.type === 'mcp_tool' && targetNode.type === 'mcp_tool') &&
+          !(sourceNode.type === 'mcp_tool' && !isAgent(targetNode.type)) &&
+          !(targetNode.type === 'mcp_tool' && !isAgent(sourceNode.type)) &&
+          !(isTrigger(sourceNode.type) && !isAgentOrDebate(targetNode.type));
+        if (ok) {
+          const detected = autoDetectHandles(sourceNode.type as string, targetNode.type as string);
+          const sourceHandle = detected.sourceHandle || connSourceHandle;
+          const targetHandle = detected.targetHandle || connTargetHandle;
 
-        const newEdgeId = id || `e-${source}-${target}`;
-        const exists = currentEdges.some((e) => e.id === newEdgeId);
-        if (!exists) {
-          currentEdges.push({
-            id: newEdgeId,
-            source,
-            target,
-            sourceHandle: sourceHandle || undefined,
-            targetHandle: targetHandle || undefined,
-            type: 'animated',
-          });
+          const newEdgeId = id || `e-${source}-${target}`;
+          const exists = currentEdges.some((e) => e.id === newEdgeId);
+          if (!exists) {
+            currentEdges.push({
+              id: newEdgeId,
+              source,
+              target,
+              sourceHandle: sourceHandle || undefined,
+              targetHandle: targetHandle || undefined,
+              type: 'animated',
+            });
+          }
         }
       }
     } else if (action.type === 'add_edges') {
@@ -163,6 +170,10 @@ export function executeGraphActions(
         const sourceNode = currentNodes.find((n) => n.id === source);
         const targetNode = currentNodes.find((n) => n.id === target);
         if (sourceNode && targetNode) {
+          if (sourceNode.type === 'mcp_tool' && targetNode.type === 'mcp_tool') continue;
+          if (sourceNode.type === 'mcp_tool' && !isAgent(targetNode.type)) continue;
+          if (targetNode.type === 'mcp_tool' && !isAgent(sourceNode.type)) continue;
+          if (isTrigger(sourceNode.type) && !isAgentOrDebate(targetNode.type)) continue;
           const detected = autoDetectHandles(sourceNode.type as string, targetNode.type as string);
           const sourceHandle = detected.sourceHandle || connSourceHandle;
           const targetHandle = detected.targetHandle || connTargetHandle;

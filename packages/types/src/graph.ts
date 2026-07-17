@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+export function isTrigger(type: string | undefined): boolean {
+  return type === 'trigger' || type === 'input_trigger' || type === 'file_trigger';
+}
+
 export const NodeType = z.enum([
   'trigger',
   'agent',
@@ -200,6 +204,19 @@ export const WorkflowPayload = WorkflowPayloadBase.refine(
         return false;
       }
 
+      if (isTrigger(sourceNode.type) && targetNode.type === 'debate_arena') {
+        continue;
+      }
+
+      if (
+        sourceNode.type === 'debate_arena' &&
+        targetNode.type !== 'agent' &&
+        targetNode.type !== 'supervisor' &&
+        targetNode.type !== 'debate_arena'
+      ) {
+        return false;
+      }
+
       if (targetNode.type === 'mcp_tool') {
         incomingToolEdges.set(edge.target, (incomingToolEdges.get(edge.target) || 0) + 1);
       }
@@ -213,7 +230,7 @@ export const WorkflowPayload = WorkflowPayloadBase.refine(
   },
   {
     message:
-      'Invalid connections: tools must connect to/from agents/supervisors only, and each tool can have at most one incoming connection',
+      'Invalid connections: tools must connect to/from agents/supervisors only, debate arenas can only connect to agents/supervisors/arenas, and each tool can have at most one incoming connection',
     path: ['edges'],
   },
 );

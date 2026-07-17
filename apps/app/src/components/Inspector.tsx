@@ -6,9 +6,13 @@ import type { OutputFormat, DebateArenaConfig } from '@qwenweaver/types';
 export const Inspector = ({ onClose }: { onClose: () => void }) => {
   const selectedNodeId = useStore((s) => s.selectedNodeId);
   const selectedNode = useStore((s) => s.nodes.find((n) => n.id === selectedNodeId));
+  const selectedEdgeId = useStore((s) => s.selectedEdgeId);
+  const selectedEdge = useStore((s) => s.edges.find((e) => e.id === selectedEdgeId));
   const updateNodeData = useStore((s) => s.updateNodeData);
   const deleteNode = useStore((s) => s.deleteNode);
   const selectNode = useStore((s) => s.selectNode);
+  const selectEdge = useStore((s) => s.selectEdge);
+  const setEdgeData = useStore((s) => s.setEdgeData);
   const duplicateNode = useStore((s) => s.duplicateNode);
   const setMcpConfigDialogNodeId = useStore((s) => s.setMcpConfigDialogNodeId);
 
@@ -109,7 +113,90 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
 
       {/* Panel Content */}
       <div className="flex-1 overflow-y-auto p-4 scrollbar">
-        {selectedNode ? (
+        {selectedEdge ? (
+          <div className="space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-2">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Edge Connection</h3>
+                <p className="text-[10px] text-slate-400 font-mono">Communication Channel</p>
+              </div>
+              <button
+                onClick={() => selectEdge(null)}
+                className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-700 border border-slate-200"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-3 bg-purple-50 border border-purple-200 p-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-mono font-bold text-purple-700">
+                    Conversation Mode (Bidirectional)
+                  </label>
+                  <input
+                    type="checkbox"
+                    checked={(selectedEdge.data as any)?.subscription?.conversationMode ?? false}
+                    onChange={(e) =>
+                      setEdgeData(selectedEdge.id, {
+                        subscription: {
+                          ...(selectedEdge.data as any)?.subscription,
+                          conversationMode: e.target.checked,
+                        },
+                      })
+                    }
+                    className="w-3.5 h-3.5 accent-purple-600"
+                  />
+                </div>
+                {(selectedEdge.data as any)?.subscription?.conversationMode && (
+                  <div>
+                    <label className="block text-[9px] font-mono font-bold text-purple-400 uppercase tracking-wider mb-1">
+                      Maximum Round Count
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="50"
+                      value={(selectedEdge.data as any)?.subscription?.maxRounds ?? 5}
+                      onChange={(e) =>
+                        setEdgeData(selectedEdge.id, {
+                          subscription: {
+                            ...(selectedEdge.data as any)?.subscription,
+                            conversationMode: true,
+                            maxRounds: Math.min(50, Math.max(1, Number(e.target.value) || 1)),
+                          },
+                        })
+                      }
+                      className="w-full bg-white border border-purple-200 p-1.5 text-xs font-mono text-purple-700 outline-none rounded-none"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <p className="text-[9px] font-mono text-slate-400 leading-relaxed">
+                Conversation mode enables agents on both ends of this connection to exchange
+                messages over multiple rounds. The edge will not enforce execution order &mdash;
+                both agents can participate freely. This feature is ideal for debates, negotiations,
+                interviews, and iterative refinements.
+              </p>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+              <button
+                onClick={() => selectEdge(null)}
+                className="text-xs text-slate-500 hover:text-slate-800 font-semibold"
+              >
+                Done
+              </button>
+              <button
+                onClick={() => selectEdge(null)}
+                className="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-none shadow-sm transition-colors"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        ) : selectedNode ? (
           <div className="space-y-5">
             {/* Header Info */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-2">
@@ -541,7 +628,7 @@ export const Inspector = ({ onClose }: { onClose: () => void }) => {
             <HelpCircle className="w-10 h-10 text-slate-300 mb-2" />
             <p className="text-xs font-bold text-slate-500">No node selected.</p>
             <p className="text-[10px] mt-1">
-              Select an agent, trigger, or tool on the canvas to configure parameters.
+              Select a node or edge on the canvas to configure parameters.
             </p>
           </div>
         )}

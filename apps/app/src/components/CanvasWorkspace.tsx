@@ -22,6 +22,7 @@ import type { NodeType } from '@qwenweaver/types';
 import { client, withRefresh } from '../lib/api-client.js';
 import {
   isAgent,
+  isAgentOrDebate,
   isTrigger,
   doesNotSupportTools,
   autoDetectHandles,
@@ -93,6 +94,8 @@ const CanvasContent = () => {
   const onEdgesChange = useStore((s) => s.onEdgesChange);
   const onConnect = useStore((s) => s.onConnect);
   const selectNode = useStore((s) => s.selectNode);
+  const selectEdge = useStore((s) => s.selectEdge);
+  const setEdgeData = useStore((s) => s.setEdgeData);
   const addNode = useStore((s) => s.addNode);
   const duplicateNode = useStore((s) => s.duplicateNode);
   const rearrangeGraph = useStore((s) => s.rearrangeGraph);
@@ -278,7 +281,7 @@ const CanvasContent = () => {
 
       if (sn.type === 'mcp_tool' && tn.type === 'mcp_tool') return false;
       if (sn.type === 'mcp_tool' && !isAgent(tn.type)) return false;
-      if (isTrigger(sn.type) && !isAgent(tn.type)) return false;
+      if (isTrigger(sn.type) && !isAgentOrDebate(tn.type)) return false;
 
       // Block MCP tools from connecting to media nodes that don't support tool calling
       if (sn.type === 'mcp_tool' && isAgent(tn.type) && doesNotSupportTools(tn)) return false;
@@ -480,6 +483,13 @@ const CanvasContent = () => {
     [selectNode, openRightPanel],
   );
 
+  const handleEdgeClick = useCallback(
+    (_: any, edge: any) => {
+      selectEdge(edge.id);
+      openRightPanel('inspector');
+    },
+    [selectEdge, openRightPanel],
+  );
   const [isDescOpen, setIsDescOpen] = useState(false);
   const descRef = useRef<HTMLDivElement>(null);
 
@@ -495,7 +505,8 @@ const CanvasContent = () => {
 
   const handlePaneClick = useCallback(() => {
     selectNode(null);
-  }, [selectNode]);
+    selectEdge(null);
+  }, [selectNode, selectEdge]);
 
   return (
     <>
@@ -943,6 +954,7 @@ const CanvasContent = () => {
                       nodeTypes={nodeTypes as any}
                       edgeTypes={edgeTypes as any}
                       onNodeClick={handleNodeClick}
+                      onEdgeClick={handleEdgeClick}
                       onPaneClick={handlePaneClick}
                       fitView
                       minZoom={0.2}
