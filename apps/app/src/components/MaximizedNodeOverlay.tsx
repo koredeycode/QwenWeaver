@@ -276,6 +276,15 @@ export const MaximizedNodeOverlay = () => {
               <div ref={scrollRef} className="flex-1 p-6 overflow-y-auto">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[10px] font-mono text-slate-400">AUTO-SCROLL ENABLED</span>
+                  {(storeOutputUrl || maximizedNode?.data?._outputUrl) && (
+                    <a
+                      href={storeOutputUrl || maximizedNode.data._outputUrl}
+                      download
+                      className="text-[10px] font-mono font-bold text-orange-600 hover:text-orange-700 border border-orange-300 px-2 py-0.5 hover:bg-orange-50 transition-colors cursor-pointer"
+                    >
+                      Download
+                    </a>
+                  )}
                 </div>
                 {(storeOutput ||
                   maximizedNode?.data?._output ||

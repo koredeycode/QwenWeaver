@@ -92,6 +92,7 @@ export interface QueryProvider {
   listUserWorkflows(userId: string): Promise<WorkflowRow[]>;
   getWorkflow(id: string, userId: string): Promise<WorkflowDetail | null>;
   deleteWorkflow(id: string, userId: string): Promise<boolean>;
+  deleteWorkflows(ids: string[], userId: string): Promise<number>;
   updateCopilotHistory(
     workflowId: string,
     userId: string,

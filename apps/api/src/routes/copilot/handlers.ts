@@ -188,7 +188,7 @@ async function runCopilotGeneration(
       '  add_edge:    {"type":"add_edge",    "payload":{"source":"node-1","target":"node-2"}}\n' +
       '  delete_node: {"type":"delete_node", "payload":{"id":"node-1"}}\n' +
       'Wrap all actions in the "actions" array. Do NOT leave it empty.',
-    parameters: z.object({ actions: z.array(ActionSchema).min(1) }),
+    inputSchema: z.object({ actions: z.array(ActionSchema).min(1) }),
     execute: async ({ actions: rawActions }: { actions: any[] }) => {
       const proposalId = crypto.randomUUID();
       // Qwen model sometimes stringifies the actions array — parse if needed
@@ -216,7 +216,7 @@ async function runCopilotGeneration(
 
   const toolMcpList = tool({
     description: "List the user's currently configured/saved MCP servers.",
-    parameters: z.object({}),
+    inputSchema: z.object({}),
     execute: async () => {
       diag.log('TOOL EXEC: list_configured_mcps');
       try {
@@ -235,7 +235,7 @@ async function runCopilotGeneration(
 
   const toolMcpSearch = tool({
     description: 'Search the live MCP registry for tools matching a query.',
-    parameters: z.object({
+    inputSchema: z.object({
       q: z.string().describe("Search query, e.g. 'github' or 'browser'"),
     }),
     execute: async ({ q }: { q: string }) => {

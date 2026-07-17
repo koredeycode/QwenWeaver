@@ -1,5 +1,5 @@
 import { type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import { eq, and, sql, desc } from 'drizzle-orm';
+import { eq, and, sql, desc, inArray } from 'drizzle-orm';
 import { getConnection, sqliteSchema } from '../index.js';
 import type {
   QueryProvider,
@@ -528,6 +528,22 @@ export const sqliteProvider: QueryProvider = {
 
     const changes = (result as unknown as { changes: number }).changes;
     return (changes ?? 0) > 0;
+  },
+
+  async deleteWorkflows(ids: string[], userId: string): Promise<number> {
+    if (ids.length === 0) return 0;
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const result = await sqliteDb
+      .delete(sqliteSchema.sqliteWorkflows)
+      .where(
+        and(
+          inArray(sqliteSchema.sqliteWorkflows.id, ids),
+          eq(sqliteSchema.sqliteWorkflows.userId, userId),
+        ),
+      );
+    const changes = (result as unknown as { changes: number }).changes;
+    return changes ?? 0;
   },
 
   async updateCopilotHistory(

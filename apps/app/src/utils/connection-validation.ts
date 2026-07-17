@@ -1,4 +1,8 @@
 export function isAgent(type?: string): boolean {
+  return type === 'agent' || type === 'supervisor';
+}
+
+export function isAgentOrDebate(type?: string): boolean {
   return type === 'agent' || type === 'supervisor' || type === 'debate_arena';
 }
 
@@ -35,8 +39,9 @@ export interface HandleResult {
 
 export function autoDetectHandles(sourceNodeType?: string, targetNodeType?: string): HandleResult {
   const agent = isAgent(sourceNodeType) && isAgent(targetNodeType);
+  const debateTarget = isDebateArena(targetNodeType);
   const agentToTool = isAgent(sourceNodeType) && targetNodeType === 'mcp_tool';
-  const triggerToAgent = isTrigger(sourceNodeType) && isAgent(targetNodeType);
+  const triggerToAgent = isTrigger(sourceNodeType) && isAgentOrDebate(targetNodeType);
   const toolToAgent = sourceNodeType === 'mcp_tool' && isAgent(targetNodeType);
 
   if (agent) {
@@ -50,6 +55,9 @@ export function autoDetectHandles(sourceNodeType?: string, targetNodeType?: stri
   }
   if (toolToAgent) {
     return { sourceHandle: 'source-bottom', targetHandle: 'target-top' };
+  }
+  if (debateTarget) {
+    return { targetHandle: 'target-left' };
   }
   if (isAgent(targetNodeType)) {
     return { targetHandle: 'target-left' };

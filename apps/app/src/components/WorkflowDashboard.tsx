@@ -106,6 +106,8 @@ export const WorkflowDashboard = () => {
   const [workflowsLoading, setWorkflowsLoading] = useState(true);
   const profileRef = useRef<HTMLDivElement>(null);
   const [deleteTarget, setDeleteTarget] = useState<UserWorkflow | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -177,17 +179,63 @@ export const WorkflowDashboard = () => {
   };
 
   const handleDelete = async (wf: UserWorkflow) => {
+    const ids = [wf.id];
+    await deleteIds(ids);
+    setDeleteTarget(null);
+  };
+
+  const deleteIds = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    setBulkDeleting(true);
     try {
       const res: any = await (withRefresh(() =>
-        client.api.workflow.detail[':workflowId'].$delete({
-          param: { workflowId: wf.id },
-        }),
+        client.api.workflow['bulk-delete'].$post({ json: { ids } }),
       ) as Promise<any>);
       if (res.ok) {
-        setUserWorkflows((prev) => prev.filter((w) => w.id !== wf.id));
+        setUserWorkflows((prev) => prev.filter((w) => !ids.includes(w.id)));
+        setSelectedIds(new Set());
       }
     } catch {
-      /* ignore */
+      for (const id of ids) {
+        try {
+          const r: any = await (withRefresh(() =>
+            client.api.workflow.detail[':workflowId'].$delete({
+              param: { workflowId: id },
+            }),
+          ) as Promise<any>);
+          if (r.ok) {
+            setUserWorkflows((prev) => prev.filter((w) => w.id !== id));
+          }
+        } catch {
+          /* fallback delete failed */
+        }
+      }
+      setSelectedIds(new Set());
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    deleteIds(ids);
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === userWorkflows.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(userWorkflows.map((w) => w.id)));
     }
   };
 
@@ -404,11 +452,19 @@ export const WorkflowDashboard = () => {
             </button> */}
 
             {/* ── USER WORKFLOWS SECTION ── */}
-            <div className="col-span-full">
+            <div className="col-span-full flex items-center justify-between">
               <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider font-mono flex items-center gap-2">
                 <FolderOpen className="w-3.5 h-3.5" />
                 My Workflows
               </h2>
+              {userWorkflows.length > 0 && (
+                <button
+                  onClick={toggleSelectAll}
+                  className="text-[10px] font-mono text-slate-500 hover:text-slate-700 border border-slate-200 px-2 py-0.5 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  {selectedIds.size === userWorkflows.length ? 'Deselect All' : 'Select All'}
+                </button>
+              )}
             </div>
 
             {workflowsLoading ? (
@@ -436,8 +492,17 @@ export const WorkflowDashboard = () => {
               userWorkflows.map((wf) => (
                 <div
                   key={wf.id}
-                  onClick={() => navigate(`/workflows/${wf.id}`)}
                   className="bg-white border-2 border-slate-200 hover:border-[#f97316] p-6 flex flex-col justify-between shadow-sm hover:shadow-md transition-all rounded-none min-h-[220px] group relative cursor-pointer"
+                  onClick={(e) => {
+                    const target = e.target as HTMLElement;
+                    if (target.closest('[data-checkbox]')) {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      toggleSelect(wf.id);
+                      return;
+                    }
+                    navigate(`/workflows/${wf.id}`);
+                  }}
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
@@ -478,8 +543,52 @@ export const WorkflowDashboard = () => {
                       </span>
                     </div>
                   </div>
+                  <div className="absolute top-3 right-3" data-checkbox>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(wf.id)}
+                      onChange={() => toggleSelect(wf.id)}
+                      data-checkbox
+                      className="w-4 h-4 accent-[#f97316] cursor-pointer"
+                    />
+                  </div>
                 </div>
               ))
+            )}
+
+            {selectedIds.size > 0 && (
+              <div className="col-span-full">
+                <div className="flex items-center justify-between bg-orange-50 border border-orange-300 px-4 py-3">
+                  <span className="text-xs font-mono text-orange-700 font-bold">
+                    {selectedIds.size} workflow{selectedIds.size > 1 ? 's' : ''} selected
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setSelectedIds(new Set())}
+                      className="text-[11px] font-mono text-slate-500 hover:text-slate-700 cursor-pointer"
+                    >
+                      Deselect
+                    </button>
+                    <button
+                      onClick={handleBulkDelete}
+                      disabled={bulkDeleting}
+                      className="px-4 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-mono font-bold disabled:opacity-50 transition-colors cursor-pointer flex items-center gap-1.5"
+                    >
+                      {bulkDeleting ? (
+                        <>
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          Deleting...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="w-3 h-3" />
+                          Delete Selected
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
 
             {/* ── EXAMPLE WORKFLOWS SECTION ── */}

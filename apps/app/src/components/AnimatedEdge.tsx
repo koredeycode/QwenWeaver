@@ -13,14 +13,20 @@ export const AnimatedEdge = memo(
     targetPosition,
     style = {},
     markerEnd,
+    markerStart,
     selected,
     data,
+    label,
   }: EdgeProps) => {
     const storeActive = useStore((s) => s.activeEdges.has(id));
+    const selectedEdgeId = useStore((s) => s.selectedEdgeId);
     const isActive = data?._edgeActive === true || storeActive;
+    const edgeData = data as any;
+    const isConversation = edgeData?.subscription?.conversationMode === true;
+    const maxRounds = edgeData?.subscription?.maxRounds ?? 5;
+    const isEdgeSelected = selectedEdgeId === id;
 
-    // Get stepped/orthogonal path
-    const [edgePath] = getSmoothStepPath({
+    const [edgePath, labelX, labelY] = getSmoothStepPath({
       sourceX,
       sourceY,
       sourcePosition,
@@ -29,25 +35,51 @@ export const AnimatedEdge = memo(
       targetPosition,
     });
 
+    const strokeColor = isEdgeSelected
+      ? '#2563eb'
+      : selected
+        ? '#2563eb'
+        : isActive
+          ? '#f97316'
+          : isConversation
+            ? '#7c3aed'
+            : '#cbd5e1';
+
     return (
       <>
-        {/* Background static path */}
         <path
           id={id}
           style={{
             ...style,
-            stroke: selected ? '#2563eb' : isActive ? '#f97316' : '#cbd5e1',
-            strokeWidth: selected ? 3 : isActive ? 2.5 : 1.5,
+            stroke: strokeColor,
+            strokeWidth: isEdgeSelected ? 3 : selected ? 3 : isActive ? 2.5 : 1.5,
             fill: 'none',
-            strokeDasharray: '6 3',
+            strokeDasharray: isConversation ? undefined : '6 3',
             transition: 'stroke 0.2s, stroke-width 0.2s',
           }}
           className="react-flow__edge-path"
           d={edgePath}
-          markerEnd={markerEnd}
+          markerEnd={isConversation ? 'url(#arrowhead-conversation)' : markerEnd}
+          markerStart={isConversation ? 'url(#arrowhead-conversation)' : markerStart}
         />
 
-        {/* Foreground glowing animation overlay path */}
+        {isConversation && (
+          <foreignObject
+            width={120}
+            height={22}
+            x={labelX - 60}
+            y={labelY - 11}
+            className="overflow-visible"
+            requiredExtensions="http://www.w3.org/1999/xhtml"
+          >
+            <div className="flex items-center justify-center gap-1">
+              <span className="px-1.5 py-0.5 text-[8px] font-mono font-bold bg-purple-100 text-purple-700 border border-purple-300 whitespace-nowrap select-none">
+                {maxRounds} R
+              </span>
+            </div>
+          </foreignObject>
+        )}
+
         {isActive && (
           <path
             style={{

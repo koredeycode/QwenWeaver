@@ -97,6 +97,18 @@ export const handleDeleteWorkflow = async (c: Context<{ Variables: Variables }>)
   return c.json({ success: true }, 200);
 };
 
+export const handleBulkDeleteWorkflows = async (c: Context<{ Variables: Variables }>) => {
+  const user = c.get('user');
+  const raw = await c.req.json();
+  const ids: string[] = Array.isArray(raw.ids) ? raw.ids : [];
+  if (ids.length === 0) {
+    return c.json({ error: 'No workflow IDs provided' }, 400);
+  }
+  const provider = getQueryProvider();
+  const deleted = await provider.deleteWorkflows(ids, user!.id);
+  return c.json({ deleted }, 200);
+};
+
 type ValidWorkflowPayload = z.infer<typeof WorkflowPayload>;
 type ValidExecuteRequest = ValidWorkflowPayload & { workflowId?: string };
 

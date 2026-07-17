@@ -7,6 +7,7 @@ import { WorkflowPayload, NodeData, GraphAction } from '@qwenweaver/types';
 import { RESEARCH_WORKFLOW_TEMPLATE } from '../data/workflow-templates.js';
 import {
   isAgent,
+  isAgentOrDebate,
   isTrigger,
   doesNotSupportTools,
   autoDetectHandles,
@@ -20,6 +21,7 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
   nodes: [],
   edges: [],
   selectedNodeId: null,
+  selectedEdgeId: null,
   workflowId: null,
   workflowName: '',
   workflowDescription: '',
@@ -66,13 +68,13 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
         return {};
       }
 
-      // Trigger nodes can only connect to agents/supervisors
-      if (isTrigger(sourceNode.type) && !isAgent(targetNode.type)) {
-        toast.error('Trigger nodes can only connect to Agent or Supervisor nodes.');
+      // Trigger nodes can only connect to agents/supervisors/debate
+      if (isTrigger(sourceNode.type) && !isAgentOrDebate(targetNode.type)) {
+        toast.error('Trigger nodes can only connect to Agent, Supervisor, or Debate nodes.');
         return {};
       }
 
-      // Source to a tool must be agent or supervisor
+      // Source to a tool must be agent or supervisor (debate excluded)
       if (targetNode.type === 'mcp_tool' && !isAgent(sourceNode.type)) {
         toast.error(
           'Error: MCP Tools can only receive connections from Agent or Supervisor nodes.',
@@ -284,7 +286,8 @@ export const createGraphSlice: StateCreator<StoreState, [], [], GraphSlice> = (s
         edge.id === id ? { ...edge, data: { ...edge.data, ...data } } : edge,
       ),
     })),
-  selectNode: (id) => set({ selectedNodeId: id }),
+  selectNode: (id) => set({ selectedNodeId: id, selectedEdgeId: null }),
+  selectEdge: (id) => set({ selectedEdgeId: id, selectedNodeId: null }),
 
   setWorkflowMeta: (name, description) =>
     set({ workflowName: name, workflowDescription: description, isDirty: true }),
