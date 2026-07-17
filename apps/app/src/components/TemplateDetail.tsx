@@ -207,7 +207,11 @@ export const TemplateDetailPage = () => {
                   <span className="text-slate-300">·</span>
                   <span className="flex items-center gap-1.5 text-xs text-slate-500 font-mono">
                     <Calendar className="w-3.5 h-3.5" />
-                    {new Date(template.createdAt).toLocaleDateString()}
+                    {new Date(template.createdAt).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
                   </span>
                   {template.category && (
                     <>

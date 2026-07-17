@@ -1332,7 +1332,7 @@ const CanvasContent = () => {
                 description,
                 categoryId,
                 tags,
-                thumbnail: thumbnail || null,
+                thumbnail: thumbnail || undefined,
                 workflowData: {
                   nodes: nodes.map((n) => ({
                     id: n.id,

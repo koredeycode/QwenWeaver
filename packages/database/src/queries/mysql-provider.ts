@@ -1,5 +1,5 @@
 import { type MySql2Database } from 'drizzle-orm/mysql2';
-import { eq, and, sql, desc } from 'drizzle-orm';
+import { eq, and, sql, desc, inArray } from 'drizzle-orm';
 import { getConnection, mysqlSchema } from '../index.js';
 import type {
   QueryProvider,
@@ -500,6 +500,22 @@ export const mysqlProvider: QueryProvider = {
       );
     const affectedRows = (result as unknown as { affectedRows: number }).affectedRows;
     return (affectedRows ?? 0) > 0;
+  },
+
+  async deleteWorkflows(ids: string[], userId: string): Promise<number> {
+    if (ids.length === 0) return 0;
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const result = await mysqlDb
+      .delete(mysqlSchema.mysqlWorkflows)
+      .where(
+        and(
+          inArray(mysqlSchema.mysqlWorkflows.id, ids),
+          eq(mysqlSchema.mysqlWorkflows.userId, userId),
+        ),
+      );
+    const affectedRows = (result as unknown as { affectedRows: number }).affectedRows;
+    return affectedRows ?? 0;
   },
 
   async updateCopilotHistory(

@@ -12,6 +12,7 @@ import {
   handleExecute,
   handleStream,
   handleGetStatus,
+  handleBulkDeleteWorkflows,
 } from './handlers.js';
 
 export const workflowRoutes = new Hono<{ Variables: Variables }>()
@@ -20,6 +21,7 @@ export const workflowRoutes = new Hono<{ Variables: Variables }>()
   .delete('/detail/:workflowId', handleDeleteWorkflow)
   .put('/detail/:workflowId', zValidator('json', WorkflowPayload), handleUpdateWorkflow)
   .post('/', zValidator('json', WorkflowPayload), handleSaveWorkflow)
+  .post('/bulk-delete', handleBulkDeleteWorkflows)
   .post(
     '/execute',
     zValidator('json', WorkflowPayloadBase.extend({ workflowId: z.string().optional() })),

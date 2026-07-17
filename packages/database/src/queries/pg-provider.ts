@@ -1,5 +1,5 @@
 import { type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import { eq, and, sql, desc } from 'drizzle-orm';
+import { eq, and, sql, desc, inArray } from 'drizzle-orm';
 import { getConnection, pgSchema } from '../index.js';
 import type {
   QueryProvider,
@@ -487,6 +487,17 @@ export const pgProvider: QueryProvider = {
 
     const count = (result as any).count;
     return (count ?? 0) > 0;
+  },
+
+  async deleteWorkflows(ids: string[], userId: string): Promise<number> {
+    if (ids.length === 0) return 0;
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const result = await pgDb
+      .delete(pgSchema.pgWorkflows)
+      .where(and(inArray(pgSchema.pgWorkflows.id, ids), eq(pgSchema.pgWorkflows.userId, userId)));
+    const count = (result as any).count;
+    return (count ?? 0) as number;
   },
 
   async updateCopilotHistory(
