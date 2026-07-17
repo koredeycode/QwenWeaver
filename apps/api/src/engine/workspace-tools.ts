@@ -17,7 +17,7 @@ export function createWorkspaceTools(
     workspace_write: tool({
       description:
         'Write a value to the shared workspace blackboard under a key. Other agents can read it. Existing keys are updated (upsert). Keys use dot-path naming like "research.findings". Note: writing to the workspace does NOT replace your answer — you must still produce your complete response as your final message.',
-      parameters: z.object({
+      inputSchema: z.object({
         key: z.string().min(1).max(256).describe('Dot-path key, e.g. "research.findings"'),
         value: z.any().describe('JSON-serializable value to store'),
         valueType: z
@@ -45,7 +45,7 @@ export function createWorkspaceTools(
     workspace_read: tool({
       description:
         'Read a value from the shared workspace by key. Returns null if the key does not exist.',
-      parameters: z.object({
+      inputSchema: z.object({
         key: z.string().min(1).max(256).describe('Dot-path key to read'),
       }),
       execute: async (args: any) => {
@@ -59,7 +59,7 @@ export function createWorkspaceTools(
     workspace_list: tool({
       description:
         'List all keys in the workspace, optionally filtered by prefix. Returns key, valueType, and creation time.',
-      parameters: z.object({
+      inputSchema: z.object({
         prefix: z
           .string()
           .optional()
@@ -82,7 +82,7 @@ export function createWorkspaceTools(
     workspace_append: tool({
       description:
         'Append an item to a workspace array. Creates the array if the key does not exist. Uses optimistic concurrency to prevent data loss under concurrent agents.',
-      parameters: z.object({
+      inputSchema: z.object({
         key: z.string().min(1).max(256).describe('Dot-path key for the array'),
         item: z.any().describe('Item to append to the array'),
       }),

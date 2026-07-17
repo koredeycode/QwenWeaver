@@ -1,6 +1,6 @@
 import { getQueryProvider } from '@qwenweaver/database';
 import type { NodePayload, BusMessage } from '@qwenweaver/types';
-import { jsonSchema, streamText, tool, type Tool } from 'ai';
+import { jsonSchema, streamText, tool, stepCountIs, type Tool } from 'ai';
 import { z } from 'zod';
 import { createModuleLogger } from '../logger.js';
 import type { CopilotDiag } from '../diagnostic-logger.js';
@@ -303,7 +303,7 @@ export async function runAgent(
           diag?.log(`  MCP tool: "${t.name}" — ${t.description?.substring(0, 80)}`);
           tools[t.name] = tool({
             description: t.description,
-            parameters: jsonSchema(t.inputSchema),
+            inputSchema: jsonSchema(t.inputSchema),
             execute: async (args: any) => {
               log.info({ nodeId: node.id, toolName: t.name, args }, 'Executing MCP tool call');
               diag?.log(`MCP EXEC: node=${node.id}, tool="${t.name}"`);
@@ -368,7 +368,7 @@ export async function runAgent(
       system: systemPrompt,
       prompt: finalPrompt,
       tools: Object.keys(tools).length > 0 ? tools : undefined,
-      maxSteps: Math.min(Math.max(Number(process.env.MAX_STEPS) || 10, 1), 50),
+      stopWhen: stepCountIs(Math.min(Math.max(Number(process.env.MAX_STEPS) || 10, 1), 50)),
       providerOptions: providerOptions as Record<string, Record<string, any>> | undefined,
       abortSignal: abortController.signal,
     };

@@ -36,14 +36,21 @@ function getEntryIcon(valueType: string) {
 
 function formatValue(value: unknown, valueType: string): string {
   if (value === null || value === undefined) return 'null';
-  if (valueType === 'json') {
+  if (typeof value === 'object') {
     try {
-      return JSON.stringify(value, null, 2).slice(0, 200);
+      return JSON.stringify(value, null, 2).slice(0, 500);
     } catch {
-      return String(value).slice(0, 200);
+      return '[object]';
     }
   }
-  return String(value).slice(0, 200);
+  if (valueType === 'json') {
+    try {
+      return JSON.stringify(value, null, 2).slice(0, 500);
+    } catch {
+      return String(value).slice(0, 500);
+    }
+  }
+  return String(value).slice(0, 500);
 }
 
 interface TreeNode {
