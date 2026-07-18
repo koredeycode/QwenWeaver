@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, Download, FileText } from 'lucide-react';
 import type { OutputPart } from '@qwenweaver/types';
 import { API_BASE } from '../lib/api-client.js';
 import { renderMarkdown } from '../utils/markdown.js';
+import { AudioPlayer, VideoPlayer } from './MediaPlayer.js';
 
 interface OutputRendererProps {
   outputUrl?: string;
@@ -35,18 +36,10 @@ function getMediaElement(url: string, ext: string) {
     );
   }
   if (['mp4', 'webm', 'mov'].includes(ext)) {
-    return (
-      <video controls className="max-w-full h-auto rounded" preload="metadata">
-        <source src={url} />
-      </video>
-    );
+    return <VideoPlayer src={url} />;
   }
   if (['mp3', 'wav', 'ogg'].includes(ext)) {
-    return (
-      <audio controls className="w-full" preload="metadata">
-        <source src={url} />
-      </audio>
-    );
+    return <AudioPlayer src={url} />;
   }
   return null;
 }
@@ -79,30 +72,14 @@ function renderOutputParts(parts: OutputPart[]) {
     if (part.type === 'video' || part.contentType?.startsWith('video/')) {
       return (
         <div key={idx} className="space-y-1 py-2">
-          <div className="text-[8px] font-bold text-slate-400 uppercase">Generated Video</div>
-          <div className="flex flex-col items-center">
-            <video
-              src={url}
-              controls
-              className="max-w-full max-h-[320px] object-contain border border-slate-200"
-            />
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-1 text-[9px] font-bold text-blue-600 hover:underline"
-            >
-              Open in full tab ↗
-            </a>
-          </div>
+          <VideoPlayer src={url} label="Generated Video" />
         </div>
       );
     }
     if (part.type === 'audio' || part.contentType?.startsWith('audio/')) {
       return (
         <div key={idx} className="space-y-1 py-2">
-          <div className="text-[8px] font-bold text-slate-400 uppercase">Generated Audio</div>
-          <audio src={url} controls className="w-full" />
+          <AudioPlayer src={url} label="Generated Audio" />
         </div>
       );
     }

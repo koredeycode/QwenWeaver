@@ -6,7 +6,7 @@ import { createModuleLogger } from '../logger.js';
 import type { CopilotDiag } from '../diagnostic-logger.js';
 import { agent_duration_ms, llm_tokens_total } from '../metrics.js';
 import { buildHeadersFromAuthConfig, callMCPTool, discoverMCPTools } from './mcp-bridge.js';
-import { getModelForNode, getModelIdForNode } from './model-router.js';
+import { getModelForNode, getModelIdForNode, getProvider } from './model-router.js';
 import { createWorkspaceTools } from './workspace-tools.js';
 import type { AgentResult, StreamEmitter } from './types.js';
 import { EXTENSION_MAP, CONTENT_TYPE_MAP } from './constants.js';
@@ -172,19 +172,48 @@ export async function runAgent(
 
     // Handle Audio Generation (CosyVoice)
     if (node.data.outputFormat === 'audio') {
-      // Prefer node systemPrompt (translated text in dubbing workflows),
-      // fall back to upstream bus messages, then label.
-      let ttsText = node.data.systemPrompt || '';
-      if (!ttsText) {
-        for (const msg of busMessages) {
-          const textContent = extractPayloadText(msg);
-          if (textContent) {
-            ttsText += (ttsText ? '\n\n' : '') + textContent;
-          }
+      let ttsText = '';
+      for (const msg of busMessages) {
+        const textContent = extractPayloadText(msg);
+        if (textContent) {
+          ttsText += (ttsText ? '\n\n' : '') + textContent;
         }
       }
       if (!ttsText) {
-        ttsText = node.data.label || 'Generates audio';
+        ttsText = node.data.label || '';
+      }
+      if (!ttsText) {
+        ttsText = 'Generates audio';
+      }
+      // If a systemPrompt exists, use the LLM to process the text (e.g. translate for dubbing)
+      // before sending to TTS. Without a systemPrompt, send the raw text directly to TTS.
+      const hasSystemPrompt = node.data.systemPrompt && node.data.systemPrompt.trim().length > 0;
+      if (hasSystemPrompt && ttsText !== 'Generates audio') {
+        const provider = getProvider();
+        let modelId = node.data.model ?? 'qwen3.7-plus';
+        if (modelId.endsWith('i2v') || modelId.endsWith('t2v') || modelId.includes('wan')) {
+          modelId = 'qwen3.7-plus';
+        }
+        const model = provider(modelId);
+        const audioStream = streamText({
+          model,
+          system: node.data.systemPrompt,
+          prompt: ttsText,
+          abortSignal: abortController.signal,
+        });
+        const audioResult = await audioStream;
+        const audioUsage = await audioResult.usage;
+        let audioTokens = 0;
+        if (audioUsage) {
+          audioTokens += audioUsage.totalTokens ?? 0;
+        }
+        const llmText = await audioResult.text;
+        if (llmText) {
+          diag?.log(
+            `AUDIO LLM: node=${node.id}, input=${ttsText.length}c, output=${llmText.length}c`,
+          );
+          ttsText = llmText;
+        }
       }
       ttsText = await extractGenerationPrompt(ttsText, 'audio', abortController.signal);
       diag?.log(`AUDIO GEN: node=${node.id}, ttsTextLength=${ttsText.length}`);
