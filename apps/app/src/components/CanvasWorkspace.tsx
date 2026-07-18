@@ -861,7 +861,7 @@ const CanvasContent = () => {
                     </span>
                     {credits && (
                       <>
-                        <button
+                        <span
                           onClick={(e) => {
                             e.stopPropagation();
                             fetchCredits();
@@ -870,7 +870,7 @@ const CanvasContent = () => {
                           title="Refresh credits"
                         >
                           <RefreshCw className="w-3 h-3" />
-                        </button>
+                        </span>
                         <span
                           className={`text-[10px] font-bold px-1.5 py-0.5 rounded-none ${credits.lowBalance ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}
                         >

@@ -697,7 +697,7 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyPress}
-            placeholder={isTyping ? '' : 'Ask anything, @ to mention, / for actions'}
+            placeholder={isTyping ? '' : 'Describe the workflow you want to build...'}
             disabled={isTyping}
             rows={2}
             className="w-full bg-transparent px-3 py-1.5 text-xs outline-none text-slate-800 placeholder-slate-400 resize-none font-sans leading-relaxed disabled:cursor-wait"

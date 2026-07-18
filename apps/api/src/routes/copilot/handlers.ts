@@ -11,8 +11,7 @@ import { createModuleLogger } from '../../logger.js';
 import { createDiagnosticLogger, type CopilotDiag } from '../../diagnostic-logger.js';
 import { getProvider } from '../../engine/model-router.js'; // Reuse provider singleton
 import { getQueryProvider } from '@qwenweaver/database';
-import { generateCosyVoiceAudio } from '../../engine/generators/cosyvoice.js';
-import { writeBinaryAsset } from '../../engine/file-asset.js';
+import { generateCosyVoiceUrl } from '../../engine/generators/cosyvoice.js';
 import type { Variables } from '../../index.js';
 import type { Context } from 'hono';
 
@@ -510,9 +509,7 @@ export const handleCopilotTTS = async (c: Context<{ Variables: Variables }>) => 
     return c.json({ error: 'Missing text' }, 400);
   }
   try {
-    const audioBuffer = await generateCosyVoiceAudio(text.slice(0, 4000), apiKey);
-    const runId = `copilot-tts-${Date.now()}`;
-    const audioUrl = await writeBinaryAsset(runId, 'speech', 'mp3', audioBuffer);
+    const audioUrl = await generateCosyVoiceUrl(text.slice(0, 4000), apiKey);
     return c.json({ audioUrl }, 200);
   } catch (err) {
     const msg = (err as Error).message;
