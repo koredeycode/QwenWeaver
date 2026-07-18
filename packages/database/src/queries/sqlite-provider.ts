@@ -715,6 +715,28 @@ export const sqliteProvider: QueryProvider = {
     }));
   },
 
+  async getExecutionMessages(executionId: string) {
+    const { db } = getConnection();
+    const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;
+    const rows = await sqliteDb
+      .select()
+      .from(sqliteSchema.sqliteExecutionMessages)
+      .where(eq(sqliteSchema.sqliteExecutionMessages.executionId, executionId))
+      .orderBy(sqliteSchema.sqliteExecutionMessages.createdAt);
+
+    return rows.map((r) => ({
+      id: r.id,
+      executionId: r.executionId,
+      topic: r.topic,
+      sourceNodeId: r.sourceNodeId,
+      messageType: r.messageType,
+      payload: r.payload ?? undefined,
+      contentType: r.contentType ?? undefined,
+      round: r.round,
+      createdAt: new Date(r.createdAt).toISOString(),
+    }));
+  },
+
   async getAnalyticsSummary(userId: string, recentLimit: number = 10) {
     const { db } = getConnection();
     const sqliteDb = db as BetterSQLite3Database<typeof sqliteSchema>;

@@ -146,6 +146,19 @@ export interface QueryProvider {
       error?: string;
     }>
   >;
+  getExecutionMessages(executionId: string): Promise<
+    Array<{
+      id: string;
+      executionId: string;
+      topic: string;
+      sourceNodeId: string;
+      messageType: string;
+      payload: any;
+      contentType?: string;
+      round: number;
+      createdAt: string;
+    }>
+  >;
 
   getAnalyticsSummary(
     userId: string,

@@ -661,6 +661,28 @@ export const pgProvider: QueryProvider = {
     }));
   },
 
+  async getExecutionMessages(executionId: string) {
+    const { db } = getConnection();
+    const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
+    const rows = await pgDb
+      .select()
+      .from(pgSchema.pgExecutionMessages)
+      .where(eq(pgSchema.pgExecutionMessages.executionId, executionId))
+      .orderBy(pgSchema.pgExecutionMessages.createdAt);
+
+    return rows.map((r) => ({
+      id: r.id,
+      executionId: r.executionId ?? '',
+      topic: r.topic,
+      sourceNodeId: r.sourceNodeId,
+      messageType: r.messageType,
+      payload: r.payload ?? undefined,
+      contentType: r.contentType ?? undefined,
+      round: r.round,
+      createdAt: r.createdAt.toISOString(),
+    }));
+  },
+
   async getAnalyticsSummary(userId: string, recentLimit: number = 10) {
     const { db } = getConnection();
     const pgDb = db as PostgresJsDatabase<typeof pgSchema>;
