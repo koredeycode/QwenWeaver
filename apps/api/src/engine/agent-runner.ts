@@ -19,7 +19,7 @@ import { generateQwenImage } from './generators/qwen-image.js';
 import { generateWanxVideo } from './generators/wanx-video.js';
 import { generateHappyhorseVideo } from './generators/happyhorse-video.js';
 import { generateHappyhorseImageToVideo } from './generators/happyhorse-i2v.js';
-import { generateCosyVoiceAudio } from './generators/cosyvoice.js';
+import { generateCosyVoiceUrl } from './generators/cosyvoice.js';
 import { extractGenerationPrompt } from './prompt-extractor.js';
 
 const log = createModuleLogger('engine/agent-runner');
@@ -217,22 +217,27 @@ export async function runAgent(
       }
       ttsText = await extractGenerationPrompt(ttsText, 'audio', abortController.signal);
       diag?.log(`AUDIO GEN: node=${node.id}, ttsTextLength=${ttsText.length}`);
-      let buffer: Buffer;
+      let fileUrl: string;
 
       if (apiKey) {
         log.info(
           { nodeId: node.id, textLength: ttsText.length },
           'Calling CosyVoice speech synthesis API',
         );
-        buffer = await generateCosyVoiceAudio(ttsText, apiKey);
+        fileUrl = await generateCosyVoiceUrl(ttsText, apiKey);
       } else {
         throw new Error(`Node "${node.id}" has outputFormat "audio" but no DASHSCOPE_API_KEY set`);
       }
 
-      const runId = executionId ?? 'local-run';
-      const fileUrl = await writeBinaryAsset(runId, node.id, 'mp3', buffer);
       const durationMs = Math.round(performance.now() - startTime);
       diag?.log(`AUDIO DONE: node=${node.id}, fileUrl=${fileUrl}, duration=${durationMs}ms`);
+
+      // If the URL is a data URI, write it to storage; otherwise use the OSS URL directly
+      if (fileUrl.startsWith('data:')) {
+        const buf = Buffer.from(fileUrl.split(',')[1], 'base64');
+        const runId = executionId ?? 'local-run';
+        fileUrl = await writeBinaryAsset(runId, node.id, 'mp3', buf);
+      }
 
       return {
         nodeId: node.id,
