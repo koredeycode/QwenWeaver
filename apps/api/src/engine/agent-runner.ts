@@ -335,6 +335,7 @@ export async function runAgent(
         for (const t of mcpTools) {
           diag?.log(`  MCP tool: "${t.name}" — ${t.description?.substring(0, 80)}`);
           tools[t.name] = tool({
+            name: t.name,
             description: t.description,
             inputSchema: jsonSchema(t.inputSchema),
             execute: async (args: any) => {
@@ -361,7 +362,7 @@ export async function runAgent(
                 throw err;
               }
             },
-          } as any);
+          });
         }
       } catch (err) {
         const msg = (err as Error).message;

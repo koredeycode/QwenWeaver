@@ -1,4 +1,5 @@
 import { tool } from 'ai';
+import type { Tool } from 'ai';
 import { z } from 'zod';
 import { getQueryProvider } from '@qwenweaver/database';
 import type { StreamEmitter } from './types.js';
@@ -10,11 +11,12 @@ export function createWorkspaceTools(
   executionId: string,
   nodeId: string,
   emitter?: StreamEmitter,
-): Record<string, any> {
+): Record<string, Tool<z.ZodTypeAny, unknown>> {
   const provider = getQueryProvider();
 
   return {
     workspace_write: tool({
+      name: 'workspace_write',
       description:
         'Write a value to the shared workspace blackboard under a key. Other agents can read it. Existing keys are updated (upsert). Keys use dot-path naming like "research.findings". Note: writing to the workspace does NOT replace your answer — you must still produce your complete response as your final message.',
       inputSchema: z.object({
@@ -40,9 +42,10 @@ export function createWorkspaceTools(
         }
         return { success: true, id, key };
       },
-    } as any),
+    }),
 
     workspace_read: tool({
+      name: 'workspace_read',
       description:
         'Read a value from the shared workspace by key. Returns null if the key does not exist.',
       inputSchema: z.object({
@@ -54,9 +57,10 @@ export function createWorkspaceTools(
         const entry = await provider.readWorkspaceEntry(executionId, key);
         return entry?.value ?? null;
       },
-    } as any),
+    }),
 
     workspace_list: tool({
+      name: 'workspace_list',
       description:
         'List all keys in the workspace, optionally filtered by prefix. Returns key, valueType, and creation time.',
       inputSchema: z.object({
@@ -77,9 +81,10 @@ export function createWorkspaceTools(
           createdAt: e.createdAt,
         }));
       },
-    } as any),
+    }),
 
     workspace_append: tool({
+      name: 'workspace_append',
       description:
         'Append an item to a workspace array. Creates the array if the key does not exist. Uses optimistic concurrency to prevent data loss under concurrent agents.',
       inputSchema: z.object({
@@ -125,6 +130,6 @@ export function createWorkspaceTools(
         }
         throw new Error('Failed to append to workspace after retries');
       },
-    } as any),
+    }),
   };
 }
