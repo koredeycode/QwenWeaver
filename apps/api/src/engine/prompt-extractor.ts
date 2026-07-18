@@ -24,7 +24,8 @@ export async function extractGenerationPrompt(
 ): Promise<string> {
   const trimmed = text.trim();
   if (!trimmed) return trimmed;
-  if (trimmed.length < SHORT_TEXT_THRESHOLD) return trimmed;
+  const threshold = type === 'audio' ? 3 : SHORT_TEXT_THRESHOLD;
+  if (trimmed.length < threshold) return trimmed;
 
   const systemPrompt = EXTRACTION_SYSTEM_PROMPTS[type];
   if (!systemPrompt) return trimmed;

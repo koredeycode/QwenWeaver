@@ -12,6 +12,7 @@ import {
   Mic,
   MicOff,
   Volume2,
+  Plus,
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
 import { renderMarkdown } from '../utils/markdown.js';
@@ -182,6 +183,7 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
   const rearrangeGraph = useStore((s) => s.rearrangeGraph);
 
   const [input, setInput] = useState('');
+  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const [thinkingCollapsed, setThinkingCollapsed] = useState<Record<number, boolean>>({});
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
@@ -424,18 +426,6 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {/* Model Selector */}
-          <select
-            value={copilotModel}
-            onChange={(e) => setCopilotModel(e.target.value)}
-            className="text-[9px] font-mono border border-slate-200 bg-white px-1.5 py-0.5 rounded-none outline-none text-slate-700 focus:border-slate-400"
-          >
-            <option value="qwen3.7-max">qwen3.7-max</option>
-            <option value="qwen3.7-plus">qwen3.7-plus</option>
-            <option value="qwen3.6-flash">qwen3.6-flash</option>
-            <option value="deepseek-v4-pro">deepseek-v4-pro</option>
-            <option value="deepseek-v4-flash">deepseek-v4-flash</option>
-          </select>
           <button
             onClick={onClose}
             className="p-1 hover:bg-slate-100 text-slate-500 transition-colors rounded-none cursor-pointer"
@@ -692,14 +682,14 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
       {/* Input Form */}
       <div className="p-3 border-t border-[#cbd5e1] bg-white flex-shrink-0">
         <div
-          className={`relative flex items-end border transition-colors ${
+          className={`relative flex flex-col rounded-none p-2 transition-all border ${
             isTyping
               ? 'border-orange-300 bg-orange-50/30'
               : 'border-slate-200 focus-within:border-slate-400 bg-white'
           }`}
         >
           {isTyping && (
-            <div className="absolute -top-2.5 left-3 px-1.5 bg-orange-50/80 text-[8px] font-extrabold text-orange-600 uppercase font-sans tracking-widest animate-pulse">
+            <div className="absolute -top-2.5 left-3 px-1.5 bg-orange-100 text-[8px] font-extrabold text-orange-600 uppercase font-sans tracking-widest animate-pulse border border-orange-200">
               Copilot is {statusVerb}...
             </div>
           )}
@@ -707,35 +697,86 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyPress}
-            placeholder={isTyping ? '' : 'Ask the copilot to build workflows...'}
+            placeholder={isTyping ? '' : 'Ask anything, @ to mention, / for actions'}
             disabled={isTyping}
             rows={2}
-            className="flex-1 bg-transparent px-3 py-2 text-xs outline-none text-slate-800 placeholder-slate-400 resize-none font-sans leading-relaxed disabled:cursor-wait"
+            className="w-full bg-transparent px-3 py-1.5 text-xs outline-none text-slate-800 placeholder-slate-400 resize-none font-sans leading-relaxed disabled:cursor-wait"
           />
-          <div className="p-1 flex items-center">
-            <button
-              onClick={isRecording ? stopRecording : startRecording}
-              disabled={isTyping}
-              className={`h-8 w-8 flex items-center justify-center transition-all select-none cursor-pointer disabled:opacity-30 ${
-                isRecording
-                  ? 'bg-red-500 text-white animate-pulse'
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-              }`}
-              title={isRecording ? 'Stop recording' : 'Voice input'}
-            >
-              {isRecording ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
-            </button>
-            <button
-              onClick={handleSend}
-              disabled={isTyping || !input.trim()}
-              className="h-8 w-8 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 text-white flex items-center justify-center transition-all select-none cursor-pointer"
-            >
-              {isTyping ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Send className="h-3.5 w-3.5" />
+          <div className="mt-2 flex items-center justify-between px-2 pb-1.5">
+            {/* Model Selector */}
+            <div className="relative flex items-center">
+              {isModelDropdownOpen && (
+                <>
+                  {/* Backdrop overlay to close when clicking outside */}
+                  <div
+                    className="fixed inset-0 z-30 bg-transparent cursor-default"
+                    onClick={() => setIsModelDropdownOpen(false)}
+                  />
+                  {/* Dropdown Menu Popover */}
+                  <div className="absolute bottom-full mb-1 left-0 z-40 bg-white border border-slate-200 shadow-md rounded-none py-1 min-w-[130px] flex flex-col">
+                    {[
+                      'qwen3.7-max',
+                      'qwen3.7-plus',
+                      'qwen3.6-flash',
+                      'deepseek-v4-pro',
+                      'deepseek-v4-flash',
+                    ].map((model) => (
+                      <button
+                        key={model}
+                        type="button"
+                        onClick={() => {
+                          setCopilotModel(model);
+                          setIsModelDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-1.5 text-[10px] font-mono hover:bg-slate-50 transition-colors ${
+                          copilotModel === model
+                            ? 'text-orange-600 bg-orange-50/40 font-bold'
+                            : 'text-slate-600 hover:text-slate-800'
+                        }`}
+                      >
+                        {model}
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
-            </button>
+              <button
+                type="button"
+                onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
+                className="relative flex items-center bg-slate-50 hover:bg-slate-100 border border-slate-200 pl-2 pr-6 py-0.5 transition-colors rounded-none cursor-pointer text-[10px] font-mono text-slate-600 hover:text-slate-800 select-none"
+              >
+                <span>{copilotModel}</span>
+                <ChevronDown className="w-3 h-3 absolute right-1.5 text-slate-400" />
+              </button>
+            </div>
+
+            {/* Buttons Right */}
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={isRecording ? stopRecording : startRecording}
+                disabled={isTyping}
+                className={`h-7 w-7 flex items-center justify-center transition-all select-none cursor-pointer disabled:opacity-30 rounded-none border ${
+                  isRecording
+                    ? 'bg-red-500 text-white border-red-500 animate-pulse'
+                    : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-600'
+                }`}
+                title={isRecording ? 'Stop recording' : 'Voice input'}
+              >
+                {isRecording ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+              </button>
+              <button
+                onClick={handleSend}
+                disabled={isTyping || !input.trim()}
+                className="h-7 w-7 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 text-white flex items-center justify-center transition-all select-none cursor-pointer rounded-none border border-slate-900"
+                title="Send message"
+              >
+                {isTyping ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Send className="h-3.5 w-3.5" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>

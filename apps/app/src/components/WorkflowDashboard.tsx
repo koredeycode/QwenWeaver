@@ -328,7 +328,7 @@ export const WorkflowDashboard = () => {
   return (
     <div className="h-screen w-screen flex flex-col bg-[#f8fafc] text-slate-800 select-none overflow-hidden font-sans">
       {/* Top Header */}
-      <header className="h-14 bg-white border-b border-[#cbd5e1] flex items-center justify-between px-6 z-20 flex-shrink-0">
+      <header className="h-14 bg-white border-b border-[#cbd5e1] flex items-center justify-between px-6 z-40 flex-shrink-0">
         <div className="flex items-center gap-6 h-full">
           <Link
             to="/"
@@ -523,11 +523,11 @@ export const WorkflowDashboard = () => {
                       )}
                     </div>
                   </div>
-                  <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                    <span className="text-[9px] font-mono text-slate-400">
+                  <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2 min-w-0">
+                    <span className="text-[9px] font-mono text-slate-400 truncate min-w-0">
                       ID: {wf.id.slice(0, 8)}
                     </span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -538,7 +538,7 @@ export const WorkflowDashboard = () => {
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                      <span className="px-3 py-1 bg-[#ea580c] text-white text-[10px] font-mono font-bold">
+                      <span className="px-3 py-1 bg-[#ea580c] text-white text-[10px] font-mono font-bold whitespace-nowrap flex-shrink-0">
                         OPEN EDITOR →
                       </span>
                     </div>
@@ -661,9 +661,14 @@ export const WorkflowDashboard = () => {
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                    <span className="text-[9px] font-mono text-slate-400">ID: {wf.id}</span>
-                    <span className="px-3 py-1 bg-slate-900 group-hover:bg-[#ea580c] text-white text-[10px] font-mono font-bold transition-all">
+                  <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2 min-w-0">
+                    <span
+                      className="text-[9px] font-mono text-slate-400 truncate min-w-0"
+                      title={`ID: ${wf.id}`}
+                    >
+                      ID: {wf.id}
+                    </span>
+                    <span className="px-3 py-1 bg-slate-900 group-hover:bg-[#ea580c] text-white text-[10px] font-mono font-bold transition-all whitespace-nowrap flex-shrink-0">
                       OPEN EDITOR →
                     </span>
                   </div>

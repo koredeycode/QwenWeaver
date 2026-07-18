@@ -548,7 +548,7 @@ const CanvasContent = () => {
         {/* Center Column: Header Toolbar, Canvas Workspace, Metrics Panel */}
         <div className="flex-1 h-full flex flex-col min-w-0 bg-[#f8fafc] relative">
           {/* ─── Top Header (Matches screenshots exactly) ────────────────────────── */}
-          <header className="h-14 bg-white border-b border-[#cbd5e1] flex items-center justify-between px-6 z-20 flex-shrink-0">
+          <header className="h-14 bg-white border-b border-[#cbd5e1] flex items-center justify-between px-6 z-40 flex-shrink-0">
             {/* Left: Workflow name + info */}
             <div className="flex items-center gap-3 h-full">
               <div className="flex items-center gap-2">
@@ -1164,7 +1164,7 @@ const CanvasContent = () => {
                   </div>
 
                   {/* Footer: Observability + Copilot + Help (width matches canvas, not behind inspector) */}
-                  <div className="flex-shrink-0 flex flex-row items-stretch">
+                  <div className="flex-shrink-0 flex flex-row items-end">
                     <div className="flex-1 min-w-0">
                       <GanttMetrics />
                     </div>
