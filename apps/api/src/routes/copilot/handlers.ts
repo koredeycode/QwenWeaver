@@ -11,6 +11,8 @@ import { createModuleLogger } from '../../logger.js';
 import { createDiagnosticLogger, type CopilotDiag } from '../../diagnostic-logger.js';
 import { getProvider } from '../../engine/model-router.js'; // Reuse provider singleton
 import { getQueryProvider } from '@qwenweaver/database';
+import { generateCosyVoiceAudio } from '../../engine/generators/cosyvoice.js';
+import { writeBinaryAsset } from '../../engine/file-asset.js';
 import type { Variables } from '../../index.js';
 import type { Context } from 'hono';
 
@@ -494,5 +496,27 @@ export const handleUpdateProposal = async (c: Context<{ Variables: Variables }>)
     const msg = (err as Error).message;
     log.error({ error: msg }, 'Failed to update proposal status');
     return c.json({ error: 'Failed to update proposal status' }, 500);
+  }
+};
+
+export const handleCopilotTTS = async (c: Context<{ Variables: Variables }>) => {
+  const apiKey = process.env.DASHSCOPE_API_KEY;
+  if (!apiKey) {
+    return c.json({ error: 'TTS not available: DASHSCOPE_API_KEY not configured' }, 503);
+  }
+  const raw = await c.req.json();
+  const text: string = typeof raw.text === 'string' ? raw.text : '';
+  if (!text.trim()) {
+    return c.json({ error: 'Missing text' }, 400);
+  }
+  try {
+    const audioBuffer = await generateCosyVoiceAudio(text.slice(0, 4000), apiKey);
+    const runId = `copilot-tts-${Date.now()}`;
+    const audioUrl = await writeBinaryAsset(runId, 'speech', 'mp3', audioBuffer);
+    return c.json({ audioUrl }, 200);
+  } catch (err) {
+    const msg = (err as Error).message;
+    log.error({ error: msg }, 'Copilot TTS failed');
+    return c.json({ error: 'TTS generation failed' }, 500);
   }
 };

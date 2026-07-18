@@ -9,6 +9,9 @@ import {
   ChevronRight,
   Copy,
   CheckCheck,
+  Mic,
+  MicOff,
+  Volume2,
 } from 'lucide-react';
 import { useStore } from '../store/index.js';
 import { renderMarkdown } from '../utils/markdown.js';
@@ -274,6 +277,91 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
     setInput('');
   };
 
+  const [isRecording, setIsRecording] = useState(false);
+  const [speakingIdx, setSpeakingIdx] = useState<number | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      recognitionRef.current?.stop?.();
+    };
+  }, []);
+
+  const startRecording = () => {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error('Speech recognition not supported in this browser');
+      return;
+    }
+    navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then(() => {
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.onresult = (event: any) => {
+          const transcript = event.results?.[0]?.[0]?.transcript?.trim();
+          if (transcript) setInput((prev) => (prev ? prev + ' ' + transcript : transcript));
+          setIsRecording(false);
+        };
+        recognition.onerror = () => setIsRecording(false);
+        recognition.onend = () => setIsRecording(false);
+        recognition.start();
+        recognitionRef.current = recognition;
+        setIsRecording(true);
+      })
+      .catch(() => toast.error('Microphone access denied'));
+  };
+
+  const stopRecording = () => {
+    recognitionRef.current?.stop?.();
+    recognitionRef.current = null;
+    setIsRecording(false);
+  };
+
+  const speakMessage = async (text: string, idx: number) => {
+    if (speakingIdx === idx || !text) return;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+      if (speakingIdx === idx) {
+        setSpeakingIdx(null);
+        return;
+      }
+    }
+    setSpeakingIdx(idx);
+    try {
+      const res = await fetch('/api/copilot/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) throw new Error('TTS failed');
+      const data = await res.json();
+      const audio = new Audio(data.audioUrl);
+      audioRef.current = audio;
+      audio.onended = () => {
+        audioRef.current = null;
+        setSpeakingIdx(null);
+      };
+      audio.onerror = () => {
+        audioRef.current = null;
+        setSpeakingIdx(null);
+      };
+      await audio.play();
+    } catch {
+      setSpeakingIdx(null);
+      toast.error('Failed to play audio');
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (isTyping) return;
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -382,6 +470,18 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
                   <Copy className="w-3 h-3" />
                 )}
               </button>
+              {msg.role === 'assistant' && msg.text && !isTyping && (
+                <button
+                  onClick={() => speakMessage(msg.text || '', idx)}
+                  disabled={speakingIdx !== null && speakingIdx !== idx}
+                  className={`opacity-0 group-hover:opacity-100 text-slate-300 hover:text-slate-500 transition-all cursor-pointer ${
+                    speakingIdx === idx ? '!opacity-100 text-emerald-500 animate-pulse' : ''
+                  }`}
+                  title={speakingIdx === idx ? 'Playing...' : 'Listen'}
+                >
+                  <Volume2 className="w-3 h-3" />
+                </button>
+              )}
             </div>
 
             {/* Bubble */}
@@ -613,6 +713,18 @@ export const CopilotPanel = ({ onClose }: { onClose: () => void }) => {
             className="flex-1 bg-transparent px-3 py-2 text-xs outline-none text-slate-800 placeholder-slate-400 resize-none font-sans leading-relaxed disabled:cursor-wait"
           />
           <div className="p-1 flex items-center">
+            <button
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={isTyping}
+              className={`h-8 w-8 flex items-center justify-center transition-all select-none cursor-pointer disabled:opacity-30 ${
+                isRecording
+                  ? 'bg-red-500 text-white animate-pulse'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+              }`}
+              title={isRecording ? 'Stop recording' : 'Voice input'}
+            >
+              {isRecording ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+            </button>
             <button
               onClick={handleSend}
               disabled={isTyping || !input.trim()}
