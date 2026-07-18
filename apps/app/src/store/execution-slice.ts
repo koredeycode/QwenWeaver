@@ -653,6 +653,50 @@ export const createExecutionSlice: StateCreator<StoreState, [], [], ExecutionSli
         outputDialogOpen: false,
         selectedOutputNodeId: null,
       });
+
+      // Fetch workspace entries and execution messages in parallel
+      try {
+        await get().fetchWorkspaceEntries(executionId);
+      } catch {
+        // non-critical
+      }
+
+      if (execution.status === 'completed' || execution.status === 'failed') {
+        try {
+          const msgsRes = await client.api.execution[':executionId'].messages.$get({
+            param: { executionId },
+          });
+          if (msgsRes.ok) {
+            const msgsData = (await msgsRes.json()) as any;
+            const allMessages = msgsData.messages || [];
+            const busMessages: BusMessage[] = [];
+            const channelMessages: any[] = [];
+
+            for (const m of allMessages) {
+              const msg = {
+                id: m.id,
+                executionId: m.executionId,
+                topic: m.topic,
+                sourceNodeId: m.sourceNodeId,
+                messageType: m.messageType,
+                payload: m.payload || {},
+                contentType: m.contentType ?? undefined,
+                round: m.round,
+                timestamp: new Date(m.createdAt).getTime(),
+              };
+              if (m.topic && m.topic.startsWith('conversation:')) {
+                channelMessages.push(msg as any);
+              } else {
+                busMessages.push(msg as BusMessage);
+              }
+            }
+
+            set({ busMessages, channelMessages });
+          }
+        } catch {
+          // non-critical: message history
+        }
+      }
     } catch (err) {
       console.error('Failed to load execution into canvas:', err);
       toast.error('Failed to load execution');

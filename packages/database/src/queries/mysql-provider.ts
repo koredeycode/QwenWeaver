@@ -687,6 +687,28 @@ export const mysqlProvider: QueryProvider = {
     }));
   },
 
+  async getExecutionMessages(executionId: string) {
+    const { db } = getConnection();
+    const mysqlDb = db as MySql2Database<typeof mysqlSchema>;
+    const rows = await mysqlDb
+      .select()
+      .from(mysqlSchema.mysqlExecutionMessages)
+      .where(eq(mysqlSchema.mysqlExecutionMessages.executionId, executionId))
+      .orderBy(mysqlSchema.mysqlExecutionMessages.createdAt);
+
+    return rows.map((r) => ({
+      id: r.id,
+      executionId: r.executionId ?? '',
+      topic: r.topic,
+      sourceNodeId: r.sourceNodeId,
+      messageType: r.messageType,
+      payload: r.payload ?? undefined,
+      contentType: r.contentType ?? undefined,
+      round: r.round,
+      createdAt: r.createdAt.toISOString(),
+    }));
+  },
+
   async getAnalyticsSummary(userId: string, recentLimit: number = 10) {
     const { db } = getConnection();
     const mysqlDb = db as MySql2Database<typeof mysqlSchema>;

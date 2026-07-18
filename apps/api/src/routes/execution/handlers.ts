@@ -59,3 +59,21 @@ export const handleGetExecutionLogs = async (c: Context<{ Variables: Variables }
     200,
   );
 };
+
+export const handleGetExecutionMessages = async (c: Context<{ Variables: Variables }>) => {
+  const executionId = c.req.param('executionId')!;
+
+  log.info({ executionId }, 'Execution messages requested');
+
+  const provider = getQueryProvider();
+  const execution = await provider.getExecution(executionId);
+  const userId = c.get('user')!.id;
+
+  if (!execution || execution.userId !== userId) {
+    return c.json({ error: 'Execution not found or unauthorized' }, 404);
+  }
+
+  const messages = await provider.getExecutionMessages(executionId);
+
+  return c.json({ executionId, messages }, 200);
+};
