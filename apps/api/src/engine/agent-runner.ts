@@ -99,15 +99,6 @@ export async function runAgent(
     nodeTimeoutMs,
   );
 
-  let pollInterval: ReturnType<typeof setInterval> | undefined;
-  if (emitter) {
-    pollInterval = setInterval(() => {
-      if (emitter.isClosed()) {
-        abortController.abort('Client disconnected');
-      }
-    }, 1000);
-  }
-
   try {
     let apiKey = process.env.DASHSCOPE_API_KEY;
     if (userId && !apiKey) {
@@ -541,7 +532,6 @@ export async function runAgent(
     };
   } finally {
     clearTimeout(timeoutId);
-    if (pollInterval) clearInterval(pollInterval);
   }
 }
 

@@ -38,19 +38,19 @@ function formatValue(value: unknown, valueType: string): string {
   if (value === null || value === undefined) return 'null';
   if (typeof value === 'object') {
     try {
-      return JSON.stringify(value, null, 2).slice(0, 500);
+      return JSON.stringify(value, null, 2);
     } catch {
       return '[object]';
     }
   }
   if (valueType === 'json') {
     try {
-      return JSON.stringify(value, null, 2).slice(0, 500);
+      return JSON.stringify(value, null, 2);
     } catch {
-      return String(value).slice(0, 500);
+      return String(value);
     }
   }
-  return String(value).slice(0, 500);
+  return String(value);
 }
 
 interface TreeNode {
@@ -63,8 +63,6 @@ interface TreeNode {
 
 function buildTree(entries: WorkspaceEntry[]): TreeNode[] {
   const root: TreeNode[] = [];
-  const map = new Map<string, TreeNode>();
-
   const sorted = [...entries].sort((a, b) => a.key.localeCompare(b.key));
 
   for (const entry of sorted) {
@@ -100,23 +98,47 @@ function buildTree(entries: WorkspaceEntry[]): TreeNode[] {
   return root;
 }
 
-function TreeNodeRow({ node, depth, filter }: { node: TreeNode; depth: number; filter: string }) {
+function TreeNodeRow({
+  node,
+  depth,
+  filter,
+  expandedLeaves,
+  toggleLeaf,
+}: {
+  node: TreeNode;
+  depth: number;
+  filter: string;
+  expandedLeaves: Set<string>;
+  toggleLeaf: (fullKey: string) => void;
+}) {
   const [expanded, setExpanded] = useState(depth < 2);
+  const isLeafExpanded = expandedLeaves.has(node.fullKey);
 
   const matchesFilter = !filter || node.fullKey.toLowerCase().includes(filter.toLowerCase());
-
   const hasMatchingChild = !matchesFilter && node.children.some((c) => childMatches(c, filter));
 
   if (filter && !matchesFilter && !hasMatchingChild) return null;
 
   const showExpanded = filter ? true : expanded;
 
+  const handleClick = () => {
+    if (filter) return;
+    if (node.isLeaf) {
+      toggleLeaf(node.fullKey);
+    } else {
+      setExpanded(!expanded);
+    }
+  };
+
+  const leafValue =
+    node.isLeaf && node.entry ? formatValue(node.entry.value, node.entry.valueType) : '';
+
   return (
     <>
       <div
         className="flex items-start gap-1.5 px-2 py-1 hover:bg-slate-50 cursor-pointer group border-b border-slate-100/50"
         style={{ paddingLeft: `${8 + depth * 14}px` }}
-        onClick={() => !filter && setExpanded(!expanded)}
+        onClick={handleClick}
       >
         {node.isLeaf ? (
           <span className="mt-0.5 shrink-0">{getEntryIcon(node.entry?.valueType || 'text')}</span>
@@ -131,9 +153,9 @@ function TreeNodeRow({ node, depth, filter }: { node: TreeNode; depth: number; f
         )}
         <div className="min-w-0 flex-1">
           <div className="text-[11px] font-mono font-bold text-slate-700 truncate">{node.key}</div>
-          {node.isLeaf && node.entry && (
+          {node.isLeaf && node.entry && !isLeafExpanded && (
             <div className="text-[10px] font-mono text-slate-400 mt-0.5 leading-relaxed whitespace-pre-wrap break-all line-clamp-2">
-              {formatValue(node.entry.value, node.entry.valueType)}
+              {leafValue}
             </div>
           )}
           {!node.isLeaf && (
@@ -143,9 +165,33 @@ function TreeNodeRow({ node, depth, filter }: { node: TreeNode; depth: number; f
           )}
         </div>
       </div>
+
+      {node.isLeaf && isLeafExpanded && node.entry && (
+        <div
+          className="border-b border-slate-100/50 bg-slate-50"
+          style={{ paddingLeft: `${8 + depth * 14 + 20}px` }}
+        >
+          <div className="px-2 py-1.5 text-[10px] font-mono text-slate-600 whitespace-pre-wrap break-all leading-relaxed max-h-60 overflow-y-auto border-l-2 border-orange-300 ml-1">
+            {leafValue}
+          </div>
+          <div className="flex items-center gap-3 px-2 pb-1.5 text-[9px] font-mono text-slate-400">
+            <span>{node.entry.valueType === 'json' ? 'JSON' : node.entry.valueType || 'text'}</span>
+            <span className="text-slate-300">{leafValue.length.toLocaleString()} chars</span>
+            <span className="text-slate-300">agent: {node.entry.nodeId.slice(0, 10)}...</span>
+          </div>
+        </div>
+      )}
+
       {showExpanded &&
         node.children.map((child) => (
-          <TreeNodeRow key={child.fullKey} node={child} depth={depth + 1} filter={filter} />
+          <TreeNodeRow
+            key={child.fullKey}
+            node={child}
+            depth={depth + 1}
+            filter={filter}
+            expandedLeaves={expandedLeaves}
+            toggleLeaf={toggleLeaf}
+          />
         ))}
     </>
   );
@@ -163,13 +209,21 @@ export function WorkspacePanel({
   activeExecutionId,
 }: WorkspacePanelProps) {
   const [filter, setFilter] = useState('');
-  const [viewMode, setViewMode] = useState<'tree' | 'table'>('tree');
+  const [expandedLeaves, setExpandedLeaves] = useState<Set<string>>(new Set());
 
   const tree = useMemo(() => buildTree(entries), [entries]);
 
+  const toggleLeaf = (fullKey: string) => {
+    setExpandedLeaves((prev) => {
+      const next = new Set(prev);
+      if (next.has(fullKey)) next.delete(fullKey);
+      else next.add(fullKey);
+      return next;
+    });
+  };
+
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
       <div className="px-3 py-2 border-b border-slate-200 bg-slate-50/50">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">
@@ -196,7 +250,6 @@ export function WorkspacePanel({
         </div>
       </div>
 
-      {/* Content */}
       <div className="flex-1 overflow-y-auto scrollbar bg-white">
         {!activeExecutionId ? (
           <div className="p-4 text-center">
@@ -216,66 +269,30 @@ export function WorkspacePanel({
               <code className="bg-slate-100 px-1 text-[9px]">workspace_write</code> tool.
             </p>
           </div>
-        ) : viewMode === 'tree' ? (
+        ) : (
           <div className="py-1">
             {tree.map((node) => (
-              <TreeNodeRow key={node.fullKey} node={node} depth={0} filter={filter} />
+              <TreeNodeRow
+                key={node.fullKey}
+                node={node}
+                depth={0}
+                filter={filter}
+                expandedLeaves={expandedLeaves}
+                toggleLeaf={toggleLeaf}
+              />
             ))}
-          </div>
-        ) : (
-          <div className="p-2">
-            <table className="w-full text-[10px] font-mono">
-              <thead>
-                <tr className="text-left text-slate-400 border-b border-slate-200">
-                  <th className="pb-1 pr-2">Key</th>
-                  <th className="pb-1 pr-2">Type</th>
-                  <th className="pb-1">Agent</th>
-                </tr>
-              </thead>
-              <tbody>
-                {entries.map((e) => (
-                  <tr key={e.id} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="py-1 pr-2 text-slate-700 truncate max-w-[140px]">{e.key}</td>
-                    <td className="py-1 pr-2 text-slate-400">{e.valueType}</td>
-                    <td className="py-1 text-slate-400 truncate max-w-[80px]">
-                      {e.nodeId.slice(0, 8)}...
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         )}
       </div>
 
-      {/* Footer */}
       {entries.length > 0 && (
         <div className="px-3 py-1.5 border-t border-slate-200 bg-slate-50/50 flex items-center justify-between">
           <span className="text-[9px] font-mono text-slate-400">
             {entries.length} entr{entries.length === 1 ? 'y' : 'ies'}
           </span>
-          <div className="flex gap-1">
-            <button
-              onClick={() => setViewMode('tree')}
-              className={`px-1.5 py-0.5 text-[9px] font-mono border transition-colors ${
-                viewMode === 'tree'
-                  ? 'bg-orange-50 border-orange-300 text-orange-700'
-                  : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'
-              }`}
-            >
-              Tree
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              className={`px-1.5 py-0.5 text-[9px] font-mono border transition-colors ${
-                viewMode === 'table'
-                  ? 'bg-orange-50 border-orange-300 text-orange-700'
-                  : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'
-              }`}
-            >
-              Table
-            </button>
-          </div>
+          <span className="text-[9px] font-mono text-slate-400">
+            click leaf to expand / collapse
+          </span>
         </div>
       )}
     </div>
