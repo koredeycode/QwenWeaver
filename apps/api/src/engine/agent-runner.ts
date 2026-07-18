@@ -190,8 +190,16 @@ export async function runAgent(
       const hasSystemPrompt = node.data.systemPrompt && node.data.systemPrompt.trim().length > 0;
       if (hasSystemPrompt && ttsText !== 'Generates audio') {
         const provider = getProvider();
-        let modelId = node.data.model ?? 'qwen3.7-plus';
-        if (modelId.endsWith('i2v') || modelId.endsWith('t2v') || modelId.includes('wan')) {
+        const rawModelId = node.data.model || '';
+        let modelId = rawModelId;
+        if (
+          !rawModelId ||
+          rawModelId === 'qwen3-tts-flash' ||
+          rawModelId.includes('tts') ||
+          rawModelId.endsWith('i2v') ||
+          rawModelId.endsWith('t2v') ||
+          rawModelId.includes('wan')
+        ) {
           modelId = 'qwen3.7-plus';
         }
         const model = provider(modelId);
