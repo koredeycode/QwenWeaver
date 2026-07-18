@@ -95,7 +95,7 @@ export const TemplateGallery = () => {
 
   return (
     <div className="h-screen w-screen flex flex-col bg-[#f8fafc] text-slate-800 select-none overflow-hidden font-sans">
-      <header className="h-14 bg-white border-b border-[#cbd5e1] flex items-center justify-between px-6 z-20 flex-shrink-0">
+      <header className="h-14 bg-white border-b border-[#cbd5e1] flex items-center justify-between px-6 z-40 flex-shrink-0">
         <div className="flex items-center gap-6 h-full">
           <button
             onClick={() => navigate('/')}

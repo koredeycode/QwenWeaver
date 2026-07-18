@@ -116,3 +116,40 @@ export async function generateCosyVoiceAudio(text: string, apiKey: string): Prom
 
   return Buffer.from(await response.arrayBuffer());
 }
+
+export async function generateCosyVoiceUrl(text: string, apiKey: string): Promise<string> {
+  const isIntl = apiKey.startsWith('sk-ws-');
+  const baseUrl = isIntl ? 'https://dashscope-intl.aliyuncs.com' : 'https://dashscope.aliyuncs.com';
+
+  const ttsUrl = isIntl
+    ? `${baseUrl}/api/v1/services/aigc/multimodal-generation/generation`
+    : `${baseUrl}/api/v1/services/audio/tts/cosyvoice-synthesis`;
+
+  const body = isIntl
+    ? { model: 'qwen3-tts-flash', input: { text, voice: 'Cherry' } }
+    : {
+        model: 'cosyvoice-v3-plus',
+        input: { text },
+        parameters: { voice: 'longxiaochun', format: 'mp3' },
+      };
+
+  const response = await fetch(ttsUrl, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(`TTS failed: ${await response.text()}`);
+  }
+
+  if (isIntl) {
+    const data = (await response.json()) as any;
+    const audioUrl = data.output?.audio?.url;
+    if (!audioUrl) throw new Error(`TTS returned no audio URL: ${JSON.stringify(data)}`);
+    return audioUrl;
+  }
+
+  const buf = Buffer.from(await response.arrayBuffer());
+  return `data:audio/mp3;base64,${buf.toString('base64')}`;
+}
