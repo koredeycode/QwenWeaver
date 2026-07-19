@@ -13,6 +13,12 @@
   <em>Build, connect, and run AI agent workflows — visually.</em>
 </p>
 
+<p align="center">
+  <a href="https://youtu.be/rWAoW_FgRBY">
+    <img src="https://markdown-videos-api.jorgenkh.no/youtube/rWAoW_FgRBY" alt="Watch the Demo" />
+  </a>
+</p>
+
 ## Overview
 
 QwenWeaver is a TypeScript-native platform for designing, orchestrating, and executing multi-agent AI workflows. Built as a submission for the **Qwen Cloud Hackathon Track 3 ("Agent Society")**, QwenWeaver enables developers to visually arrange agents as directed acyclic graphs (DAGs) on a canvas, configure their communication channels, and run them with automatic topological parallelization, real-time streaming, and robust conflict resolution.
@@ -88,6 +94,32 @@ pnpm dev
 | Lint                | `pnpm lint`      |
 | Type-check          | `pnpm typecheck` |
 | DB migrations (dev) | `pnpm db:push`   |
+
+## Testing Instructions
+
+### Live Production
+
+The app is deployed at **https://app.qwenweaver.xyz**. Sign up with any email to create an account and start building workflows on the canvas.
+
+### Local Development
+
+```bash
+git clone https://github.com/koredeycode/QwenWeaver.git
+cd QwenWeaver
+pnpm install
+cp .env.example .env
+# Add your DashScope API key to .env
+pnpm dev
+```
+
+The local environment runs on SQLite — no PostgreSQL required. All features work with just a DashScope API key.
+
+### Verify
+
+```bash
+pnpm lint && pnpm test && pnpm build
+# 0 lint errors · 419 tests · all packages build
+```
 
 ## Tech Stack
 

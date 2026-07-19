@@ -16,3 +16,7 @@ deploy-checklist.md
 deploy-vps.sh
 apps/api/public/storage
 public/storage/
+
+audit.md
+evaluation.md
+rubric.txt
