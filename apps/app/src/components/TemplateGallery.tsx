@@ -59,11 +59,12 @@ export const TemplateGallery = () => {
     async (id: string) => {
       const ok = await forkTemplate(id);
       if (ok) {
+        const state = useStore.getState();
         const payload = {
           name: 'Forked Template',
           description: 'Workflow created from a template',
-          nodes: [],
-          edges: [],
+          nodes: state.nodes,
+          edges: state.edges,
         };
 
         try {
