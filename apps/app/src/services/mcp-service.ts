@@ -45,7 +45,7 @@ export async function toggleFavorite(serverId: string): Promise<boolean> {
 export async function adoptRegistryServer(registryId: string): Promise<boolean> {
   try {
     const res = (await withRefresh(async () =>
-      (client2.api.mcp.registry as any).adopt.$post({ json: { registryId } }),
+      (client2.api.mcp as any).adopt.$post({ json: { registryId } }),
     )) as any;
     return res.ok;
   } catch {
