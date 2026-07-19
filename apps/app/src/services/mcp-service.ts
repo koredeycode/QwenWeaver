@@ -83,7 +83,7 @@ export async function searchRegistry(
   let pageCount = 0;
 
   while (
-    (append ? matches.length : matches.length - currentServers.length) < 20 &&
+    (append ? matches.length - currentServers.length : matches.length) < 20 &&
     pageCount < 10
   ) {
     const params = new URLSearchParams({ limit: '100', version: 'latest' });

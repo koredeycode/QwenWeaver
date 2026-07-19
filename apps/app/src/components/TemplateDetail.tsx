@@ -45,11 +45,12 @@ export const TemplateDetailPage = () => {
     const ok = await forkTemplate(id);
     setForking(false);
     if (ok) {
+      const state = useStore.getState();
       const payload = {
         name: template.name || 'Forked Template',
         description: template.description || 'Workflow created from a template',
-        nodes: [],
-        edges: [],
+        nodes: state.nodes,
+        edges: state.edges,
       };
 
       try {
