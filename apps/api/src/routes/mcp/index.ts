@@ -17,8 +17,10 @@ export const mcpRoutes = new Hono<{ Variables: Variables }>()
   .get('/servers', handleListServers)
   .delete('/servers/:id', handleDeleteServer)
   .post('/servers/:id/auth', handleUpdateServerAuth)
-  .post('/servers/:id/favorite', handleToggleFavorite);
-
-export const registryRoutes = new Hono<{ Variables: Variables }>()
-  .get('/search', handleRegistrySearch)
+  .post('/servers/:id/favorite', handleToggleFavorite)
   .post('/adopt', handleRegistryAdopt);
+
+export const registryRoutes = new Hono<{ Variables: Variables }>().get(
+  '/search',
+  handleRegistrySearch,
+);
